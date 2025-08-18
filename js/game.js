@@ -203,6 +203,11 @@ export class Game {
         
         feedbackSystem.info('カードを引きました');
         this.state = await this.turnManager.handlePlayerDraw(this.state);
+        
+        // ドロー後にメインフェーズに移行
+        this.state.phase = GAME_PHASES.PLAYER_MAIN;
+        this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
+
         this._updateState(this.state);
     }
 

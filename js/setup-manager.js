@@ -503,7 +503,7 @@ export class SetupManager {
     }
 
     // プレイヤーターンに移行
-    newState.phase = GAME_PHASES.PLAYER_TURN;
+    newState.phase = GAME_PHASES.PLAYER_DRAW;
     newState.prompt.message = '山札をクリックしてカードを引いてください。';
     newState.setupSelection.confirmed = true;
 

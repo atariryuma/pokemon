@@ -291,7 +291,7 @@ export class View {
         if (!isFaceDown) {
             img.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                this.showCardInfo(card);
+                this.showCardInfo(card, e.currentTarget);
             });
         }
 
@@ -318,54 +318,117 @@ export class View {
         const panel = document.getElementById('card-info-panel');
         if (!panel) return;
 
-        const infoHtml = this._generateCardInfoHtml(card);
-        panel.innerHTML = `
-            <div class="max-h-[70vh] overflow-y-auto">
-                <img src="${getCardImagePath(card.name_en)}" alt="${card.name_ja}" class="w-full mb-4" />
-                <div class="text-left text-sm space-y-2">${infoHtml}</div>
-            </div>`;
+        // Clear previous content and add base classes
+        panel.innerHTML = '';
+        panel.className = 'fixed z-50 p-4 rounded-lg shadow-xl transition-all duration-300 ease-out transform scale-95 opacity-0'; // Base classes for animation and styling
 
-        if (targetElement) {
-            const rect = targetElement.getBoundingClientRect();
-            panel.style.left = `${rect.left - panel.offsetWidth - 12}px`;
-            panel.style.top = `${rect.top}px`;
-        }
+        // Create the close button
+        const closeButton = document.createElement('button');
+        closeButton.className = 'absolute top-2 right-2 text-gray-400 hover:text-white text-2xl font-bold leading-none focus:outline-none';
+        closeButton.innerHTML = '&times;'; // '×' character
+        closeButton.onclick = () => this.hideCardInfo();
+        panel.appendChild(closeButton);
 
-        panel.classList.remove('hidden');
+        // Create the main content container with two columns
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'flex flex-row gap-4 items-start'; // Use flexbox for two columns
+
+        // Left column: Card Image (increased width)
+        const imageColumn = document.createElement('div');
+        imageColumn.className = 'flex-shrink-0 w-64 h-auto'; // Increased width for image
+        const cardImage = document.createElement('img');
+        cardImage.src = getCardImagePath(card.name_en);
+        cardImage.alt = card.name_ja;
+        cardImage.className = 'w-full h-auto rounded-md border border-gray-700';
+        imageColumn.appendChild(cardImage);
+        contentContainer.appendChild(imageColumn);
+
+        // Right column: Card Details
+        const detailsColumn = document.createElement('div');
+        detailsColumn.className = 'flex-grow text-left text-sm space-y-2';
+        detailsColumn.innerHTML = this._generateCardInfoHtml(card);
+        contentContainer.appendChild(detailsColumn);
+
+        panel.appendChild(contentContainer);
+
+        // Always center the panel
+        panel.style.left = '50%';
+        panel.style.top = '50%';
+        panel.style.transform = 'translate(-50%, -50%)';
+        panel.style.width = '600px'; // Set a fixed width for the modal
+
+        // Apply "e-sports" styling
+        panel.style.background = 'linear-gradient(135deg, rgba(20, 20, 40, 0.98), rgba(10, 10, 20, 0.98))';
+        panel.style.borderColor = '#4dd0fd'; // Accent color
+        panel.style.boxShadow = '0 0 30px rgba(77, 208, 253, 0.6)'; // Glow effect
+        panel.style.color = '#e0e0e0'; // Light gray text
+        panel.style.fontFamily = '"Inter", sans-serif'; // Modern font
+
+        // Show with animation
+        panel.classList.remove('opacity-0', 'scale-95');
+        panel.classList.add('opacity-100', 'scale-100');
     }
 
     hideCardInfo() {
         const panel = document.getElementById('card-info-panel');
         if (panel) {
-            panel.classList.add('hidden');
+            // Animate out
+            panel.classList.remove('opacity-100', 'scale-100');
+            panel.classList.add('opacity-0', 'scale-95');
+            // Hide after animation
+            setTimeout(() => {
+                panel.classList.add('hidden');
+            }, 300); // Match transition duration
         }
     }
 
     _generateCardInfoHtml(card) {
-        let html = `<p><strong>${card.name_ja}</strong> (${card.name_en})</p>`;
-        html += `<p>Type: ${card.card_type}</p>`;
+        let html = `<h3 class="text-xl font-bold text-white mb-2">${card.name_ja} <span class="text-gray-400 text-sm">(${card.name_en})</span></h3>`;
+        html += `<p class="text-gray-300 mb-3">カードタイプ: <span class="font-semibold text-blue-300">${card.card_type}</span></p>`;
 
         if (card.card_type === 'Pokemon') {
-            if (card.hp !== undefined) html += `<p>HP: ${card.hp}</p>`;
-            if (card.types) html += `<p>属性: ${card.types.join(', ')}</p>`;
+            html += `<div class="grid grid-cols-2 gap-2 mb-3">`;
+            if (card.hp !== undefined) html += `<p><span class="font-bold text-red-400">HP:</span> ${card.hp}</p>`;
+            if (card.types) html += `<p><span class="font-bold text-green-400">属性:</span> ${card.types.join(', ')}</p>`;
+            if (card.stage) html += `<p><span class="font-bold text-purple-400">進化:</span> ${card.stage}</p>`;
+            if (card.evolves_from) html += `<p><span class="font-bold text-purple-400">進化元:</span> ${card.evolves_from}</p>`;
+            if (card.retreat_cost !== undefined) html += `<p><span class="font-bold text-yellow-400">にげる:</span> ${'⚪'.repeat(card.retreat_cost)}</p>`;
+            html += `</div>`;
+
             if (card.ability) {
-                html += `<div><strong>特性: ${card.ability.name_ja}</strong><p class="whitespace-pre-wrap">${card.ability.text_ja}</p></div>`;
+                html += `<div class="bg-gray-800 p-3 rounded-md mb-3 border border-gray-700">`;
+                html += `<h4 class="font-bold text-lg text-yellow-300 mb-1">特性: ${card.ability.name_ja}</h4>`;
+                html += `<p class="text-gray-300 whitespace-pre-wrap text-sm">${card.ability.text_ja}</p>`;
+                html += `</div>`;
             }
-            if (card.attacks) {
-                html += '<div><strong>ワザ:</strong>';
+            if (card.attacks && card.attacks.length > 0) {
+                html += `<div class="bg-gray-800 p-3 rounded-md border border-gray-700">`;
+                html += `<h4 class="font-bold text-lg text-red-300 mb-2">ワザ:</h4>`;
                 card.attacks.forEach(atk => {
-                    const cost = atk.cost ? atk.cost.join(', ') : '';
-                    const damage = atk.damage !== undefined ? atk.damage : '';
-                    html += `<div class="mt-1"><span class="font-bold">${atk.name_ja}</span> [${cost}] ${damage}<br/><span class="whitespace-pre-wrap">${atk.text_ja || ''}</span></div>`;
+                    const cost = atk.cost ? atk.cost.map(c => `<span class="inline-block w-4 h-4 rounded-full bg-gray-600 text-xs text-center leading-4 mr-1">${c.charAt(0)}</span>`).join('') : ''; // Simple icon placeholder
+                    const damage = atk.damage !== undefined ? `<span class="font-bold text-orange-300">${atk.damage}</span>` : '';
+                    html += `<div class="mb-2 pb-2 border-b border-gray-700 last:border-b-0">`;
+                    html += `<p class="font-bold text-white">${atk.name_ja} <span class="text-gray-400 text-xs">(${atk.name_en})</span></p>`;
+                    html += `<p class="text-gray-300 text-xs mb-1">コスト: ${cost} ${damage}</p>`;
+                    if (atk.text_ja) html += `<p class="text-gray-400 whitespace-pre-wrap text-sm">${atk.text_ja}</p>`;
+                    html += `</div>`;
                 });
-                html += '</div>';
+                html += `</div>`;
             }
+            if (card.weakness && card.weakness.length > 0) {
+                html += `<p class="mt-3"><span class="font-bold text-purple-300">弱点:</span> ${card.weakness.map(w => `${w.type} ${w.value}`).join(', ')}</p>`;
+            }
+            if (card.resistance && card.resistance.length > 0) {
+                html += `<p><span class="font-bold text-cyan-300">抵抗力:</span> ${card.resistance.map(r => `${r.type} ${r.value}`).join(', ')}</p>`;
+            }
+
         } else if (card.card_type === 'Energy') {
-            if (card.energy_type) html += `<p>エネルギー: ${card.energy_type}</p>`;
-            if (card.text_ja) html += `<p class="whitespace-pre-wrap">${card.text_ja}</p>`;
+            if (card.energy_type) html += `<p><span class="font-bold text-yellow-300">エネルギータイプ:</span> ${card.energy_type}</p>`;
+            if (card.is_basic !== undefined) html += `<p><span class="font-bold text-gray-300">基本エネルギー:</span> ${card.is_basic ? 'はい' : 'いいえ'}</p>`;
+            if (card.text_ja) html += `<div class="bg-gray-800 p-3 rounded-md mt-3 border border-gray-700"><p class="text-gray-300 whitespace-pre-wrap text-sm">${card.text_ja}</p></div>`;
         } else if (card.card_type === 'Trainer') {
-            if (card.trainer_type) html += `<p>トレーナー: ${card.trainer_type}</p>`;
-            if (card.text_ja) html += `<p class="whitespace-pre-wrap">${card.text_ja}</p>`;
+            if (card.trainer_type) html += `<p><span class="font-bold text-orange-300">トレーナータイプ:</span> ${card.trainer_type}</p>`;
+            if (card.text_ja) html += `<div class="bg-gray-800 p-3 rounded-md mt-3 border border-gray-700"><p class="text-gray-300 whitespace-pre-wrap text-sm">${card.text_ja}</p></div>`;
         }
 
         return html;

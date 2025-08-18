@@ -76,8 +76,7 @@ export class TurnManager {
       await this.animateCardDraw('player');
 
       // メインフェーズに自動移行
-      newState.phase = GAME_PHASES.PLAYER_MAIN;
-      newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+      
 
       newState = addLogEntry(newState, {
         type: 'card_draw',

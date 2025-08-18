@@ -104,40 +104,41 @@ export class AnimationManager {
    */
   async animatePlayCard(cardElement, fromPosition, toPosition) {
     return new Promise(resolve => {
-      // 一時的に絶対位置に設定
-      const originalStyle = {
-        position: cardElement.style.position,
-        left: cardElement.style.left,
-        top: cardElement.style.top,
-        zIndex: cardElement.style.zIndex,
-        transform: cardElement.style.transform
-      };
-      
-      // カードを浮かせて強調表示
+      // Set initial position without transition
       cardElement.style.position = 'fixed';
       cardElement.style.left = `${fromPosition.x}px`;
       cardElement.style.top = `${fromPosition.y}px`;
       cardElement.style.zIndex = '9999';
-      cardElement.style.transform = 'scale(1.1) rotate(5deg)';
+      cardElement.style.transform = 'scale(1.1) rotate(5deg)'; // Initial "lifted" state
       cardElement.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
-      
-      // アニメーション実行　
+
+      // Force reflow to ensure initial styles are applied before transition starts
+      cardElement.offsetHeight;
+
+      // Apply transition and target position
       cardElement.style.transition = `all ${this.config.durations.playCard}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-      
-      setTimeout(() => {
-        cardElement.style.left = `${toPosition.x}px`;
-        cardElement.style.top = `${toPosition.y}px`;
-        cardElement.style.transform = 'scale(1) rotate(0deg)';
-        cardElement.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-      }, 50);
-      
-      setTimeout(() => {
-        // スタイルを復元
-        Object.assign(cardElement.style, originalStyle);
+      cardElement.style.left = `${toPosition.x}px`;
+      cardElement.style.top = `${toPosition.y}px`;
+      cardElement.style.transform = 'scale(1) rotate(0deg)'; // Final state
+
+      // Wait for the transition to complete
+      cardElement.addEventListener('transitionend', function handler() {
+        cardElement.removeEventListener('transitionend', handler);
+        // Reset styles after animation
+        cardElement.style.position = '';
+        cardElement.style.left = '';
+        cardElement.style.top = '';
+        cardElement.style.zIndex = '';
+        cardElement.style.transform = '';
         cardElement.style.boxShadow = '';
-        this.addAnimationClass(cardElement, 'animate-play-card');
-        this.waitForAnimation(cardElement, 'playCard', resolve);
-      }, this.config.durations.playCard);
+        cardElement.style.transition = '';
+        resolve();
+      }, { once: true });
+
+      // Fallback for transitionend not firing (e.g., element removed)
+      setTimeout(() => {
+        resolve();
+      }, this.config.durations.playCard + 50);
     });
   }
   
@@ -149,50 +150,33 @@ export class AnimationManager {
    * @param {string} animationType - アニメーションタイプ
    */
   async animateSmoothCardMove(cardElement, fromContainer, toContainer, animationType = 'normal') {
-    return new Promise(resolve => {
+    return new Promise(async resolve => {
       const fromRect = fromContainer.getBoundingClientRect();
       const toRect = toContainer.getBoundingClientRect();
-      
+
+      // Calculate center points
       const fromPos = {
-        x: fromRect.left + fromRect.width / 2,
-        y: fromRect.top + fromRect.height / 2
+        x: fromRect.left + fromRect.width / 2 - cardElement.offsetWidth / 2, // Adjust for card element's own width
+        y: fromRect.top + fromRect.height / 2 - cardElement.offsetHeight / 2
       };
-      
+
       const toPos = {
-        x: toRect.left + toRect.width / 2,
-        y: toRect.top + toRect.height / 2
+        x: toRect.left + toRect.width / 2 - cardElement.offsetWidth / 2, // Adjust for card element's own width
+        y: toRect.top + toRect.height / 2 - cardElement.offsetHeight / 2
       };
-      
-      // アニメーションタイプによってパラメータを調整
-      let duration = this.config.durations.playCard;
-      let easing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-      let scale = 1.05;
-      
-      switch (animationType) {
-        case 'energy':
-          duration = this.config.durations.energyAttach;
-          scale = 0.8;
-          break;
-        case 'evolution':
-          duration = this.config.durations.knockout;
-          scale = 1.2;
-          easing = 'cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-          break;
-        case 'discard':
-          duration = this.config.durations.normal;
-          scale = 0.9;
-          break;
+
+      // Perform the animation
+      await this.animatePlayCard(cardElement, fromPos, toPos);
+
+      // Additional effects based on animationType (if any)
+      if (animationType === 'evolution') {
+        this.addAnimationClass(cardElement, 'animate-evolution-placement');
       }
-      
-      this.animatePlayCard(cardElement, fromPos, toPos).then(() => {
-        // 追加エフェクト
-        if (animationType === 'evolution') {
-          this.addAnimationClass(cardElement, 'animate-evolution-placement');
-        }
-        resolve();
-      });
+      resolve();
     });
   }
+  
+  
   
   /**
    * 攻撃アニメーション
@@ -245,24 +229,43 @@ export class AnimationManager {
    */
   async animateEnergyAttach(energyElement, targetElement) {
     return new Promise(resolve => {
-      // エネルギーカードを対象に移動
       const energyRect = energyElement.getBoundingClientRect();
       const targetRect = targetElement.getBoundingClientRect();
       
+      // Set initial position
       energyElement.style.position = 'fixed';
       energyElement.style.left = `${energyRect.left}px`;
       energyElement.style.top = `${energyRect.top}px`;
       energyElement.style.zIndex = '1000';
       
+      // Force reflow
+      energyElement.offsetHeight;
+
+      // Apply transition and target styles
       energyElement.style.transition = `all ${this.config.durations.energyAttach}ms ease-out`;
       energyElement.style.left = `${targetRect.left + targetRect.width - 20}px`;
       energyElement.style.top = `${targetRect.top + targetRect.height - 20}px`;
       energyElement.style.transform = 'scale(0.6)';
-      
+      energyElement.style.opacity = '0'; // Fade out as it attaches
+
+      // Wait for transition to complete
+      energyElement.addEventListener('transitionend', function handler() {
+        energyElement.removeEventListener('transitionend', handler);
+        // Reset styles after animation
+        energyElement.style.position = '';
+        energyElement.style.left = '';
+        energyElement.style.top = '';
+        energyElement.style.zIndex = '';
+        energyElement.style.transform = '';
+        energyElement.style.opacity = '';
+        energyElement.style.transition = '';
+        resolve();
+      }, { once: true });
+
+      // Fallback for transitionend not firing
       setTimeout(() => {
-        this.addAnimationClass(energyElement, 'animate-energy-attach');
-        this.waitForAnimation(energyElement, 'energyAttach', resolve);
-      }, this.config.durations.energyAttach);
+        resolve();
+      }, this.config.durations.energyAttach + 50);
     });
   }
   
