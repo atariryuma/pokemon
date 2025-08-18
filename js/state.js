@@ -31,18 +31,16 @@ function createDeck() {
 }
 
 function createPlayerState() {
-    const deck = createDeck();
-    const hand = deck.splice(0, 7);
-    const prize = deck.splice(0, 6);
-
+    const deck = createDeck(); // Deck is already shuffled by createDeck
+    // Hand and prize will be populated by Logic.setupGame
     return {
         deck,
-        hand,
+        hand: [], // Start with empty hand
         active: null,
         bench: Array(5).fill(null),
         discard: [],
-        prize,
-        prizeRemaining: 6,
+        prize: [], // Start with empty prize
+        prizeRemaining: 6, // Still track remaining prizes
     };
 }
 

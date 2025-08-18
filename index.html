@@ -278,6 +278,36 @@
         </div>
     </div>
 
+    <!-- Game Controls Panel -->
+    <div id="game-controls" class="fixed bottom-40 left-0 w-full flex flex-col items-center p-4 z-20">
+        <!-- Game Message Display -->
+        <div id="game-message-display" class="bg-gray-800/70 text-white text-lg font-bold p-3 rounded-lg mb-4 min-w-[300px] text-center hidden">
+            <!-- Messages will be displayed here -->
+        </div>
+
+        <!-- Player Action Buttons -->
+        <div id="player-action-buttons" class="flex gap-4">
+            <button id="retreat-button" class="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-lg shadow-lg hidden">
+                にげる
+            </button>
+            <button id="attack-button" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg hidden">
+                攻撃
+            </button>
+            <button id="end-turn-button" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg hidden">
+                ターン終了
+            </button>
+        </div>
+    </div>
+
+    <!-- Setup Overlay -->
+    <div id="setup-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 hidden">
+        <h2 class="text-4xl font-bold mb-8">初期ポケモンを選択してください</h2>
+        <p class="text-xl mb-12">手札からたねポケモンをバトル場とベンチに配置してください。</p>
+        <button id="confirm-setup-button" class="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-2xl font-bold rounded-lg shadow-xl hidden">
+            確定
+        </button>
+    </div>
+
     <!-- Extra scroll space so bench doesn't sit under the fixed hand overlay -->
     <div class="scroll-spacer" aria-hidden="true"></div>
 

@@ -18,6 +18,18 @@ export class View {
         this.modalTitle = document.getElementById('modal-title');
         this.modalBody = document.getElementById('modal-body');
         this.modalActions = document.getElementById('modal-actions');
+
+        // Game Message Display
+        this.gameMessageDisplay = document.getElementById('game-message-display');
+
+        // Action Buttons
+        this.retreatButton = document.getElementById('retreat-button');
+        this.attackButton = document.getElementById('attack-button');
+        this.endTurnButton = document.getElementById('end-turn-button');
+
+        // Setup Overlay
+        this.setupOverlay = document.getElementById('setup-overlay');
+        this.confirmSetupButton = document.getElementById('confirm-setup-button');
     }
 
     bindCardClick(handler) {
@@ -218,5 +230,64 @@ export class View {
 
     hideModal() {
         this.modal.classList.add('hidden');
+    }
+
+    // Game Message Display
+    showGameMessage(message) {
+        if (this.gameMessageDisplay) {
+            this.gameMessageDisplay.textContent = message;
+            this.gameMessageDisplay.classList.remove('hidden');
+        }
+    }
+
+    hideGameMessage() {
+        if (this.gameMessageDisplay) {
+            this.gameMessageDisplay.classList.add('hidden');
+        }
+    }
+
+    // Action Buttons
+    showActionButtons(buttonsToShow = []) {
+        const allButtons = [this.retreatButton, this.attackButton, this.endTurnButton];
+        allButtons.forEach(button => {
+            if (button) {
+                button.classList.add('hidden'); // Hide all first
+            }
+        });
+
+        buttonsToShow.forEach(buttonId => {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.classList.remove('hidden');
+            }
+        });
+    }
+
+    hideActionButtons() {
+        const allButtons = [this.retreatButton, this.attackButton, this.endTurnButton];
+        allButtons.forEach(button => {
+            if (button) {
+                button.classList.add('hidden');
+            }
+        });
+    }
+
+    // Setup Overlay
+    showSetupOverlay() {
+        if (this.setupOverlay) {
+            this.setupOverlay.classList.remove('hidden');
+        }
+    }
+
+    hideSetupOverlay() {
+        if (this.setupOverlay) {
+            this.setupOverlay.classList.add('hidden');
+        }
+    }
+
+    setConfirmSetupButtonHandler(handler) {
+        if (this.confirmSetupButton) {
+            this.confirmSetupButton.onclick = handler;
+        }
     }
 }

@@ -408,3 +408,49 @@ export function checkForWinner(state) {
 
     return state; // No winner yet
 }
+
+export function setupGame(state) {
+    let newState = { ...state };
+
+    // --- Player Setup ---
+    // Draw 7 cards for player's hand
+    for (let i = 0; i < 7; i++) {
+        newState = drawCard(newState, 'player');
+    }
+
+    // Set up 6 prize cards for player
+    let playerPrize = [];
+    for (let i = 0; i < 6; i++) {
+        const playerDeck = [...newState.players.player.deck];
+        const prizeCard = playerDeck.shift();
+        playerPrize.push(prizeCard);
+        newState.players.player.deck = playerDeck; // Update deck in newState
+    }
+    newState.players.player.prize = playerPrize;
+    newState.players.player.prizeRemaining = 6;
+
+    // --- CPU Setup ---
+    // Draw 7 cards for CPU's hand
+    for (let i = 0; i < 7; i++) {
+        newState = drawCard(newState, 'cpu');
+    }
+
+    // Set up 6 prize cards for CPU
+    let cpuPrize = [];
+    for (let i = 0; i < 6; i++) {
+        const cpuDeck = [...newState.players.cpu.deck];
+        const prizeCard = cpuDeck.shift();
+        cpuPrize.push(prizeCard);
+        newState.players.cpu.deck = cpuDeck; // Update deck in newState
+    }
+    newState.players.cpu.prize = cpuPrize;
+    newState.players.cpu.prizeRemaining = 6;
+
+    // --- Game State Initialization ---
+    newState.turn = 1;
+    newState.phase = 'setup'; // Keep as 'setup' for initial Pokemon selection
+    newState.turnPlayer = 'player'; // Player goes first
+    newState.canRetreat = true; // Allow retreat on first turn
+
+    return newState;
+}
