@@ -15,6 +15,7 @@ export class Game {
     } // End of _delay
 
     init() {
+        console.log('Game.init() started.');
         this.state = createInitialState();
         // Perform initial game setup (shuffle, draw 7, place prizes)
         this.state = Logic.setupGame(this.state); // Call setupGame here to populate hand and prizes
@@ -31,10 +32,12 @@ export class Game {
         // Initial game state is 'setup'
         this.state.phase = 'setup';
         this.state.prompt = { message: '手札からたねポケモンをバトル場とベンチに配置してください。' }; // Updated message
-        this._updateState(this.state); // Render initial setup state
+        this._updateState(this.state);
+        console.log('Game.init() finished.');
     } // End of init
 
     _updateState(newState) {
+        console.log('_updateState() started. newState.phase:', newState.phase);
         this.state = newState;
         this.view.render(this.state); // Always render the board
 
@@ -66,6 +69,7 @@ export class Game {
     } // End of _updateState
 
     _handleCardClick(dataset) {
+        console.log('_handleCardClick() started. dataset:', dataset);
         const { owner, zone, cardId, index } = dataset; // Added cardId and index
         if (owner !== 'player') return;
 
@@ -73,11 +77,12 @@ export class Game {
             if (zone === 'hand') {
                 // Player clicks a card in hand during setup
                 const card = this.state.players.player.hand.find(c => c.id === cardId);
-                if (card && card.card_type === 'Pokémon' && card.stage === 'BASIC') {
+                if (card && card.card_type === 'Pokemon' && card.stage === 'Basic') {
                     // Highlight the selected card (visual feedback)
                     // For now, just store the card.
                     this.selectedCardForSetup = card;
                     this.view.showGameMessage(`「${card.name_ja}」をバトル場かベンチに配置してください。`);
+                    console.log('Setup: Hand card clicked. cardId:', cardId);
                 } else {
                     this.view.showGameMessage('たねポケモンのみ選択できます。');
                 }
@@ -94,6 +99,7 @@ export class Game {
                     this.selectedCardForSetup = null; // Clear selected card
                     this._updateState(newState);
                     this.view.showGameMessage('次のたねポケモンを選択するか、確定してください。');
+                    console.log('Setup: Slot clicked. zone:', zone, 'index:', index, 'selectedCardForSetup:', this.selectedCardForSetup?.id);
                 } else {
                     this.view.showGameMessage('手札からたねポケモンを選択してください。');
                 }
@@ -130,6 +136,7 @@ export class Game {
     } // End of _placeOnBench
 
     _setupCpu(currentState) { // Accept currentState as argument
+        console.log('_setupCpu() started. currentState.phase:', currentState.phase);
         let newState = { ...currentState }; // Use currentState
         const activeCandidate = newState.players.cpu.hand.find(c => c.card_type === 'Pokémon' && c.stage === 'BASIC');
         if (activeCandidate) {
@@ -147,6 +154,7 @@ export class Game {
             }
         }
         // Do NOT set phase or prompt here, and do NOT call _updateState
+        console.log('_setupCpu() finished. Returning newState.phase:', newState.phase);
         return newState; // Return the modified state
     } // End of _setupCpu
 
@@ -345,6 +353,7 @@ export class Game {
     }
 
     _handleConfirmSetup() {
+        console.log('_handleConfirmSetup() started.');
         // Check if active Pokemon is selected
         if (!this.state.players.player.active) {
             this.view.showGameMessage('バトル場にたねポケモンを配置してください。');
@@ -360,5 +369,6 @@ export class Game {
         newState.phase = 'player-turn';
         newState.prompt = { message: 'あなたの番です。山札をクリックしてカードを引いてください。' };
         this._updateState(newState);
+        console.log('_handleConfirmSetup() finished.');
     }
 } // End of Game class
