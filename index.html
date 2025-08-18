@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ポケモンカードバトル（UIデモ）</title>
+    <title>ポケモンカードバトル</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
@@ -11,65 +11,61 @@
     <link rel="preload" as="image" href="assets/card_back.webp" />
   </head>
   <body>
-    <main class="board" aria-label="バトルボード">
-      <section class="player player--opponent" aria-label="相手側">
-        <div class="row row--top">
-          <div class="zone prizes" aria-label="相手のサイド"></div>
-          <div class="zone deck deck--opponent" aria-label="相手の山札"></div>
-          <div class="zone discard" aria-label="相手のトラッシュ"></div>
+    <div id="game-root" class="battle-arena" role="application" aria-label="ポケモンカードバトルゲーム">
+      <header class="game-header">
+        <div class="turn-info">
+          <span id="turn-player" aria-live="polite"></span>
+          <span id="turn-indicator"></span>
+          <button id="end-turn-button">ターン終了</button>
         </div>
-        <div class="row">
-          <div class="zone bench" aria-label="相手のベンチ"></div>
-          <div class="zone active" aria-label="相手のバトル場"></div>
-        </div>
-        <div class="row row--hand">
-          <div class="zone hand hand--opponent" aria-label="相手の手札"></div>
-        </div>
-      </section>
+        <p id="info-text" class="info-text"></p>
+      </header>
 
-      <section class="stadium" aria-label="スタジアム"></section>
+      <main class="board" aria-label="バトルボード">
+        <section class="player player--opponent" aria-label="相手側">
+          <div class="row row--top">
+            <div class="zone prize" id="cpu-prize-area" aria-label="相手のサイド"><span id="cpu-prize"></span></div>
+            <div class="zone deck deck--opponent" id="cpu-deck" aria-label="相手の山札"><span id="cpu-deck-count"></span></div>
+            <div class="zone discard" id="cpu-discard" aria-label="相手のトラッシュ"></div>
+          </div>
+          <div class="row">
+            <div class="zone bench" id="cpu-bench" aria-label="相手のベンチ"></div>
+            <div class="zone active" id="cpu-active" aria-label="相手のバトル場"></div>
+          </div>
+          <div class="row row--hand">
+            <div class="zone hand hand--opponent" id="cpu-hand" aria-label="相手の手札"></div>
+          </div>
+        </section>
 
-      <section class="player player--you" aria-label="自分側">
-        <div class="row row--hand">
-          <div class="zone hand" id="hand" aria-label="自分の手札"></div>
-        </div>
-        <div class="row">
-          <div class="zone bench" id="bench" aria-label="自分のベンチ"></div>
-          <div class="zone active" id="active" aria-label="自分のバトル場"></div>
-        </div>
-        <div class="row row--bottom">
-          <div class="zone prizes" id="prizes" aria-label="自分のサイド"></div>
-          <div class="zone deck" id="deck" aria-label="自分の山札"></div>
-          <div class="zone discard" id="discard" aria-label="自分のトラッシュ"></div>
-        </div>
-      </section>
-    </main>
+        <section class="stadium" id="stadium-zone" aria-label="スタジアム"></section>
 
-    <aside class="controls">
-      <button id="btn-draw">ドロー</button>
-      <button id="btn-bench">ベンチに出す</button>
-      <button id="btn-evolve">進化</button>
-      <button id="btn-attach">エネルギー付与</button>
-      <button id="btn-retreat">にげる</button>
-      <button id="btn-attack">ワザ</button>
-      <button id="btn-faint">きぜつ</button>
-    </aside>
+        <section class="player player--you" aria-label="自分側">
+          <div class="row row--hand">
+            <div class="zone hand" id="you-hand" aria-label="自分の手札"></div>
+          </div>
+          <div class="row">
+            <div class="zone bench" id="you-bench" aria-label="自分のベンチ"></div>
+            <div class="zone active" id="you-active" aria-label="自分のバトル場"></div>
+          </div>
+          <div class="row row--bottom">
+            <div class="zone prize" id="you-prize-area" aria-label="自分のサイド"><span id="you-prize"></span></div>
+            <div class="zone deck" id="you-deck" aria-label="自分の山札"><span id="you-deck-count"></span></div>
+            <div class="zone discard" id="you-discard" aria-label="自分のトラッシュ"></div>
+          </div>
+        </section>
+      </main>
 
-    <section class="log" aria-label="バトルログ">
-      <div class="log__header">
-        <strong>バトルログ</strong>
-        <label><input type="checkbox" id="autoscroll" checked /> 自動スクロール</label>
+      <aside class="log-panel" aria-label="バトルログ">
+        <div id="log-scroll"></div>
+      </aside>
+
+      <div id="action-modal" class="modal" hidden>
+        <h2 id="modal-title"></h2>
+        <div id="modal-actions"></div>
+        <button id="modal-cancel-button">キャンセル</button>
       </div>
-      <ul id="log"></ul>
-    </section>
+    </div>
 
-    <details class="controls__debug">
-      <summary>デバッグ: 画像調整</summary>
-      <label><input type="checkbox" id="toggle-safe" /> セーフエリア表示</label>
-      <label>画像X位置 <input type="range" id="img-x" min="0" max="100" value="50" /></label>
-      <label>画像Y位置 <input type="range" id="img-y" min="0" max="100" value="50" /></label>
-    </details>
-
-    <script src="js/boot.js"></script>
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>
