@@ -73,25 +73,88 @@ export class AnimationManager {
         position: cardElement.style.position,
         left: cardElement.style.left,
         top: cardElement.style.top,
-        zIndex: cardElement.style.zIndex
+        zIndex: cardElement.style.zIndex,
+        transform: cardElement.style.transform
       };
       
+      // カードを浮かせて強調表示
       cardElement.style.position = 'fixed';
       cardElement.style.left = `${fromPosition.x}px`;
       cardElement.style.top = `${fromPosition.y}px`;
-      cardElement.style.zIndex = '1000';
+      cardElement.style.zIndex = '9999';
+      cardElement.style.transform = 'scale(1.1) rotate(5deg)';
+      cardElement.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
       
-      // アニメーション実行
-      cardElement.style.transition = `all ${this.config.durations.playCard}ms ease-out`;
-      cardElement.style.left = `${toPosition.x}px`;
-      cardElement.style.top = `${toPosition.y}px`;
+      // アニメーション実行　
+      cardElement.style.transition = `all ${this.config.durations.playCard}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+      
+      setTimeout(() => {
+        cardElement.style.left = `${toPosition.x}px`;
+        cardElement.style.top = `${toPosition.y}px`;
+        cardElement.style.transform = 'scale(1) rotate(0deg)';
+        cardElement.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+      }, 50);
       
       setTimeout(() => {
         // スタイルを復元
         Object.assign(cardElement.style, originalStyle);
+        cardElement.style.boxShadow = '';
         this.addAnimationClass(cardElement, 'animate-play-card');
         this.waitForAnimation(cardElement, 'playCard', resolve);
       }, this.config.durations.playCard);
+    });
+  }
+  
+  /**
+   * スムーズカード移動アニメーション
+   * @param {Element} cardElement - カード要素
+   * @param {Element} fromContainer - 移動元コンテナ
+   * @param {Element} toContainer - 移動先コンテナ
+   * @param {string} animationType - アニメーションタイプ
+   */
+  async animateSmoothCardMove(cardElement, fromContainer, toContainer, animationType = 'normal') {
+    return new Promise(resolve => {
+      const fromRect = fromContainer.getBoundingClientRect();
+      const toRect = toContainer.getBoundingClientRect();
+      
+      const fromPos = {
+        x: fromRect.left + fromRect.width / 2,
+        y: fromRect.top + fromRect.height / 2
+      };
+      
+      const toPos = {
+        x: toRect.left + toRect.width / 2,
+        y: toRect.top + toRect.height / 2
+      };
+      
+      // アニメーションタイプによってパラメータを調整
+      let duration = this.config.durations.playCard;
+      let easing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      let scale = 1.05;
+      
+      switch (animationType) {
+        case 'energy':
+          duration = this.config.durations.energyAttach;
+          scale = 0.8;
+          break;
+        case 'evolution':
+          duration = this.config.durations.knockout;
+          scale = 1.2;
+          easing = 'cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+          break;
+        case 'discard':
+          duration = this.config.durations.normal;
+          scale = 0.9;
+          break;
+      }
+      
+      this.animatePlayCard(cardElement, fromPos, toPos).then(() => {
+        // 追加エフェクト
+        if (animationType === 'evolution') {
+          this.addAnimationClass(cardElement, 'animate-evolution-placement');
+        }
+        resolve();
+      });
     });
   }
   
@@ -279,6 +342,211 @@ export class AnimationManager {
         modalElement.style.transform = '';
         resolve();
       }, this.config.durations.normal);
+    });
+  }
+  
+  /**
+   * 進化アニメーション
+   * @param {Element} pokemonElement - 進化するポケモン要素
+   * @param {Object} evolutionCard - 進化先カード
+   */
+  async animateEvolution(pokemonElement, evolutionCard) {
+    return new Promise(resolve => {
+      // 進化エフェクト
+      this.addAnimationClass(pokemonElement, 'animate-evolution');
+      
+      // 光のエフェクトを追加
+      const lightEffect = document.createElement('div');
+      lightEffect.className = 'evolution-light';
+      lightEffect.style.cssText = `
+        position: absolute;
+        inset: -20px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
+        animation: evolutionGlow ${this.config.durations.knockout}ms ease-in-out;
+        pointer-events: none;
+        z-index: 10;
+      `;
+      
+      pokemonElement.style.position = 'relative';
+      pokemonElement.appendChild(lightEffect);
+      
+      // アニメーション終了後のクリーンアップ
+      setTimeout(() => {
+        this.removeAnimationClass(pokemonElement, 'animate-evolution');
+        lightEffect.remove();
+        
+        // カード画像を更新（簡略化）
+        const cardImage = pokemonElement.querySelector('.card-image');
+        if (cardImage && evolutionCard.name_en) {
+          import('./cards.js').then(({getCardImagePath}) => {
+            cardImage.src = getCardImagePath(evolutionCard.name_en);
+          });
+        }
+        
+        resolve();
+      }, this.config.durations.knockout);
+    });
+  }
+  
+  /**
+   * 特殊状態アニメーション
+   * @param {Element} pokemonElement - ポケモン要素
+   * @param {string} condition - 特殊状態名
+   */
+  async animateSpecialCondition(pokemonElement, condition) {
+    const effectClass = `animate-${condition}`;
+    const duration = this.config.durations.normal;
+    
+    return new Promise(resolve => {
+      this.addAnimationClass(pokemonElement, effectClass);
+      
+      // 状態アイコンを追加
+      const statusIcon = document.createElement('div');
+      statusIcon.className = `status-effect status-${condition}`;
+      statusIcon.innerHTML = this._getConditionIcon(condition);
+      statusIcon.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        z-index: 5;
+      `;
+      
+      pokemonElement.style.position = 'relative';
+      pokemonElement.appendChild(statusIcon);
+      
+      this.waitForAnimation(pokemonElement, effectClass.replace('animate-', ''), () => {
+        this.removeAnimationClass(pokemonElement, effectClass);
+        resolve();
+      });
+    });
+  }
+  
+  /**
+   * 状態アイコンを取得
+   * @param {string} condition - 状態名
+   * @returns {string} アイコン文字
+   */
+  _getConditionIcon(condition) {
+    const icons = {
+      poisoned: '☣️',
+      burned: '🔥',
+      asleep: '💤',
+      paralyzed: '⚡',
+      confused: '💫'
+    };
+    return icons[condition] || '❓';
+  }
+  
+  /**
+   * 高度な攻撃エフェクトアニメーション
+   * @param {Element} attackerElement - 攻撃側要素
+   * @param {Element} defenderElement - 防御側要素
+   * @param {string} attackType - 攻撃タイプ
+   */
+  async animateAdvancedAttack(attackerElement, defenderElement, attackType = 'normal') {
+    const attackerRect = attackerElement.getBoundingClientRect();
+    const defenderRect = defenderElement.getBoundingClientRect();
+    
+    // エフェクトコンテナを作成
+    const effectContainer = document.createElement('div');
+    effectContainer.className = 'attack-effect-container';
+    effectContainer.style.cssText = `
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10000;
+    `;
+    
+    document.body.appendChild(effectContainer);
+    
+    try {
+      switch (attackType) {
+        case 'lightning':
+          await this._createLightningEffect(effectContainer, attackerRect, defenderRect);
+          break;
+        case 'fire':
+          await this._createFireEffect(effectContainer, attackerRect, defenderRect);
+          break;
+        case 'water':
+          await this._createWaterEffect(effectContainer, attackerRect, defenderRect);
+          break;
+        case 'grass':
+          await this._createGrassEffect(effectContainer, attackerRect, defenderRect);
+          break;
+        default:
+          await this._createDefaultAttackEffect(effectContainer, attackerRect, defenderRect);
+      }
+      
+      // 防御側のダメージアニメーション
+      await this._animateDamageImpact(defenderElement);
+      
+    } finally {
+      // エフェクトコンテナを削除
+      setTimeout(() => {
+        if (effectContainer.parentNode) {
+          effectContainer.parentNode.removeChild(effectContainer);
+        }
+      }, 100);
+    }
+  }
+  
+  /**
+   * デフォルト攻撃エフェクト
+   */
+  async _createDefaultAttackEffect(container, attackerRect, defenderRect) {
+    return new Promise(resolve => {
+      const blast = document.createElement('div');
+      blast.className = 'default-attack-blast';
+      
+      blast.style.cssText = `
+        position: absolute;
+        left: ${defenderRect.left + defenderRect.width / 2}px;
+        top: ${defenderRect.top + defenderRect.height / 2}px;
+        width: 40px;
+        height: 40px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(96, 165, 250, 0.6) 50%, transparent 100%);
+        border-radius: 50%;
+        transform: translate(-50%, -50%) scale(0);
+        animation: attackBlast 300ms ease-out;
+      `;
+      
+      container.appendChild(blast);
+      
+      setTimeout(() => {
+        blast.remove();
+        resolve();
+      }, 300);
+    });
+  }
+  
+  /**
+   * ダメージインパクトアニメーション
+   */
+  async _animateDamageImpact(defenderElement) {
+    return new Promise(resolve => {
+      defenderElement.style.filter = 'brightness(1.5) contrast(1.2)';
+      defenderElement.style.transform = 'scale(1.02)';
+      
+      setTimeout(() => {
+        defenderElement.style.filter = 'brightness(0.8)';
+        defenderElement.style.transform = 'scale(0.98)';
+      }, 100);
+      
+      setTimeout(() => {
+        defenderElement.style.filter = '';
+        defenderElement.style.transform = '';
+        defenderElement.style.transition = 'all 200ms ease';
+        resolve();
+      }, 300);
     });
   }
   

@@ -314,6 +314,13 @@ export const Logic = {
             return newState;
         }
 
+        // 特殊状態で攻撃がブロックされるかチェック
+        const attackBlockCheck = Logic._checkAttackBlocking(attacker);
+        if (!attackBlockCheck.canAttack) {
+            newState.message = attackBlockCheck.messages.join(' ');
+            return newState;
+        }
+
         // 詳細なエネルギーコストのチェック
         if (!Logic._canUseAttack(attacker, attack)) {
             newState.message = 'エネルギーが足りません。';
@@ -332,21 +339,9 @@ export const Logic = {
 
         // ダメージ計算
         if (damage > 0) {
-            // 弱点・抵抗力の計算
-            let multiplier = 1;
-            let resistanceReduction = 0;
-
-            if (defender.weakness && defender.weakness.type === attacker.type) {
-                multiplier = 2; // 弱点の場合ダメージ2倍
-                messages.push('弱点！');
-            }
-
-            if (defender.resistance && defender.resistance.type === attacker.type) {
-                resistanceReduction = 20; // 抵抗力の場合ダメージ-20
-                messages.push('抵抗力！');
-            }
-
-            damage = Math.max(0, damage * multiplier - resistanceReduction);
+            const damageCalculation = Logic._calculateDamage(damage, attacker, defender);
+            damage = damageCalculation.finalDamage;
+            messages.push(...damageCalculation.messages);
 
             if (damage > 0) {
                 defender.currentHp -= damage;
@@ -434,6 +429,283 @@ export const Logic = {
             attack,
             canUse: Logic._canUseAttack(pokemon, attack)
         }));
+    },
+
+    /**
+     * ポケモンの進化処理
+     * @param {GameState} state
+     * @param {string} playerId - プレイヤーID
+     * @param {string} baseCardId - 進化元ポケモンのID
+     * @param {string} evolutionCardId - 進化先カードのID（手札内）
+     * @returns {GameState} 更新されたゲーム状態
+     */
+    evolvePokemon: (state, playerId, baseCardId, evolutionCardId) => {
+        const newState = Logic.clone(state);
+        const player = newState.players[playerId];
+        
+        // 手札から進化カードを見つける
+        const evolutionCardIndex = player.hand.findIndex(card => card.id === evolutionCardId);
+        if (evolutionCardIndex === -1) {
+            newState.message = 'そのカードは手札にありません。';
+            return newState;
+        }
+        
+        const evolutionCard = player.hand[evolutionCardIndex];
+        
+        // 進化カードの検証
+        if (evolutionCard.card_type !== 'Pokémon') {
+            newState.message = 'ポケモンカードでないものは進化に使用できません。';
+            return newState;
+        }
+        
+        if (evolutionCard.stage === 'BASIC') {
+            newState.message = 'たねポケモンは進化に使用できません。';
+            return newState;
+        }
+        
+        // 進化元ポケモンを探す
+        let basePokemon = null;
+        let location = null;
+        let locationIndex = -1;
+        
+        // アクティブポケモンをチェック
+        if (player.activePokemon && player.activePokemon.id === baseCardId) {
+            basePokemon = player.activePokemon;
+            location = 'active';
+        }
+        
+        // ベンチポケモンをチェック
+        if (!basePokemon) {
+            const benchIndex = player.bench.findIndex(pokemon => pokemon && pokemon.id === baseCardId);
+            if (benchIndex !== -1) {
+                basePokemon = player.bench[benchIndex];
+                location = 'bench';
+                locationIndex = benchIndex;
+            }
+        }
+        
+        if (!basePokemon) {
+            newState.message = '進化元のポケモンが見つかりません。';
+            return newState;
+        }
+        
+        // 進化チェーン検証
+        const canEvolve = Logic._canEvolve(basePokemon, evolutionCard);
+        if (!canEvolve.valid) {
+            newState.message = canEvolve.reason;
+            return newState;
+        }
+        
+        // 「場に出たターン」チェック（簡略化：新しく出したターンでは進化不可）
+        if (basePokemon.turnPlayed === newState.turnCount) {
+            newState.message = '場に出たばかりのポケモンは進化できません。';
+            return newState;
+        }
+        
+        // 進化実行
+        const evolvedPokemon = {
+            ...evolutionCard,
+            id: basePokemon.id, // IDを保持
+            currentHp: evolutionCard.hp, // HPは新しいポケモンの最大HPに回復
+            attachedEnergy: basePokemon.attachedEnergy || [], // エネルギーを引き継ぐ
+            specialConditions: [], // 特殊状態は回復
+            evolutionHistory: [...(basePokemon.evolutionHistory || []), basePokemon.name_ja], // 進化履歴
+            turnPlayed: newState.turnCount // 進化ターンを記録
+        };
+        
+        // 場のポケモンを更新
+        if (location === 'active') {
+            player.activePokemon = evolvedPokemon;
+        } else if (location === 'bench') {
+            player.bench[locationIndex] = evolvedPokemon;
+        }
+        
+        // 手札から進化カードを削除
+        player.hand.splice(evolutionCardIndex, 1);
+        
+        // 進化元のカードをトラッシュに（進化の証拠として）
+        const baseCardForTrash = {
+            ...basePokemon,
+            currentHp: basePokemon.currentHp,
+            attachedEnergy: [] // エネルギーは新しいポケモンに移動済み
+        };
+        player.discardPile.push(baseCardForTrash);
+        
+        newState.message = `${basePokemon.name_ja}が${evolutionCard.name_ja}に進化しました！`;
+        
+        return newState;
+    },
+
+    /**
+     * 進化可能かどうかをチェックする
+     * @param {Card} basePokemon - 進化元ポケモン
+     * @param {Card} evolutionCard - 進化先ポケモン
+     * @returns {Object} {valid: boolean, reason: string}
+     */
+    _canEvolve: (basePokemon, evolutionCard) => {
+        // 基本的な進化チェーン検証
+        
+        // BASIC → STAGE1
+        if (basePokemon.stage === 'BASIC' && evolutionCard.stage === 'STAGE1') {
+            // 名前ベースの進化チェック（簡略化）
+            if (evolutionCard.name_en.includes(basePokemon.name_en) || 
+                basePokemon.name_en.includes(evolutionCard.name_en.split(' ')[0])) {
+                return {valid: true, reason: ''};
+            }
+            // より柔軟な進化チェック（カード固有）
+            if (Logic._checkSpecificEvolution(basePokemon.name_en, evolutionCard.name_en)) {
+                return {valid: true, reason: ''};
+            }
+        }
+        
+        // STAGE1 → STAGE2
+        if (basePokemon.stage === 'STAGE1' && evolutionCard.stage === 'STAGE2') {
+            if (evolutionCard.name_en.includes(basePokemon.name_en.split(' ')[0]) ||
+                Logic._checkSpecificEvolution(basePokemon.name_en, evolutionCard.name_en)) {
+                return {valid: true, reason: ''};
+            }
+        }
+        
+        return {
+            valid: false,
+            reason: `${basePokemon.name_ja}は${evolutionCard.name_ja}に進化できません。`
+        };
+    },
+
+    /**
+     * 特定の進化関係をチェック（カードデータベース固有）
+     * @param {string} baseNameEn - 進化元の英語名
+     * @param {string} evolutionNameEn - 進化先の英語名
+     * @returns {boolean}
+     */
+    _checkSpecificEvolution: (baseNameEn, evolutionNameEn) => {
+        const evolutionPairs = {
+            'Glasswing Butterfly Larva': ['Glasswing Butterfly'],
+            'Grey Dagger Moth Larva': ['Haiirohitori'],
+            // 追加の進化ペアをここに記載
+        };
+        
+        const validEvolutions = evolutionPairs[baseNameEn] || [];
+        return validEvolutions.includes(evolutionNameEn);
+    },
+
+    /**
+     * ダメージ計算処理（弱点・抵抗力・特殊効果含む）
+     * @param {number} baseDamage - 基本ダメージ
+     * @param {Card} attacker - 攻撃側ポケモン
+     * @param {Card} defender - 防御側ポケモン
+     * @returns {Object} {finalDamage: number, messages: Array<string>}
+     */
+    _calculateDamage: (baseDamage, attacker, defender) => {
+        let damage = baseDamage;
+        const messages = [];
+        let multiplier = 1;
+        let reduction = 0;
+
+        // ダメージ軽減効果をチェック（前回の攻撃等で付与された効果）
+        if (defender.damageReduction) {
+            reduction += defender.damageReduction;
+            messages.push(`ダメージ軽減効果で${defender.damageReduction}ダメージ軽減！`);
+            delete defender.damageReduction; // 一度使用したら削除
+        }
+
+        // 弱点計算
+        if (defender.weakness && defender.weakness.type !== 'None') {
+            if (Logic._checkTypeMatch(attacker.type, defender.weakness.type)) {
+                if (defender.weakness.value === '×2') {
+                    multiplier = 2;
+                    messages.push('弱点！ ダメージ2倍！');
+                } else if (defender.weakness.value.startsWith('+')) {
+                    const additionalDamage = parseInt(defender.weakness.value.substring(1)) || 20;
+                    damage += additionalDamage;
+                    messages.push(`弱点！ +${additionalDamage}ダメージ！`);
+                }
+            }
+        }
+
+        // 抵抗力計算
+        if (defender.resistance && defender.resistance.type !== 'None') {
+            if (Logic._checkTypeMatch(attacker.type, defender.resistance.type)) {
+                const resistanceValue = parseInt(defender.resistance.value.substring(1)) || 20;
+                reduction += resistanceValue;
+                messages.push(`抵抗力！ -${resistanceValue}ダメージ！`);
+            }
+        }
+
+        // 最終ダメージ計算
+        const finalDamage = Math.max(0, Math.floor(damage * multiplier) - reduction);
+        
+        if (finalDamage <= 0 && baseDamage > 0) {
+            messages.push('ダメージを与えられなかった！');
+        } else if (finalDamage > 0) {
+            messages.push(`${finalDamage}ダメージ！`);
+        }
+
+        return { finalDamage, messages };
+    },
+
+    /**
+     * タイプマッチングチェック
+     * @param {string} attackerType - 攻撃側タイプ
+     * @param {string} targetType - 対象タイプ
+     * @returns {boolean}
+     */
+    _checkTypeMatch: (attackerType, targetType) => {
+        // 直接マッチ
+        if (attackerType === targetType) return true;
+        
+        // タイプエイリアス処理
+        const typeAliases = {
+            'Electric': 'Lightning',
+            'Lightning': 'Electric'
+        };
+        
+        const aliasType = typeAliases[attackerType];
+        return aliasType === targetType;
+    },
+
+    /**
+     * プレイヤーの進化可能なカードを取得
+     * @param {GameState} state
+     * @param {string} playerId
+     * @returns {Array} 進化可能な組み合わせの配列
+     */
+    getEvolutionOptions: (state, playerId) => {
+        const player = state.players[playerId];
+        const options = [];
+        
+        // 手札の進化カードを取得
+        const evolutionCards = player.hand.filter(card => 
+            card.card_type === 'Pokémon' && card.stage !== 'BASIC'
+        );
+        
+        // 場のポケモンをチェック
+        const fieldPokemon = [];
+        if (player.activePokemon) {
+            fieldPokemon.push({pokemon: player.activePokemon, location: 'active'});
+        }
+        player.bench.forEach((pokemon, index) => {
+            if (pokemon) {
+                fieldPokemon.push({pokemon, location: 'bench', index});
+            }
+        });
+        
+        // 進化可能な組み合わせを検索
+        evolutionCards.forEach(evolutionCard => {
+            fieldPokemon.forEach(({pokemon, location, index}) => {
+                if (Logic._canEvolve(pokemon, evolutionCard).valid &&
+                    pokemon.turnPlayed !== state.turnCount) {
+                    options.push({
+                        basePokemon: pokemon,
+                        evolutionCard: evolutionCard,
+                        location: location,
+                        benchIndex: index
+                    });
+                }
+            });
+        });
+        
+        return options;
     },
 
     /**
@@ -997,9 +1269,332 @@ export const Logic = {
             if (isAwake) {
                 Logic._removeSpecialCondition(pokemon, 'asleep');
                 messages.push(`${pokemon.name_ja}はめざめた！`);
+            } else {
+                messages.push(`${pokemon.name_ja}はまだねむっている...`);
             }
         }
 
+        // やけど状態のコイン投げ判定
+        if (pokemon.specialConditions.includes('burned')) {
+            const recoversFromBurn = Math.random() < 0.5; // 50%の確率で回復
+            if (recoversFromBurn) {
+                Logic._removeSpecialCondition(pokemon, 'burned');
+                messages.push(`${pokemon.name_ja}のやけどが治った！`);
+            }
+        }
+
+        // こんらん状態の処理
+        if (pokemon.specialConditions.includes('confused')) {
+            messages.push(`${pokemon.name_ja}はこんらんしている...`);
+        }
+
         return messages;
+    },
+
+    /**
+     * 攻撃時の特殊状態チェック
+     * @param {Card} pokemon - 攻撃しようとするポケモン
+     * @returns {Object} {canAttack: boolean, messages: Array<string>}
+     */
+    _checkAttackBlocking: (pokemon) => {
+        const messages = [];
+        let canAttack = true;
+
+        if (!pokemon.specialConditions) {
+            return {canAttack: true, messages: []};
+        }
+
+        // ねむり状態の場合攻撃不可
+        if (pokemon.specialConditions.includes('asleep')) {
+            canAttack = false;
+            messages.push(`${pokemon.name_ja}はねむっていて攻撃できない！`);
+        }
+
+        // まひ状態の場合攻撃不可
+        if (pokemon.specialConditions.includes('paralyzed')) {
+            canAttack = false;
+            messages.push(`${pokemon.name_ja}はまひしていて攻撃できない！`);
+        }
+
+        // こんらん状態の場合コイン投げ
+        if (pokemon.specialConditions.includes('confused') && canAttack) {
+            const confusionCheck = Math.random() < 0.5; // 50%の確率で自分にダメージ
+            if (!confusionCheck) {
+                // 自分に30ダメージ
+                pokemon.currentHp = Math.max(0, pokemon.currentHp - 30);
+                canAttack = false;
+                messages.push(`${pokemon.name_ja}はこんらんして自分を攻撃した！ 30ダメージ！`);
+            } else {
+                messages.push(`${pokemon.name_ja}はこんらんを振り切って攻撃した！`);
+            }
+        }
+
+        return {canAttack, messages};
+    },
+
+    /**
+     * トレーナーズカードの使用
+     * @param {GameState} state
+     * @param {string} playerId - プレイヤーID
+     * @param {string} cardId - トレーナーズカードID
+     * @returns {GameState} 更新されたゲーム状態
+     */
+    playTrainer: (state, playerId, cardId) => {
+        const newState = Logic.clone(state);
+        const player = newState.players[playerId];
+        
+        // 手札からトレーナーズカードを見つける
+        const cardIndex = player.hand.findIndex(card => card.id === cardId);
+        if (cardIndex === -1) {
+            newState.message = 'そのカードは手札にありません。';
+            return newState;
+        }
+        
+        const trainerCard = player.hand[cardIndex];
+        
+        if (trainerCard.card_type !== 'Trainer') {
+            newState.message = 'トレーナーズカードではありません。';
+            return newState;
+        }
+        
+        // トレーナーズカードの効果を実行
+        const effectResult = Logic._executeTrainerEffect(newState, playerId, trainerCard);
+        
+        if (effectResult.success) {
+            // 手札からカードを削除
+            player.hand.splice(cardIndex, 1);
+            // トラッシュに置く
+            player.discardPile.push(trainerCard);
+            
+            newState.message = effectResult.message || `${trainerCard.name_ja}を使用しました。`;
+        } else {
+            newState.message = effectResult.message || 'トレーナーズカードを使用できません。';
+        }
+        
+        return newState;
+    },
+
+    /**
+     * トレーナーズカードの効果を実行
+     * @param {GameState} state
+     * @param {string} playerId
+     * @param {Object} trainerCard
+     * @returns {Object} {success: boolean, message: string}
+     */
+    _executeTrainerEffect: (state, playerId, trainerCard) => {
+        const player = state.players[playerId];
+        const opponent = state.players[playerId === 'player' ? 'cpu' : 'player'];
+        
+        // シンプルなトレーナーズカードの効果実装例
+        // 実際のゲームではカードごとに異なる効果を実装
+        
+        switch(trainerCard.name_en) {
+            case 'Potion':
+                // ポーション: ポケモンを選んで20HP回復
+                if (player.activePokemon && player.activePokemon.currentHp < player.activePokemon.hp) {
+                    const healAmount = Math.min(20, player.activePokemon.hp - player.activePokemon.currentHp);
+                    player.activePokemon.currentHp += healAmount;
+                    return {
+                        success: true,
+                        message: `${player.activePokemon.name_ja}のHPを${healAmount}回復しました！`
+                    };
+                }
+                return {
+                    success: false,
+                    message: '回復するポケモンがいません。'
+                };
+                
+            case 'Professor Oak':
+                // オーキド博士: 手札をすべて捨てて7枚ドロー
+                player.discardPile.push(...player.hand.filter(card => card.id !== trainerCard.id));
+                player.hand = player.hand.filter(card => card.id === trainerCard.id); // トレーナーズカード以外を削除
+                
+                // 7枚ドロー
+                for (let i = 0; i < 7 && player.deck.length > 0; i++) {
+                    const drawnCard = player.deck.shift();
+                    if (drawnCard) {
+                        drawnCard.id = drawnCard.id || `${drawnCard.name_en}_${Math.random().toString(36).substring(7)}`;
+                        player.hand.push(drawnCard);
+                    }
+                }
+                
+                return {
+                    success: true,
+                    message: '手札をすべて捨てて7枚ドローしました！'
+                };
+                
+            case 'Bill':
+                // ビル: 2枚ドロー
+                for (let i = 0; i < 2 && player.deck.length > 0; i++) {
+                    const drawnCard = player.deck.shift();
+                    if (drawnCard) {
+                        drawnCard.id = drawnCard.id || `${drawnCard.name_en}_${Math.random().toString(36).substring(7)}`;
+                        player.hand.push(drawnCard);
+                    }
+                }
+                
+                return {
+                    success: true,
+                    message: '2枚ドローしました！'
+                };
+                
+            default:
+                // デフォルトのトレーナーズカード効果（簡略化）
+                return {
+                    success: true,
+                    message: `${trainerCard.name_ja}の効果を実行しました。`
+                };
+        }
+    },
+
+    /**
+     * ポケモンの特性を使用する
+     * @param {GameState} state
+     * @param {string} playerId
+     * @param {string} pokemonId
+     * @param {number} abilityIndex
+     * @returns {GameState} 更新されたゲーム状態
+     */
+    useAbility: (state, playerId, pokemonId, abilityIndex = 0) => {
+        const newState = Logic.clone(state);
+        const player = newState.players[playerId];
+        
+        // ポケモンを見つける
+        let pokemon = null;
+        if (player.activePokemon && player.activePokemon.id === pokemonId) {
+            pokemon = player.activePokemon;
+        } else {
+            pokemon = player.bench.find(p => p && p.id === pokemonId);
+        }
+        
+        if (!pokemon) {
+            newState.message = 'そのポケモンが見つかりません。';
+            return newState;
+        }
+        
+        // 特性があるかチェック
+        if (!pokemon.ability) {
+            newState.message = `${pokemon.name_ja}には特性がありません。`;
+            return newState;
+        }
+        
+        // 特殊状態で特性が使えないかチェック
+        if (pokemon.specialConditions && 
+            (pokemon.specialConditions.includes('asleep') || 
+             pokemon.specialConditions.includes('paralyzed'))) {
+            newState.message = `${pokemon.name_ja}は特殊状態のため特性を使えません。`;
+            return newState;
+        }
+        
+        // 特性の使用制限チェック（1ターンに1回の特性など）
+        if (pokemon.abilityUsedThisTurn) {
+            newState.message = `${pokemon.ability.name_ja}はすでに使用済みです。`;
+            return newState;
+        }
+        
+        // 特性の効果を実行
+        const abilityResult = Logic._executeAbility(newState, playerId, pokemon, pokemon.ability);
+        
+        if (abilityResult.success) {
+            // 特性使用フラグを設定（種類によっては不要）
+            if (abilityResult.markAsUsed) {
+                pokemon.abilityUsedThisTurn = true;
+            }
+            
+            newState.message = abilityResult.message || `${pokemon.ability.name_ja}を使用しました！`;
+        } else {
+            newState.message = abilityResult.message || `${pokemon.ability.name_ja}を使用できませんでした。`;
+        }
+        
+        return newState;
+    },
+
+    /**
+     * 特性の効果を実行する
+     * @param {GameState} state
+     * @param {string} playerId
+     * @param {Object} pokemon
+     * @param {Object} ability
+     * @returns {Object} {success: boolean, message: string, markAsUsed: boolean}
+     */
+    _executeAbility: (state, playerId, pokemon, ability) => {
+        const player = state.players[playerId];
+        const opponent = state.players[playerId === 'player' ? 'cpu' : 'player'];
+        
+        // カード名をベースとした特性効果の実装
+        switch(pokemon.name_en) {
+            case 'Kobane Inago': // 「隠れる」特性
+                // 相手の次の5回の攻撃を無効化する
+                pokemon.attackNegationCount = 5;
+                return {
+                    success: true,
+                    message: `${pokemon.name_ja}の「${ability.name_ja}」！ 相手の次の5回の攻撃を無効化！`,
+                    markAsUsed: true
+                };
+                
+            case 'Orange Spider': // 「糸をはる」特性
+                // 相手の次の攻撃を無効化
+                pokemon.attackNegationCount = 1;
+                return {
+                    success: true,
+                    message: `${pokemon.name_ja}の「${ability.name_ja}」！ 相手の次の攻撃を無効化！`,
+                    markAsUsed: true
+                };
+                
+            case 'Tsumamurasaki Madara': // 「チート」特性
+                // サイドカードを1枚取る
+                if (player.prizeCards.length > 0) {
+                    const prizeCard = player.prizeCards.pop();
+                    if (prizeCard) {
+                        prizeCard.id = prizeCard.id || `${prizeCard.name_en}_${Math.random().toString(36).substring(7)}`;
+                        player.hand.push(prizeCard);
+                    }
+                    return {
+                        success: true,
+                        message: `${pokemon.name_ja}の「${ability.name_ja}」！ サイドカードを1枚取った！`,
+                        markAsUsed: true
+                    };
+                } else {
+                    return {
+                        success: false,
+                        message: 'サイドカードがありません。'
+                    };
+                }
+                
+            default:
+                // デフォルトの特性効果（テキストベース）
+                return {
+                    success: true,
+                    message: `${pokemon.name_ja}の特性「${ability.name_ja}」を発動！`,
+                    markAsUsed: true
+                };
+        }
+    },
+
+    /**
+     * 特殊状態を一度に複数適用する
+     * @param {Card} pokemon - 対象ポケモン
+     * @param {Array<string>} conditions - 適用する特殊状態の配列
+     */
+    _applyMultipleConditions: (pokemon, conditions) => {
+        if (!pokemon.specialConditions) {
+            pokemon.specialConditions = [];
+        }
+        
+        conditions.forEach(condition => {
+            if (!pokemon.specialConditions.includes(condition)) {
+                pokemon.specialConditions.push(condition);
+            }
+        });
+    },
+
+    /**
+     * すべての特殊状態をクリア（進化時など）
+     * @param {Card} pokemon - 対象ポケモン
+     */
+    _clearAllSpecialConditions: (pokemon) => {
+        if (pokemon.specialConditions) {
+            pokemon.specialConditions = [];
+        }
     },
 };

@@ -1,71 +1,155 @@
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ポケモンカードバトル</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="preload" as="image" href="assets/card_back.webp" />
-  </head>
-  <body>
-    <div id="game-root" class="battle-arena" role="application" aria-label="ポケモンカードバトルゲーム">
-      <header class="game-header">
-        <div class="turn-info">
-          <span id="turn-player" aria-live="polite"></span>
-          <span id="turn-indicator"></span>
-          <button id="end-turn-button">ターン終了</button>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ポケモンカードバトル</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preload" as="image" href="assets/card_back.webp" />
+</head>
+<body>
+  <div id="game-root" class="battle-arena" role="application" aria-label="ポケモンカードバトルゲーム">
+    
+    <!-- ゲームヘッダー -->
+    <header class="game-header">
+      <div class="turn-info">
+        <span id="turn-player" aria-live="polite">あなたのターン</span>
+        <span id="turn-indicator" class="turn-counter">ターン 1</span>
+      </div>
+      <p id="info-text" class="info-text">手札からバトルポケモンを選んでください</p>
+      <div class="header-controls">
+        <button id="end-turn-button" class="btn-primary">ターン終了</button>
+      </div>
+    </header>
+
+    <!-- 相手エリア -->
+    <section class="opponent-area">
+      <div class="side-info">
+        <div class="zone prizes" id="cpu-prize-area" aria-label="相手のサイド">
+          <span class="zone-label">サイド</span>
+          <div id="cpu-prize" class="prize-cards"></div>
         </div>
-        <p id="info-text" class="info-text"></p>
-      </header>
+        <div class="zone deck" id="cpu-deck" aria-label="相手の山札">
+          <span class="zone-label">山札</span>
+          <div class="deck-stack">
+            <span id="cpu-deck-count" class="count-badge">60</span>
+          </div>
+        </div>
+        <div class="zone discard" id="cpu-discard" aria-label="相手のトラッシュ">
+          <span class="zone-label">トラッシュ</span>
+          <div class="discard-pile"></div>
+        </div>
+      </div>
+      
+      <div class="battle-field">
+        <div class="bench-area" id="cpu-bench" aria-label="相手のベンチ">
+          <span class="zone-label">相手のベンチ</span>
+          <div class="bench-slots">
+            <div class="bench-slot" data-slot="0"></div>
+            <div class="bench-slot" data-slot="1"></div>
+            <div class="bench-slot" data-slot="2"></div>
+            <div class="bench-slot" data-slot="3"></div>
+            <div class="bench-slot" data-slot="4"></div>
+          </div>
+        </div>
+        
+        <div class="active-area" id="cpu-active" aria-label="相手のバトル場">
+          <span class="zone-label">相手のバトル場</span>
+          <div class="active-slot"></div>
+        </div>
+      </div>
+      
+      <div class="hand-area" id="cpu-hand" aria-label="相手の手札">
+        <span class="zone-label">相手の手札</span>
+        <div class="hand-cards opponent-hand"></div>
+      </div>
+    </section>
 
-      <main class="board" aria-label="バトルボード">
-        <section class="player player--opponent" aria-label="相手側">
-          <div class="row row--top">
-            <div class="zone prize" id="cpu-prize-area" aria-label="相手のサイド"><span id="cpu-prize"></span></div>
-            <div class="zone deck deck--opponent" id="cpu-deck" aria-label="相手の山札"><span id="cpu-deck-count"></span></div>
-            <div class="zone discard" id="cpu-discard" aria-label="相手のトラッシュ"></div>
-          </div>
-          <div class="row">
-            <div class="zone bench" id="cpu-bench" aria-label="相手のベンチ"></div>
-            <div class="zone active" id="cpu-active" aria-label="相手のバトル場"></div>
-          </div>
-          <div class="row row--hand">
-            <div class="zone hand hand--opponent" id="cpu-hand" aria-label="相手の手札"></div>
-          </div>
-        </section>
+    <!-- スタジアム -->
+    <section class="stadium-area" id="stadium-zone" aria-label="スタジアム">
+      <div class="stadium-content">
+        <span class="stadium-label">スタジアム</span>
+        <div class="stadium-slot"></div>
+      </div>
+    </section>
 
-        <section class="stadium" id="stadium-zone" aria-label="スタジアム"></section>
-
-        <section class="player player--you" aria-label="自分側">
-          <div class="row row--hand">
-            <div class="zone hand" id="you-hand" aria-label="自分の手札"></div>
+    <!-- プレイヤーエリア -->
+    <section class="player-area">
+      <div class="hand-area" id="you-hand" aria-label="自分の手札">
+        <span class="zone-label">手札</span>
+        <div class="hand-cards player-hand"></div>
+      </div>
+      
+      <div class="battle-field">
+        <div class="bench-area" id="you-bench" aria-label="自分のベンチ">
+          <span class="zone-label">ベンチ</span>
+          <div class="bench-slots">
+            <div class="bench-slot" data-slot="0"></div>
+            <div class="bench-slot" data-slot="1"></div>
+            <div class="bench-slot" data-slot="2"></div>
+            <div class="bench-slot" data-slot="3"></div>
+            <div class="bench-slot" data-slot="4"></div>
           </div>
-          <div class="row">
-            <div class="zone bench" id="you-bench" aria-label="自分のベンチ"></div>
-            <div class="zone active" id="you-active" aria-label="自分のバトル場"></div>
+        </div>
+        
+        <div class="active-area" id="you-active" aria-label="自分のバトル場">
+          <span class="zone-label">バトル場</span>
+          <div class="active-slot"></div>
+        </div>
+      </div>
+      
+      <div class="side-info">
+        <div class="zone prizes" id="you-prize-area" aria-label="自分のサイド">
+          <span class="zone-label">サイド</span>
+          <div id="you-prize" class="prize-cards"></div>
+        </div>
+        <div class="zone deck" id="you-deck" aria-label="自分の山札">
+          <span class="zone-label">山札</span>
+          <div class="deck-stack">
+            <span id="you-deck-count" class="count-badge">60</span>
           </div>
-          <div class="row row--bottom">
-            <div class="zone prize" id="you-prize-area" aria-label="自分のサイド"><span id="you-prize"></span></div>
-            <div class="zone deck" id="you-deck" aria-label="自分の山札"><span id="you-deck-count"></span></div>
-            <div class="zone discard" id="you-discard" aria-label="自分のトラッシュ"></div>
-          </div>
-        </section>
-      </main>
+        </div>
+        <div class="zone discard" id="you-discard" aria-label="自分のトラッシュ">
+          <span class="zone-label">トラッシュ</span>
+          <div class="discard-pile"></div>
+        </div>
+      </div>
+    </section>
 
-      <aside class="log-panel" aria-label="バトルログ">
-        <div id="log-scroll"></div>
-      </aside>
+    <!-- コントロール・ログエリア -->
+    <section class="controls-area">
+      <div class="game-controls">
+        <button id="attack-button" class="btn-action" type="button">攻撃</button>
+        <button id="retreat-button" class="btn-action" type="button">にげる</button>
+        <button id="pass-button" class="btn-secondary" type="button">パス</button>
+      </div>
+      
+      <div class="log-panel" id="log-scroll" aria-label="バトルログ">
+        <div class="log-header">
+          <span>バトルログ</span>
+        </div>
+        <div class="log-content">
+          <div class="log-entry">ゲームが開始されました</div>
+        </div>
+      </div>
+    </section>
 
-      <div id="action-modal" class="modal" hidden>
-        <h2 id="modal-title"></h2>
-        <div id="modal-actions"></div>
-        <button id="modal-cancel-button">キャンセル</button>
+    <!-- モーダル -->
+    <div id="action-modal" class="modal" hidden>
+      <div class="modal-content">
+        <h2 id="modal-title">アクション選択</h2>
+        <div id="modal-actions" class="modal-actions"></div>
+        <div class="modal-buttons">
+          <button id="modal-cancel-button" class="btn-secondary">キャンセル</button>
+        </div>
       </div>
     </div>
 
-    <script type="module" src="js/main.js"></script>
-  </body>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
 </html>

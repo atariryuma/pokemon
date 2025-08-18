@@ -7,6 +7,7 @@ import { createInitialState } from './state.js';
 import { Logic } from './logic.js';
 import { View } from './view.js';
 import { animationManager } from './animations.js';
+import { feedbackSystem } from './feedback.js';
 
 /**
  * メインゲームコントローラークラス
@@ -62,6 +63,7 @@ export class Game {
             
         } catch (error) {
             this.error('ゲーム初期化エラー:', error);
+            feedbackSystem.error('ゲームの初期化に失敗しました', { critical: true });
             throw error;
         }
     }
@@ -85,6 +87,7 @@ export class Game {
             
         } catch (error) {
             this.error('ゲームセットアップエラー:', error);
+            feedbackSystem.error('ゲームのセットアップに失敗しました', { critical: true });
             throw error;
         }
     }
@@ -125,6 +128,7 @@ export class Game {
     _updateView() {
         if (!this.view || !this.state) {
             this.warn('ビューまたは状態が初期化されていません');
+            feedbackSystem.error('ビューまたは状態が初期化されていません');
             return;
         }
         
@@ -132,6 +136,7 @@ export class Game {
             this.view.render(this.state, this.setupSelection);
         } catch (error) {
             this.error('ビュー更新エラー:', error);
+            feedbackSystem.error('画面の更新に失敗しました', { critical: true });
         }
     }
     
@@ -143,11 +148,13 @@ export class Game {
         
         if (this.state.currentTurnPlayerId !== 'player') {
             this.log('❌ プレイヤーのターンではありません');
+            feedbackSystem.warning('プレイヤーのターンではありません');
             return;
         }
         
         if (this.state.gamePhase !== 'playerTurn') {
             this.log('❌ ターン終了できない状態です');
+            feedbackSystem.warning('ターン終了できない状態です');
             return;
         }
         
@@ -209,6 +216,8 @@ export class Game {
             this._handlePokemonPlay(card);
         } else if (card.card_type === 'Basic Energy') {
             this._handleEnergyPlay(card);
+        } else if (card.card_type === 'Trainer') {
+            this._handleTrainerPlay(card);
         }
     }
     
@@ -221,12 +230,14 @@ export class Game {
             // たねポケモンをベンチに出す
             if (this.state.players.player.bench.length >= 5) {
                 this.state.message = 'ベンチが満杯です';
+                feedbackSystem.warning('ベンチが満杯です');
                 this._updateView();
                 return;
             }
             
             this.state = Logic.playBasicPokemon(this.state, 'player', card.id);
             this.state.message = `${card.name_ja}をベンチに出しました`;
+            feedbackSystem.success(`${card.name_ja}をベンチに出しました`);
             this._updateView();
             this.log(`🎭 ${card.name_ja}をベンチに出しました`);
         }
@@ -257,6 +268,7 @@ export class Game {
         
         if (!this.setupSelection.active) {
             this.state.message = 'バトルポケモンを選んでください';
+            feedbackSystem.warning('バトルポケモンを選んでください');
             this._updateView();
             return;
         }
@@ -319,12 +331,14 @@ export class Game {
             this.state.currentTurnPlayerId = 'player';
             this.state.message = 'あなたのターンです';
             
+            feedbackSystem.success('セットアップが完了しました！ゲーム開始です');
             this._updateView();
             this.log('🎉 セットアップが完了しました。ゲーム開始！');
             
         } catch (error) {
             this.error('セットアップ完了エラー:', error);
             this.state.message = 'セットアップに失敗しました';
+            feedbackSystem.error('セットアップに失敗しました');
             this._updateView();
         }
     }
@@ -365,6 +379,7 @@ export class Game {
         } catch (error) {
             this.error('攻撃実行エラー:', error);
             this.state.message = '攻撃に失敗しました';
+            feedbackSystem.error('攻撃に失敗しました');
             this._updateView();
         }
     }
@@ -406,12 +421,14 @@ export class Game {
     _executeRetreat(pokemonId) {
         try {
             this.state = Logic.retreatPokemon(this.state, 'player', pokemonId);
+            feedbackSystem.success('ポケモンを入れ替えました');
             this._updateView();
             this.log('🔄 ポケモンを入れ替えました');
             
         } catch (error) {
             this.error('にげる実行エラー:', error);
             this.state.message = 'にげることに失敗しました';
+            feedbackSystem.error('にげることに失敗しました');
             this._updateView();
         }
     }
@@ -442,12 +459,14 @@ export class Game {
             this.view.exitTargetSelectionMode();
             
             this.state.message = 'エネルギーを付けました';
+            feedbackSystem.success('エネルギーを付けました');
             this._updateView();
             this.log('⚡ エネルギーを付与しました');
             
         } catch (error) {
             this.error('エネルギー付与エラー:', error);
             this.state.message = 'エネルギーの付与に失敗しました';
+            feedbackSystem.error('エネルギーの付与に失敗しました');
             this._updateView();
         }
     }
@@ -463,6 +482,7 @@ export class Game {
         this.state.gamePhase = 'cpuTurn';
         this.state.message = 'CPUのターンです';
         
+        feedbackSystem.info('CPUのターンです');
         this._updateView();
         
         // CPUターンを実行
@@ -485,11 +505,13 @@ export class Game {
             this.state.turnCount++;
             this.state.message = 'あなたのターンです';
             
+            feedbackSystem.info('あなたのターンです');
             this._updateView();
             this.log('✅ CPUターンが完了しました');
             
         } catch (error) {
             this.error('CPUターン実行エラー:', error);
+            feedbackSystem.error('CPUターンの実行でエラーが発生しました');
         }
     }
     
@@ -557,5 +579,72 @@ export class Game {
      */
     error(message, error = null) {
         console.error(`[Game Error] ${message}`, error);
+    }
+
+    /**
+     * 進化ポケモンの処理（既存のポケモンカード処理から分離）
+     * @param {Object} evolutionCard - 進化カード
+     */
+    _handleEvolutionPlay(evolutionCard) {
+        // 進化可能なポケモンを取得
+        const evolutionOptions = Logic.getEvolutionOptions(this.state, 'player');
+        const validOptions = evolutionOptions.filter(option => 
+            option.evolutionCard.id === evolutionCard.id
+        );
+
+        if (validOptions.length === 0) {
+            this.state.message = '進化できるポケモンがいません。';
+            this._updateView();
+            return;
+        }
+
+        if (validOptions.length === 1) {
+            // 進化対象が1体だけなら自動進化
+            const option = validOptions[0];
+            this.state = Logic.evolvePokemon(this.state, 'player', option.basePokemon.id, evolutionCard.id);
+            this._updateView();
+            // 進化アニメーショントリガー
+            this._triggerEvolutionAnimation(option.basePokemon, evolutionCard);
+        } else {
+            // 複数の進化対象がある場合は選択モード
+            this.state.gamePhase = 'selectEvolutionTarget';
+            this.state.pendingEvolution = {card: evolutionCard, options: validOptions};
+            this.state.message = '進化させるポケモンを選んでください。';
+            this._updateView();
+        }
+    }
+
+    /**
+     * トレーナーズカードの処理
+     * @param {Object} trainerCard - トレーナーズカード
+     */
+    _handleTrainerPlay(trainerCard) {
+        // サポーターは1ターンに1枚しか使用できない
+        if (trainerCard.trainer_type === 'Supporter' && this.state.supporterUsedThisTurn) {
+            this.state.message = 'サポーターは1ターンに1枚しか使用できません。';
+            this._updateView();
+            return;
+        }
+
+        this.state = Logic.playTrainer(this.state, 'player', trainerCard.id);
+        
+        if (trainerCard.trainer_type === 'Supporter') {
+            this.state.supporterUsedThisTurn = true;
+        }
+        
+        this._updateView();
+    }
+
+    /**
+     * 進化アニメーションをトリガー
+     * @param {Object} basePokemon - 進化元ポケモン
+     * @param {Object} evolutionCard - 進化先ポケモン
+     */
+    _triggerEvolutionAnimation(basePokemon, evolutionCard) {
+        // 進化アニメーションをアニメーションマネージャーに委託
+        const pokemonElement = document.querySelector(`[data-card-id="${basePokemon.id}"]`);
+        if (pokemonElement && this.animationManager) {
+            this.animationManager.animateEvolution(pokemonElement, evolutionCard);
+        }
     }
 }
