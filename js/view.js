@@ -252,7 +252,12 @@ export class View {
 
     // Action Buttons
     showActionButtons(buttonsToShow = []) {
-        const allButtons = [this.retreatButton, this.attackButton, this.endTurnButton];
+        const allButtons = [
+            this.retreatButton,
+            this.attackButton,
+            this.endTurnButton,
+            this.confirmSetupButton
+        ];
         allButtons.forEach(button => {
             if (button) {
                 button.classList.add('hidden'); // Hide all first
@@ -268,7 +273,12 @@ export class View {
     }
 
     hideActionButtons() {
-        const allButtons = [this.retreatButton, this.attackButton, this.endTurnButton];
+        const allButtons = [
+            this.retreatButton,
+            this.attackButton,
+            this.endTurnButton,
+            this.confirmSetupButton
+        ];
         allButtons.forEach(button => {
             if (button) {
                 button.classList.add('hidden');

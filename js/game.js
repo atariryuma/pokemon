@@ -1,6 +1,8 @@
 import { createInitialState } from './state.js';
 import { View } from './view.js';
 import * as Logic from './logic.js';
+import { animationManager } from './animations.js';
+import { feedbackSystem } from './feedback.js';
 
 export class Game {
     constructor(rootEl, playmatSlotsData) {
@@ -85,6 +87,7 @@ export class Game {
                     console.log('Setup: Hand card clicked. cardId:', cardId);
                 } else {
                     this.view.showGameMessage('たねポケモンのみ選択できます。');
+                    feedbackSystem.warning('たねポケモンのみ選択できます。');
                 }
             } else if (zone === 'active' || zone === 'bench') {
                 // Player clicks an active or bench slot during setup
@@ -102,6 +105,7 @@ export class Game {
                     console.log('Setup: Slot clicked. zone:', zone, 'index:', index, 'selectedCardForSetup:', this.selectedCardForSetup?.id);
                 } else {
                     this.view.showGameMessage('手札からたねポケモンを選択してください。');
+                    feedbackSystem.warning('手札からたねポケモンを選択してください。');
                 }
             }
         } else if (this.state.phase === 'player-turn') {
@@ -173,13 +177,20 @@ export class Game {
 
     _playerDrawTurnStartCard() {
         if (this.state.hasDrawnThisTurn) {
-            this.view.showModal({ title: 'このターンはすでにカードを引いています。', actions: [{ text: 'OK', callback: () => {} }] });
+            feedbackSystem.warning('このターンはすでにカードを引いています。');
             return;
         }
         let newState = Logic.drawCard(this.state, 'player');
         newState.hasDrawnThisTurn = true;
         newState.prompt.message = 'あなたのターンです。';
         this._updateState(newState);
+
+        // Animate the drawn card moving into the player's hand
+        const hand = this.view.playerHand;
+        const drawnCardEl = hand ? hand.lastElementChild : null;
+        if (drawnCardEl) {
+            animationManager.animateDrawCard(drawnCardEl);
+        }
     } // End of _playerDrawTurnStartCard
 
     _handleHandCardClick(cardId) {
@@ -253,6 +264,11 @@ export class Game {
         // 2. Draw a card
         newState = Logic.drawCard(newState, 'cpu');
         this._updateState(newState);
+        const cpuHand = this.view.cpuHand;
+        const cpuCardEl = cpuHand ? cpuHand.lastElementChild : null;
+        if (cpuCardEl) {
+            animationManager.animateDrawCard(cpuCardEl);
+        }
         await this._delay(1000);
 
         // 3. Attach energy if possible
