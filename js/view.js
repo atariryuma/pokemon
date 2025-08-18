@@ -63,8 +63,7 @@ export class View {
         const prize = Array.isArray(safePlayer.prize) ? safePlayer.prize.slice(0, 6) : new Array(6).fill(null);
 
         // Active
-        const activeSlotSelector = playerType === 'player' ? '.active-bottom' : '.active-top';
-        const activeSlot = boardElement.querySelector(activeSlotSelector);
+        const activeSlot = boardElement.querySelector('.active-pokemon');
         if (activeSlot) {
             activeSlot.innerHTML = '';
             activeSlot.appendChild(this._createCardElement(safePlayer.active || null, playerType, 'active', 0));
@@ -72,16 +71,14 @@ export class View {
 
         // Bench
         for (let i = 0; i < 5; i++) {
-            const benchSlotSelector = playerType === 'player' ? `.bottom-bench-${i + 1}` : `.top-bench-${i + 1}`;
-            const benchSlot = boardElement.querySelector(benchSlotSelector);
+            const benchSlot = boardElement.querySelector(`.bench-${i + 1}`);
             if (!benchSlot) continue;
             benchSlot.innerHTML = '';
             benchSlot.appendChild(this._createCardElement(bench[i] || null, playerType, 'bench', i));
         }
 
         // Discard
-        const discardSlotSelector = playerType === 'player' ? '.bottom-right-trash' : '.top-left-trash';
-        const discardSlot = boardElement.querySelector(discardSlotSelector);
+        const discardSlot = boardElement.querySelector('.discard');
         if (discardSlot) {
             discardSlot.innerHTML = '';
             const topCard = discard.length ? discard[discard.length - 1] : null;
@@ -94,8 +91,7 @@ export class View {
         
 
         // Deck
-        const deckSlotSelector = playerType === 'player' ? '.bottom-right-deck' : '.top-left-deck';
-        const deckSlot = boardElement.querySelector(deckSlotSelector);
+        const deckSlot = boardElement.querySelector('.deck');
         if (deckSlot) {
             deckSlot.innerHTML = '';
             const deckArr = Array.isArray(safePlayer.deck) ? safePlayer.deck : [];
@@ -124,33 +120,41 @@ export class View {
     }
 
     _renderPrizeArea(boardElement, prize, playerType) {
-        const prizeSlotSelectors = [];
-        if (playerType === 'player') {
-            prizeSlotSelectors.push('.side-left-1', '.side-left-2', '.side-left-3');
-        } else {
-            prizeSlotSelectors.push('.side-right-1', '.side-right-2', '.side-right-3');
+        const prizeContainer = boardElement.querySelector('.prizes');
+        if (!prizeContainer) return;
+        prizeContainer.innerHTML = '';
+        prizeContainer.style.position = 'relative';
+        const six = Array.isArray(prize) ? prize.slice(0, 6) : new Array(6).fill(null);
+        const rowTopPct = [0, 34, 68];
+        const backOffset = { x: -5, y: 6 };
+        for (let row = 0; row < 3; row++) {
+            const frontIdx = row;
+            const frontEl = this._createCardElement(six[frontIdx], playerType, 'prize', frontIdx, true);
+            frontEl.style.position = 'absolute';
+            frontEl.style.left = '0%';
+            frontEl.style.top = `${rowTopPct[row]}%`;
+            frontEl.style.width = '100%';
+            frontEl.style.height = 'auto';
+            frontEl.style.aspectRatio = '120 / 168';
+            frontEl.style.zIndex = '10';
+            prizeContainer.appendChild(frontEl);
+
+            const backIdx = row + 3;
+            const backEl = this._createCardElement(six[backIdx], playerType, 'prize', backIdx, true);
+            backEl.style.position = 'absolute';
+            backEl.style.left = '0%';
+            backEl.style.top = `${rowTopPct[row]}%`;
+            backEl.style.width = '100%';
+            backEl.style.height = 'auto';
+            backEl.style.aspectRatio = '120 / 168';
+            backEl.style.zIndex = '5';
+            backEl.style.transform = `translate(${backOffset.x}%, ${backOffset.y}%)`;
+            prizeContainer.appendChild(backEl);
         }
-
-        prizeSlotSelectors.forEach((selector, index) => {
-            const prizeEl = boardElement.querySelector(selector);
-            if (!prizeEl) return;
-
-            prizeEl.innerHTML = ''; // Clear previous card
-            if (index < prize.length && prize[index] !== null) { // Only render if there's a card in the state slot
-                const cardEl = this._createCardElement(prize[index], playerType, 'prize', index, true); // true for isFaceDown
-                prizeEl.appendChild(cardEl);
-            } else {
-                // Render a placeholder for empty prize slots
-                const placeholder = document.createElement('div');
-                placeholder.className = 'card-placeholder w-full h-full flex items-center justify-center text-xs text-gray-500';
-                placeholder.textContent = `Prize ${index + 1}`;
-                prizeEl.appendChild(placeholder);
-            }
-        });
     }
 
     _renderStadium(state) {
-        const stadiumEl = document.querySelector('.stadium-zone');
+        const stadiumEl = document.querySelector('.stadium-slot');
         if (!stadiumEl) return;
 
         stadiumEl.innerHTML = ''; // Clear previous card

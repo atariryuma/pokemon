@@ -73,7 +73,7 @@ export class Game {
             if (zone === 'hand') {
                 // Player clicks a card in hand during setup
                 const card = this.state.players.player.hand.find(c => c.id === cardId);
-                if (card && card.card_type === 'Pokemon' && card.stage === 'Basic') {
+                if (card && card.card_type === 'Pokémon' && card.stage === 'BASIC') {
                     // Highlight the selected card (visual feedback)
                     // For now, just store the card.
                     this.selectedCardForSetup = card;
@@ -131,14 +131,14 @@ export class Game {
 
     _setupCpu(currentState) { // Accept currentState as argument
         let newState = { ...currentState }; // Use currentState
-        const activeCandidate = newState.players.cpu.hand.find(c => c.card_type === 'Pokemon' && c.stage === 'Basic'); // Changed 'Pokémon' to 'Pokemon' and 'BASIC' to 'Basic' for consistency
+        const activeCandidate = newState.players.cpu.hand.find(c => c.card_type === 'Pokémon' && c.stage === 'BASIC');
         if (activeCandidate) {
             newState = Logic.placeCardInActive(newState, 'cpu', activeCandidate.id);
         }
         // Place up to 5 basic Pokemon on bench
         let benchCount = 0;
         for (const card of newState.players.cpu.hand) {
-            if (card.card_type === 'Pokemon' && card.stage === 'Basic' && benchCount < 5) { // Changed 'Pokémon' to 'Pokemon' and 'BASIC' to 'Basic'
+            if (card.card_type === 'Pokémon' && card.stage === 'BASIC' && benchCount < 5) {
                 const emptyIndex = newState.players.cpu.bench.findIndex(slot => slot === null);
                 if (emptyIndex !== -1) {
                     newState = Logic.placeCardOnBench(newState, 'cpu', card.id, emptyIndex);
