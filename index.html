@@ -50,6 +50,21 @@
             overflow: visible; /* Explicitly set overflow to visible */
         }
 
+        /* セットアップ時のカードスロット */
+        .card-slot.setup-interactive {
+            z-index: 50 !important; /* オーバーレイの上に表示 */
+        }
+
+        /* プレイヤーのボード全体をオーバーレイより上に */
+        .player-board.player-self {
+            z-index: 50;
+        }
+
+        /* 手札の個別カード要素 */
+        #player-hand .relative {
+            z-index: 101 !important;
+        }
+
 
         /* Side cards stacking effects */
         .side-cards-container {
@@ -162,6 +177,199 @@
         .deck-container:hover .deck-stack::after {
             transform: translateZ(1px) rotate(1.2deg);
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
+        }
+
+        /* アニメーション定義 */
+        @keyframes dealCard {
+            0% {
+                transform: translateY(-100px) rotate(10deg);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes drawCard {
+            0% {
+                transform: scale(1.5) rotate(15deg);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2) rotate(5deg);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes playCard {
+            0% {
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                transform: scale(1.1) rotate(5deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        @keyframes attackForward {
+            0% { transform: translateX(0) scale(1); }
+            30% { transform: translateX(20px) scale(1.1); }
+            60% { transform: translateX(10px) scale(1.05); }
+            100% { transform: translateX(0) scale(1); }
+        }
+
+        @keyframes damageShake {
+            0%, 100% { transform: translateX(0) translateY(0); }
+            10% { transform: translateX(-5px) translateY(-2px); }
+            20% { transform: translateX(5px) translateY(2px); }
+            30% { transform: translateX(-3px) translateY(-1px); }
+            40% { transform: translateX(3px) translateY(1px); }
+            50% { transform: translateX(-2px) translateY(-1px); }
+            60% { transform: translateX(2px) translateY(1px); }
+        }
+
+        @keyframes hpFlash {
+            0%, 100% { background-color: initial; }
+            50% { background-color: #ef4444; }
+        }
+
+        @keyframes knockout {
+            0% { 
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            50% { 
+                transform: scale(1.1) rotate(5deg);
+                opacity: 0.7;
+            }
+            100% { 
+                transform: scale(0.8) rotate(15deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes energyAttach {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(0.8);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(0.6);
+                opacity: 0.6;
+            }
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes slideInBottom {
+            0% {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes evolutionGlow {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes attackBlast {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        /* アニメーションクラス */
+        .animate-deal-card {
+            animation: dealCard 0.6s ease-out;
+        }
+
+        .animate-draw-card {
+            animation: drawCard 0.4s ease-out;
+        }
+
+        .animate-play-card {
+            animation: playCard 0.5s ease-out;
+        }
+
+        .animate-attack {
+            animation: attackForward 0.8s ease-out;
+        }
+
+        .animate-damage {
+            animation: damageShake 0.6s ease-out;
+        }
+
+        .animate-hp-damage {
+            animation: hpFlash 0.6s ease-out;
+        }
+
+        .animate-knockout {
+            animation: knockout 1.2s ease-out forwards;
+        }
+
+        .animate-energy-attach {
+            animation: energyAttach 0.7s ease-out forwards;
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .animate-slide-in-bottom {
+            animation: slideInBottom 0.5s ease-out;
+        }
+
+        .animate-evolution {
+            animation: knockout 1.2s ease-out;
+        }
+
+        .animate-evolution-placement {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* ハイライト効果 */
+        .card-selected {
+            box-shadow: 0 0 20px #4dd0fd80 !important;
+            border: 2px solid #4dd0fd !important;
+            transform: translateY(-5px) scale(1.05) !important;
+            z-index: 100 !important;
+        }
+
+        .slot-highlight {
+            box-shadow: 0 0 15px #22c55e80 !important;
+            border: 2px dashed #22c55e !important;
+            background-color: rgba(34, 197, 94, 0.1) !important;
+        }
+
+        .energy-target-highlight {
+            box-shadow: 0 0 15px #f59e0b80 !important;
+            border: 2px dashed #f59e0b !important;
+            background-color: rgba(245, 158, 11, 0.1) !important;
+        }
+
+        .error-message {
+            animation: damageShake 0.6s ease-out;
+            color: #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.1) !important;
         }
         
         .card-slot::before {
@@ -299,20 +507,54 @@
         </div>
     </div>
 
-    <!-- Setup Overlay -->
-    <div id="setup-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 hidden">
-        <h2 class="text-4xl font-bold mb-8">初期ポケモンを選択してください</h2>
-        <p class="text-xl mb-12">手札からたねポケモンをバトル場とベンチに配置してください。</p>
-        <button id="confirm-setup-button" class="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-2xl font-bold rounded-lg shadow-xl hidden">
-            確定
-        </button>
-</div>
+    <!-- Game Status Panel (右上固定) -->
+    <div id="game-status-panel" class="fixed top-4 right-4 z-50 min-w-80 max-w-96">
+        <div class="bg-gray-900 bg-opacity-95 rounded-lg shadow-2xl border border-gray-600 p-4">
+            <!-- Phase & Turn Info -->
+            <div class="flex justify-between items-center mb-3">
+                <div class="text-sm text-gray-300">
+                    <span id="phase-indicator">セットアップ</span> | 
+                    <span id="turn-indicator">ターン 1</span>
+                </div>
+                <div class="text-xs text-gray-400" id="current-player">プレイヤー</div>
+            </div>
+            
+            <!-- Main Message -->
+            <div class="mb-4">
+                <h3 id="status-title" class="text-lg font-bold text-white mb-2">初期ポケモンを選択してください</h3>
+                <p id="status-message" class="text-sm text-gray-200 leading-relaxed">
+                    まず手札のたねポケモンをクリックして選択し、次にバトル場またはベンチをクリックして配置してください。
+                </p>
+            </div>
+            
+            <!-- Progress Indicators -->
+            <div id="setup-progress" class="mb-4">
+                <div class="flex items-center space-x-2 text-xs">
+                    <div class="flex items-center">
+                        <div id="active-status" class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                        <span class="text-gray-300">バトル場</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div id="bench-status" class="w-3 h-3 rounded-full bg-gray-500 mr-2"></div>
+                        <span class="text-gray-300">ベンチ (<span id="bench-count">0</span>/5)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div id="status-actions" class="space-y-2">
+                <button id="confirm-setup-button" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg transition-all">
+                    確定
+                </button>
+            </div>
+        </div>
+    </div>
 
 <!-- Extra scroll space so bench doesn't sit under the fixed hand overlay -->
 <div class="scroll-spacer" aria-hidden="true"></div>
 
 <!-- Player Hand -->
-<div id="player-hand" class="fixed bottom-0 left-0 w-full h-40 bg-black/50 flex justify-center items-center p-2 z-10">
+<div id="player-hand" class="fixed bottom-0 left-0 w-full h-40 bg-black/50 flex justify-center items-center p-2" style="z-index: 100;">
     <!-- プレイヤーの手札はここに動的に追加されます -->
 </div>
 

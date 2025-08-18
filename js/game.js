@@ -3,6 +3,9 @@ import { View } from './view.js';
 import * as Logic from './logic.js';
 import { animationManager } from './animations.js';
 import { feedbackSystem } from './feedback.js';
+import { phaseManager, GAME_PHASES } from './phase-manager.js';
+import { setupManager } from './setup-manager.js';
+import { turnManager } from './turn-manager.js';
 
 export class Game {
     constructor(rootEl, playmatSlotsData) {
@@ -10,18 +13,28 @@ export class Game {
         this.state = null;
         this.view = null;
         this.playmatSlotsData = playmatSlotsData;
+        
+        // Game managers
+        this.phaseManager = phaseManager;
+        this.setupManager = setupManager;
+        this.turnManager = turnManager;
+        
+        // Selected card for setup
+        this.selectedCardForSetup = null;
+        
+        // Animation control flags
+        this.setupAnimationsExecuted = false;
     } // End of constructor
 
     _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     } // End of _delay
 
-    init() {
+    async init() {
         console.log('Game.init() started.');
         this.state = createInitialState();
-        // Perform initial game setup (shuffle, draw 7, place prizes)
-        this.state = Logic.setupGame(this.state); // Call setupGame here to populate hand and prizes
-
+        
+        // Initialize view
         this.view = new View(this.rootEl);
         this.view.bindCardClick(this._handleCardClick.bind(this));
         this.view.setConfirmSetupButtonHandler(this._handleConfirmSetup.bind(this)); // Bind confirm button
@@ -29,105 +42,225 @@ export class Game {
         // Bind action buttons
         this.view.retreatButton.onclick = this._handleRetreat.bind(this);
         this.view.attackButton.onclick = this._handleAttack.bind(this);
-        this.view.endTurnButton.onclick = this._endTurn.bind(this); // Bind end turn button
+        this.view.endTurnButton.onclick = this._handleEndTurn.bind(this); // Bind end turn button
 
-        // Initial game state is 'setup'
-        this.state.phase = 'setup';
-        this.state.prompt = { message: '手札からたねポケモンをバトル場とベンチに配置してください。' }; // Updated message
-        this._updateState(this.state);
+        // Start game setup with animations
+        await this._startGameSetup();
         console.log('Game.init() finished.');
     } // End of init
 
     _updateState(newState) {
         console.log('_updateState() started. newState.phase:', newState.phase);
+        
+        // デバッグ情報を詳細に出力
+        console.log('🎮 Game State Update:');
+        console.log('  Phase:', newState.phase);
+        console.log('  Turn Player:', newState.turnPlayer);
+        console.log('  Player Hand:', newState.players.player.hand.length, 'cards');
+        console.log('  Player Active:', newState.players.player.active?.name_ja || 'None');
+        console.log('  CPU Hand:', newState.players.cpu.hand.length, 'cards');
+        console.log('  CPU Active:', newState.players.cpu.active?.name_ja || 'None');
+        
         this.state = newState;
-        this.view.render(this.state); // Always render the board
+        
+        // Update phase manager
+        this.phaseManager.currentPhase = newState.phase;
+        
+        // Always render the board first
+        this.view.render(this.state);
 
-        // Control UI elements based on phase
-        this.view.hideGameMessage(); // Hide message by default
-        this.view.hideActionButtons(); // Hide action buttons by default
-        this.view.hideSetupOverlay(); // Hide setup overlay by default
-
-        if (newState.phase === 'setup') {
-            this.view.showSetupOverlay();
-            this.view.showGameMessage(newState.prompt.message);
-            // In setup, confirm button should be shown if active is selected
-            if (newState.players.player.active) {
-                this.view.showActionButtons(['confirm-setup-button']); // Assuming confirm-setup-button is an action button
-            }
-        } else if (newState.phase === 'player-turn') {
-            this.view.showGameMessage(newState.prompt.message);
-            this.view.showActionButtons(['retreat-button', 'attack-button', 'end-turn-button']);
-        } else if (newState.phase === 'cpu-turn') {
-            this.view.showGameMessage(newState.prompt.message);
-        } else if (newState.phase === 'game-over') {
-            this._handleGameOver(newState.winner);
-            this.view.showGameMessage(newState.prompt.message); // Display game over message
-        } else if (newState.phase === 'awaiting-new-active') {
-            this.view.showGameMessage('新しいバトルポケモンを選んでください。');
-        } else if (newState.pendingAction && newState.pendingAction.type === 'attach-energy') {
-            this.view.showGameMessage(newState.prompt.message);
+        // Then control UI elements based on phase
+        this._updateUI();
+        
+        // Check for game end conditions
+        const gameEndCheck = this.phaseManager.shouldEndGame(newState);
+        if (gameEndCheck) {
+            this._handleGameOver(gameEndCheck.winner, gameEndCheck.reason);
         }
     } // End of _updateState
 
-    _handleCardClick(dataset) {
+    async _handleCardClick(dataset) {
         console.log('_handleCardClick() started. dataset:', dataset);
-        const { owner, zone, cardId, index } = dataset; // Added cardId and index
+        const { owner, zone, cardId, index } = dataset;
         if (owner !== 'player') return;
 
-        if (this.state.phase === 'setup') {
-            if (zone === 'hand') {
-                // Player clicks a card in hand during setup
-                const card = this.state.players.player.hand.find(c => c.id === cardId);
-                if (card && card.card_type === 'Pokemon' && card.stage === 'Basic') {
-                    // Highlight the selected card (visual feedback)
-                    // For now, just store the card.
-                    this.selectedCardForSetup = card;
-                    this.view.showGameMessage(`「${card.name_ja}」をバトル場かベンチに配置してください。`);
-                    console.log('Setup: Hand card clicked. cardId:', cardId);
-                } else {
-                    this.view.showGameMessage('たねポケモンのみ選択できます。');
-                    feedbackSystem.warning('たねポケモンのみ選択できます。');
+        // Handle different phases
+        switch (this.state.phase) {
+            case GAME_PHASES.SETUP:
+            case GAME_PHASES.INITIAL_POKEMON_SELECTION:
+                await this._handleSetupCardClick(dataset);
+                break;
+                
+            case GAME_PHASES.PLAYER_DRAW:
+                if (zone === 'deck') {
+                    await this._handlePlayerDraw();
                 }
-            } else if (zone === 'active' || zone === 'bench') {
-                // Player clicks an active or bench slot during setup
-                if (this.selectedCardForSetup) {
-                    const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0; // 0 for active
-                    let newState;
-                    if (zone === 'active') {
-                        newState = Logic.placeCardInActive(this.state, 'player', this.selectedCardForSetup.id);
-                    } else { // bench
-                        newState = Logic.placeCardOnBench(this.state, 'player', this.selectedCardForSetup.id, targetIndex);
-                    }
-                    this.selectedCardForSetup = null; // Clear selected card
-                    this._updateState(newState);
-                    this.view.showGameMessage('次のたねポケモンを選択するか、確定してください。');
-                    console.log('Setup: Slot clicked. zone:', zone, 'index:', index, 'selectedCardForSetup:', this.selectedCardForSetup?.id);
-                } else {
-                    this.view.showGameMessage('手札からたねポケモンを選択してください。');
-                    feedbackSystem.warning('手札からたねポケモンを選択してください。');
+                break;
+                
+            case GAME_PHASES.PLAYER_MAIN:
+                await this._handlePlayerMainClick(dataset);
+                break;
+                
+            case GAME_PHASES.AWAITING_NEW_ACTIVE:
+                if (zone === 'bench') {
+                    await this._handleNewActiveSelection(parseInt(index, 10));
                 }
-            }
-        } else if (this.state.phase === 'player-turn') {
-            this._handlePlayerTurnCardClick(dataset);
-        } else if (this.state.phase === 'awaiting-new-active' && zone === 'bench') {
-            const newIndex = parseInt(index, 10);
-            let newState = Logic.promoteToActive(this.state, 'player', newIndex);
-            newState.phase = 'player-turn'; // Return to player's turn
-            newState.prompt.message = 'あなたのターンです。';
-            this._updateState(newState);
-        } else if (this.state.players.player.prizesToTake > 0 && zone === 'prize') {
-            const prizeIndex = parseInt(index, 10);
-            let newState = Logic.takePrizeCard(this.state, 'player', prizeIndex);
-            this._updateState(newState);
-            // After taking a prize, if the opponent has no active pokemon, end the turn.
-            if (newState.players.cpu.active === null) {
-                setTimeout(() => this._endTurn(), 1000);
-            }
+                break;
+                
+            case GAME_PHASES.PRIZE_SELECTION:
+                if (zone === 'prize' && this.state.players.player.prizesToTake > 0) {
+                    await this._handlePrizeSelection(parseInt(index, 10));
+                }
+                break;
         }
     } // End of _handleCardClick
 
-    
+    /**
+     * ゲームセットアップ開始
+     */
+    async _startGameSetup() {
+        console.log('🎮 Starting game setup...');
+        this.state = await this.setupManager.initializeGame(this.state);
+        
+        // 単一のレンダリングサイクルで処理（二重レンダリング防止）
+        console.log('🔄 Updating game state and rendering...');
+        this._updateState(this.state);
+        
+        // DOM要素の完全な準備を確実に待つ
+        this._scheduleSetupAnimations();
+        
+        // デバッグ: 手札の内容を確認
+        console.log('👤 Player hand after setup:', this.state.players.player.hand.length, 'cards');
+        console.log('🤖 CPU hand after setup:', this.state.players.cpu.hand.length, 'cards');
+        console.log('🏆 Player prizes after setup:', this.state.players.player.prize.length, 'cards');
+        console.log('🏆 CPU prizes after setup:', this.state.players.cpu.prize.length, 'cards');
+    }
+
+    /**
+     * セットアップ時のカードクリック処理
+     */
+    async _handleSetupCardClick(dataset) {
+        const { zone, cardId, index } = dataset;
+        
+        console.log('🎯 Setup card click:', { zone, cardId, index });
+        
+        if (zone === 'hand' && cardId) {
+            // 手札のカードを選択
+            const card = this.state.players.player.hand.find(c => c.id === cardId);
+            if (card && card.card_type === 'Pokémon' && card.stage === 'BASIC') {
+                this.selectedCardForSetup = card;
+                this._highlightCard(cardId, true);
+                this.state.prompt.message = `「${card.name_ja}」をバトル場かベンチに配置してください。`;
+                this.view.updateStatusMessage(this.state.prompt.message);
+                console.log(`✅ Selected Pokemon for setup: ${card.name_ja}`);
+            } else {
+                feedbackSystem.warning('たねポケモンのみ選択できます。');
+                this.view.showErrorMessage('たねポケモンのみ選択できます。');
+                console.log('❌ Invalid card selection:', card?.name_ja || 'Unknown card');
+            }
+        } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
+            // 配置先を選択
+            const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
+            
+            console.log(`🎯 Placing ${this.selectedCardForSetup.name_ja} in ${zone}${zone === 'bench' ? `[${targetIndex}]` : ''}`);
+            
+            this.state = this.setupManager.handlePokemonSelection(
+                this.state, 
+                'player', 
+                this.selectedCardForSetup.id, 
+                zone, 
+                targetIndex
+            );
+            
+            // 配置アニメーション
+            await this._animateCardPlacement(this.selectedCardForSetup, zone, targetIndex);
+            
+            this.selectedCardForSetup = null;
+            this._clearCardHighlights();
+            this.state.prompt.message = '次のたねポケモンを選択するか、確定してください。';
+            this.view.updateStatusMessage(this.state.prompt.message);
+            this._updateState(this.state);
+        } else if ((zone === 'active' || zone === 'bench') && !this.selectedCardForSetup) {
+            // カードが選択されていない状態でスロットをクリックした場合
+            feedbackSystem.warning('先に手札からたねポケモンを選択してください。');
+            this.view.showErrorMessage('先に手札からたねポケモンを選択してください。');
+        }
+    }
+
+    /**
+     * プレイヤードロー処理
+     */
+    async _handlePlayerDraw() {
+        if (this.state.hasDrawnThisTurn) {
+            feedbackSystem.warning('このターンはすでにカードを引いています。');
+            this.view.showErrorMessage('このターンはすでにカードを引いています。');
+            return;
+        }
+        
+        feedbackSystem.info('カードを引きました');
+        this.state = await this.turnManager.handlePlayerDraw(this.state);
+        this._updateState(this.state);
+    }
+
+    /**
+     * プレイヤーメインフェーズのクリック処理
+     */
+    async _handlePlayerMainClick(dataset) {
+        const { zone, cardId, index } = dataset;
+        
+        if (this.state.pendingAction) {
+            await this._handlePendingAction(dataset);
+            return;
+        }
+        
+        if (zone === 'hand') {
+            await this._handleHandCardClick(cardId);
+        } else if (zone === 'active' || zone === 'bench') {
+            await this._handleBoardPokemonClick(cardId, zone, parseInt(index, 10));
+        }
+    }
+
+    /**
+     * 新しいアクティブポケモン選択
+     */
+    async _handleNewActiveSelection(benchIndex) {
+        let newState = Logic.promoteToActive(this.state, 'player', benchIndex);
+        
+        // アニメーション
+        await this._animatePokemonPromotion('player', benchIndex);
+        
+        // 次のフェーズに移行
+        if (this.state.turnPlayer === 'player') {
+            newState.phase = GAME_PHASES.PLAYER_MAIN;
+            newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+        } else {
+            newState.phase = GAME_PHASES.CPU_TURN;
+            newState.prompt.message = '相手のターンです...';
+        }
+        
+        this._updateState(newState);
+    }
+
+    /**
+     * サイドカード選択処理
+     */
+    async _handlePrizeSelection(prizeIndex) {
+        let newState = Logic.takePrizeCard(this.state, 'player', prizeIndex);
+        
+        // アニメーション
+        await this._animatePrizeTake('player', prizeIndex);
+        
+        // サイド取得後の処理
+        if (newState.players.player.prizesToTake === 0) {
+            if (newState.turnPlayer === 'player') {
+                newState.phase = GAME_PHASES.PLAYER_MAIN;
+            } else {
+                newState.phase = GAME_PHASES.CPU_TURN;
+            }
+        }
+        
+        this._updateState(newState);
+    }
 
     _placeOnBench(cardId) {
         const emptyIndex = this.state.players.player.bench.findIndex(slot => slot === null);
@@ -139,217 +272,277 @@ export class Game {
         }
     } // End of _placeOnBench
 
-    _setupCpu(currentState) { // Accept currentState as argument
-        console.log('_setupCpu() started. currentState.phase:', currentState.phase);
-        let newState = { ...currentState }; // Use currentState
-        const activeCandidate = newState.players.cpu.hand.find(c => c.card_type === 'Pokémon' && c.stage === 'BASIC');
-        if (activeCandidate) {
-            newState = Logic.placeCardInActive(newState, 'cpu', activeCandidate.id);
-        }
-        // Place up to 5 basic Pokemon on bench
-        let benchCount = 0;
-        for (const card of newState.players.cpu.hand) {
-            if (card.card_type === 'Pokémon' && card.stage === 'BASIC' && benchCount < 5) {
-                const emptyIndex = newState.players.cpu.bench.findIndex(slot => slot === null);
-                if (emptyIndex !== -1) {
-                    newState = Logic.placeCardOnBench(newState, 'cpu', card.id, emptyIndex);
-                    benchCount++;
+    /**
+     * UI更新処理
+     */
+    _updateUI() {
+        // 基本的なUI要素の初期状態
+        this.view.hideGameMessage();
+        this.view.hideActionButtons();
+
+        // ゲームステータスパネルを常時更新
+        this.view.updateGameStatus(this.state);
+        this.view.updateSetupProgress(this.state);
+
+        // フェーズに応じたUI表示
+        switch (this.state.phase) {
+            case GAME_PHASES.SETUP:
+            case GAME_PHASES.INITIAL_POKEMON_SELECTION:
+                // バトルポケモンが選択されていない場合はボタンを無効化
+                const confirmButton = document.getElementById('confirm-setup-button');
+                if (confirmButton) {
+                    if (this.state.players.player.active) {
+                        confirmButton.disabled = false;
+                        confirmButton.textContent = '確定';
+                        confirmButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        confirmButton.disabled = true;
+                        confirmButton.textContent = 'バトル場にポケモンを配置してください';
+                        confirmButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
                 }
-            }
-        }
-        // Do NOT set phase or prompt here, and do NOT call _updateState
-        console.log('_setupCpu() finished. Returning newState.phase:', newState.phase);
-        return newState; // Return the modified state
-    } // End of _setupCpu
+                break;
 
-    _handlePlayerTurnCardClick(dataset) {
-        const { cardId, zone } = dataset;
-        if (this.state.pendingAction) {
-            if (this.state.pendingAction.type === 'attach-energy' && (zone === 'active' || zone === 'bench')) {
-                this._attachEnergy(this.state.pendingAction.sourceCardId, cardId);
-            }
-            return;
-        }
-        if (zone === 'deck') this._playerDrawTurnStartCard();
-        else if (zone === 'hand') this._handleHandCardClick(cardId);
-        else if (zone === 'active') this._handleActivePokemonClick();
-    } // End of _handlePlayerTurnCardClick
+            case GAME_PHASES.PLAYER_DRAW:
+                this.view.showGameMessage(this.state.prompt.message);
+                break;
 
-    _playerDrawTurnStartCard() {
-        if (this.state.hasDrawnThisTurn) {
-            feedbackSystem.warning('このターンはすでにカードを引いています。');
-            return;
-        }
-        let newState = Logic.drawCard(this.state, 'player');
-        newState.hasDrawnThisTurn = true;
-        newState.prompt.message = 'あなたのターンです。';
-        this._updateState(newState);
+            case GAME_PHASES.PLAYER_MAIN:
+                this.view.showGameMessage(this.state.prompt.message);
+                this.view.showActionButtons(['retreat-button', 'attack-button', 'end-turn-button']);
+                break;
 
-        // Animate the drawn card moving into the player's hand
-        const hand = this.view.playerHand;
-        const drawnCardEl = hand ? hand.lastElementChild : null;
-        if (drawnCardEl) {
-            animationManager.animateDrawCard(drawnCardEl);
-        }
-    } // End of _playerDrawTurnStartCard
+            case GAME_PHASES.PLAYER_ATTACK:
+                this.view.showGameMessage('攻撃中...');
+                break;
 
-    _handleHandCardClick(cardId) {
+            case GAME_PHASES.CPU_TURN:
+            case GAME_PHASES.CPU_DRAW:
+            case GAME_PHASES.CPU_MAIN:
+            case GAME_PHASES.CPU_ATTACK:
+                this.view.showGameMessage(this.state.prompt.message);
+                break;
+
+            case GAME_PHASES.AWAITING_NEW_ACTIVE:
+                this.view.showGameMessage('新しいバトルポケモンをベンチから選んでください。');
+                break;
+
+            case GAME_PHASES.PRIZE_SELECTION:
+                this.view.showGameMessage('サイドカードを選んで取ってください。');
+                break;
+
+            case GAME_PHASES.GAME_OVER:
+                this.view.showGameMessage(this.state.prompt.message);
+                break;
+        }
+
+        // ペンディングアクション表示
+        if (this.state.pendingAction && this.state.pendingAction.type === 'attach-energy') {
+            this.view.showGameMessage('エネルギーをつけるポケモンを選んでください。');
+        }
+    }
+
+    /**
+     * 手札のカードクリック処理
+     */
+    async _handleHandCardClick(cardId) {
         const card = this.state.players.player.hand.find(c => c.id === cardId);
         if (!card) return;
+
         if (card.card_type === 'Pokémon' && card.stage === 'BASIC') {
-            this.view.showModal({ title: `「${card.name_ja}」をベンチに出しますか？`, actions: [{ text: 'はい', callback: () => this._placeOnBench(cardId) }, { text: 'いいえ', callback: () => {} }] });
+            // たねポケモンをベンチに出す
+            await this.view.showModal({
+                title: `「${card.name_ja}」をベンチに出しますか？`,
+                actions: [
+                    { text: 'はい', callback: () => this._placeOnBench(cardId) },
+                    { text: 'いいえ', callback: () => {} }
+                ]
+            });
         } else if (card.card_type === 'Basic Energy') {
+            // エネルギーを付ける
             if (this.state.hasAttachedEnergyThisTurn) {
-                this.view.showModal({ title: 'このターンはすでにエネルギーをつけました。', actions: [{ text: 'OK', callback: () => {} }] });
+                this.view.showModal({
+                    title: 'このターンはすでにエネルギーをつけました。',
+                    actions: [{ text: 'OK', callback: () => {} }]
+                });
                 return;
             }
-            const newState = { ...this.state, pendingAction: { type: 'attach-energy', sourceCardId: cardId }, prompt: { message: 'エネルギーをつけるポケモンを選んでください。' } };
-            this._updateState(newState);
+            
+            // エネルギー付与のペンディングアクション設定
+            this.state.pendingAction = {
+                type: 'attach-energy',
+                sourceCardId: cardId
+            };
+            this.state.prompt.message = 'エネルギーをつけるポケモンを選んでください。';
+            this._updateState(this.state);
+            
+            // ターゲット可能なポケモンをハイライト
+            this._highlightEnergyTargets();
         }
-    } // End of _handleHandCardClick
+    }
 
-    _attachEnergy(energyId, pokemonId) {
-        let newState = Logic.attachEnergy(this.state, 'player', energyId, pokemonId);
-        newState.pendingAction = null;
-        newState.prompt.message = 'あなたのターンです。';
+    /**
+     * ボード上のポケモンクリック処理
+     */
+    async _handleBoardPokemonClick(pokemonId, zone, index) {
+        if (this.state.pendingAction && this.state.pendingAction.type === 'attach-energy') {
+            // エネルギー付与実行
+            await this._attachEnergy(this.state.pendingAction.sourceCardId, pokemonId);
+        }
+        // その他のインタラクションは今後実装
+    }
+
+    /**
+     * ペンディングアクション処理
+     */
+    async _handlePendingAction(dataset) {
+        const { cardId, zone } = dataset;
+        
+        if (this.state.pendingAction.type === 'attach-energy' && (zone === 'active' || zone === 'bench')) {
+            await this._attachEnergy(this.state.pendingAction.sourceCardId, cardId);
+        }
+    }
+
+    /**
+     * エネルギー付与処理
+     */
+    async _attachEnergy(energyId, pokemonId) {
+        let newState = this.turnManager.handlePlayerMainPhase(this.state, 'attach_energy', {
+            energyId,
+            pokemonId
+        });
+        
+        if (newState !== this.state) {
+            // エネルギー付与アニメーション
+            await this._animateEnergyAttachment(energyId, pokemonId);
+            
+            feedbackSystem.success('エネルギーを付けました');
+            newState.pendingAction = null;
+            newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+        }
+        
+        this._clearAllHighlights();
         this._updateState(newState);
-    } // End of _attachEnergy
+    }
 
+    /**
+     * 攻撃ボタンクリック処理
+     */
     _handleAttack() {
         const attacker = this.state.players.player.active;
         if (!attacker || !attacker.attacks) return;
-        const usableAttacks = attacker.attacks.map((attack, index) => ({ ...attack, index })).filter(attack => Logic.hasEnoughEnergy(attacker, attack));
+        
+        const usableAttacks = attacker.attacks
+            .map((attack, index) => ({ ...attack, index }))
+            .filter(attack => Logic.hasEnoughEnergy(attacker, attack));
+            
         if (usableAttacks.length === 0) {
-            this.view.showModal({ title: '使えるワザがありません。', actions: [{ text: 'OK', callback: () => {} }] });
+            this.view.showModal({
+                title: '使えるワザがありません。',
+                actions: [{ text: 'OK', callback: () => {} }]
+            });
             return;
         }
-        this.view.showModal({ title: 'どのワザを使いますか？', actions: usableAttacks.map(attack => ({ text: `${attack.name_ja} (${attack.damage || 0})`, callback: () => this._executeAttack(attack.index) })).concat({ text: 'キャンセル', callback: () => {} }) });
-    } // End of _handleActivePokemonClick
+        
+        this.view.showModal({
+            title: 'どのワザを使いますか？',
+            actions: [
+                ...usableAttacks.map(attack => ({
+                    text: `${attack.name_ja} (${attack.damage || 0})`,
+                    callback: () => this._executeAttack(attack.index)
+                })),
+                { text: 'キャンセル', callback: () => {} }
+            ]
+        });
+    }
 
-    _executeAttack(attackIndex) {
-        let newState = Logic.performAttack(this.state, 'player', attackIndex);
-        newState = Logic.checkForKnockout(newState, 'cpu');
+    /**
+     * 攻撃実行処理
+     */
+    async _executeAttack(attackIndex) {
+        // 攻撃宣言
+        let newState = this.turnManager.handlePlayerMainPhase(this.state, 'declare_attack', {
+            attackIndex
+        });
+        
         this._updateState(newState);
-        if (newState.phase !== 'awaiting-new-active' && newState.phase !== 'game-over') {
-            setTimeout(() => this._endTurn(), 1000);
-        }
-    } // End of _executeAttack
-
-    _endTurn() {
-        let newState = { ...this.state, turnPlayer: 'cpu', phase: 'cpu-turn', hasDrawnThisTurn: false, hasAttachedEnergyThisTurn: false, prompt: { message: '相手のターンです。' } };
+        
+        // 攻撃実行
+        newState = await this.turnManager.executeAttack(newState);
         this._updateState(newState);
-        setTimeout(() => this._executeCpuTurn(), 1000);
-    } // End of _endTurn
+    }
 
+    /**
+     * ターン終了ボタン処理
+     */
+    async _handleEndTurn() {
+        let newState = this.turnManager.endPlayerTurn(this.state);
+        this._updateState(newState);
+        
+        // CPUターン開始
+        setTimeout(async () => {
+            await this._executeCpuTurn();
+        }, 1000);
+    }
+
+    /**
+     * CPUターン実行
+     */
     async _executeCpuTurn() {
-        console.log('CPU turn starts...');
-        let newState = { ...this.state };
-
-        // 1. Promote if active is null
-        if (!newState.players.cpu.active) {
-            const bench = newState.players.cpu.bench.filter(p => p !== null);
-            if (bench.length > 0) {
-                const newActiveIndex = newState.players.cpu.bench.findIndex(p => p && p.id === bench[0].id);
-                newState = Logic.promoteToActive(newState, 'cpu', newActiveIndex);
-                this._updateState(newState);
-                await this._delay(1000);
-            } else {
-                console.log('CPU has no pokemon to promote. Player wins!'); // Win condition
-                newState = Logic.checkForWinner(newState); // Check for win condition
-                this._updateState(newState);
-                return;
-            }
-        }
-
-        // 2. Draw a card
-        newState = Logic.drawCard(newState, 'cpu');
+        console.log('🤖 Starting CPU turn execution...');
+        
+        // CPUターン開始
+        let newState = await this.turnManager.startCpuTurn(this.state);
         this._updateState(newState);
-        const cpuHand = this.view.cpuHand;
-        const cpuCardEl = cpuHand ? cpuHand.lastElementChild : null;
-        if (cpuCardEl) {
-            animationManager.animateDrawCard(cpuCardEl);
-        }
-        await this._delay(1000);
+        
+        // CPUの自動ターン実行
+        newState = await this.turnManager.executeCpuTurn(newState);
+        this._updateState(newState);
+        
+        console.log('🤖 CPU turn execution completed');
+    }
 
-        // 3. Attach energy if possible
-        const cpuState = newState.players.cpu;
-        const energyCard = cpuState.hand.find(c => c.card_type === 'Basic Energy');
-        const targetPokemon = cpuState.active;
-        if (energyCard && targetPokemon && !newState.hasAttachedEnergyThisTurn) {
-            newState = Logic.attachEnergy(newState, 'cpu', energyCard.id, targetPokemon.id);
-            this._updateState(newState);
-            await this._delay(1000);
-        }
-
-        // 4. Attack if possible
-        const attacker = newState.players.cpu.active;
-        if (attacker && attacker.attacks) {
-            const usableAttacks = attacker.attacks
-                .map((attack, index) => ({ ...attack, index }))
-                .filter(attack => Logic.hasEnoughEnergy(attacker, attack));
-            
-            if (usableAttacks.length > 0) {
-                const attackIndex = usableAttacks[0].index; // Simple AI: use the first available attack
-                newState = Logic.performAttack(newState, 'cpu', attackIndex);
-                newState = Logic.checkForKnockout(newState, 'player');
-                this._updateState(newState);
-                await this._delay(1000);
-            }
-        }
-
-        // 5. End CPU turn
-        if (newState.phase !== 'awaiting-new-active' && newState.phase !== 'game-over') {
-            newState.turnPlayer = 'player';
-            newState.phase = 'player-turn';
-            newState.prompt.message = 'あなたの番です。山札をクリックしてカードを引いてください。';
-            this._updateState(newState);
-        }
-        console.log('CPU turn ends.');
-    } // End of _executeCpuTurn
-
-    _handleGameOver(winner) {
+    /**
+     * ゲーム終了処理
+     */
+    _handleGameOver(winner, reason = '') {
         const winnerText = winner === 'player' ? 'あなたの勝ち！' : '相手の勝ち！';
+        const reasonText = reason ? ` (${reason})` : '';
+        
         this.view.showModal({
             title: 'ゲーム終了！',
-            body: `<p class="text-xl">${winnerText}</p>`,
+            body: `<p class="text-xl">${winnerText}${reasonText}</p>`,
             actions: [
                 { text: 'もう一度プレイ', callback: () => this.init() },
             ],
         });
-    } // End of _handleGameOver
+    }
 
+    /**
+     * にげる処理
+     */
     _handleRetreat() {
-        if (this.state.turnPlayer !== 'player') return; // Only player can retreat
+        if (this.state.turnPlayer !== 'player') return;
 
         const activePokemon = this.state.players.player.active;
         if (!activePokemon) {
-            this.view.showGameMessage('バトル場にポケモンがいません。');
+            feedbackSystem.warning('バトル場にポケモンがいません。');
+            this.view.showErrorMessage('バトル場にポケモンがいません。');
             return;
         }
 
-        // Check if retreat is allowed (e.g., once per turn)
-        // Assuming state.canRetreat is managed by Logic
         if (!this.state.canRetreat) {
-            this.view.showGameMessage('このターンはすでににげました。');
+            feedbackSystem.warning('このターンはすでににげました。');
+            this.view.showErrorMessage('このターンはすでににげました。');
             return;
         }
 
-        // Check retreat cost
-        // Assuming activePokemon.retreat_cost is available
-        if (activePokemon.retreat_cost === 0) {
-            // Free retreat, just prompt to choose bench
-            this.view.showGameMessage('にげるポケモンを選択してください。');
-            // Set a pending action to promote a bench Pokemon
-            let newState = { ...this.state, pendingAction: { type: 'retreat-promote' } };
-            this._updateState(newState);
-            return;
-        }
-
-        // For now, a simplified retreat: just check if enough energy is attached
-        // A proper implementation would require selecting energy to discard
+        const retreatCost = activePokemon.retreat_cost || 0;
         const attachedEnergyCount = activePokemon.attached_energy ? activePokemon.attached_energy.length : 0;
-        if (attachedEnergyCount < activePokemon.retreat_cost) {
-            this.view.showGameMessage('にげるためのエネルギーが足りません。');
+
+        if (attachedEnergyCount < retreatCost) {
+            feedbackSystem.warning('にげるためのエネルギーが足りません。');
+            this.view.showErrorMessage('にげるためのエネルギーが足りません。');
             return;
         }
 
@@ -357,34 +550,330 @@ export class Game {
             title: 'にげますか？',
             body: `<p>バトル場の「${activePokemon.name_ja}」をにがします。ベンチポケモンを選択してください。</p>`,
             actions: [
-                { text: 'はい', callback: () => {
-                    // Set a pending action to promote a bench Pokemon
-                    let newState = { ...this.state, pendingAction: { type: 'retreat-promote' } };
-                    this._updateState(newState);
-                    this.view.showGameMessage('にげるポケモンを選択してください。');
-                }},
+                { text: 'はい', callback: () => this._initiateRetreat() },
                 { text: 'いいえ', callback: () => {} }
             ]
         });
     }
 
-    _handleConfirmSetup() {
-        console.log('_handleConfirmSetup() started.');
-        // Check if active Pokemon is selected
-        if (!this.state.players.player.active) {
-            this.view.showGameMessage('バトル場にたねポケモンを配置してください。');
+    /**
+     * にげる処理の開始
+     */
+    _initiateRetreat() {
+        this.state.pendingAction = { type: 'retreat-promote' };
+        this.state.prompt.message = 'にげるポケモンをベンチから選択してください。';
+        this._updateState(this.state);
+        this._highlightBenchSlots();
+    }
+
+    /**
+     * セットアップ確定処理
+     */
+    async _handleConfirmSetup() {
+        console.log('✅ Confirming setup...');
+        
+        // 強制的にボタンの無効化状態をチェック
+        const confirmButton = document.getElementById('confirm-setup-button');
+        if (confirmButton && confirmButton.disabled) {
+            feedbackSystem.warning('バトル場にたねポケモンを配置してください。');
+            this.view.showErrorMessage('バトル場にたねポケモンを配置してください。');
+            return;
+        }
+        
+        if (!this.setupManager.isSetupComplete(this.state)) {
+            feedbackSystem.warning('バトル場にたねポケモンを配置してください。');
+            this.view.showErrorMessage('バトル場にたねポケモンを配置してください。');
             return;
         }
 
-        this.view.hideSetupOverlay(); // Hide the setup overlay
+        feedbackSystem.success('セットアップ完了！ゲーム開始です！');
+        
+        this.state = await this.setupManager.confirmSetup(this.state);
+        this._updateState(this.state);
+        
+        console.log('✅ Setup confirmed, game starting!');
+    }
 
-        // Set up CPU's initial Pokemon
-        let newState = this._setupCpu(this.state); // Pass the current state to _setupCpu
+    /**
+     * セットアップアニメーション スケジューリング
+     */
+    _scheduleSetupAnimations() {
+        // 重複実行防止
+        if (this.setupAnimationsExecuted) {
+            console.log('⏭️ Setup animations already executed, skipping');
+            return;
+        }
+        
+        console.log('🎬 Scheduling setup animations...');
+        this.setupAnimationsExecuted = true;
+        
+        // requestAnimationFrame を使って確実にDOM準備完了を待つ
+        requestAnimationFrame(() => {
+            requestAnimationFrame(async () => {
+                // さらに少し待ってから実行
+                setTimeout(async () => {
+                    await this._executeSetupAnimations();
+                }, 100);
+            });
+        });
+    }
 
-        // Transition to player turn
-        newState.phase = 'player-turn';
-        newState.prompt = { message: 'あなたの番です。山札をクリックしてカードを引いてください。' };
-        this._updateState(newState);
-        console.log('_handleConfirmSetup() finished.');
+    /**
+     * セットアップアニメーション実行
+     */
+    async _executeSetupAnimations() {
+        console.log('🎬 Executing setup animations...');
+        
+        try {
+            // DOM要素の存在確認を強化
+            await this._verifyDOMElements();
+            
+            // 手札のアニメーション
+            await this._animateInitialHandDraw();
+            
+            // サイドカードのアニメーション
+            await this._animatePrizeCardSetup();
+            
+            console.log('✅ Setup animations completed');
+        } catch (error) {
+            console.error('❌ Setup animation error:', error);
+        }
+    }
+
+    /**
+     * DOM要素存在確認
+     */
+    async _verifyDOMElements() {
+        const playerHand = document.getElementById('player-hand');
+        const cpuHand = document.getElementById('cpu-hand');
+        
+        if (!playerHand || !cpuHand) {
+            throw new Error('Hand elements not found');
+        }
+        
+        console.log('🔍 DOM verification:');
+        console.log(`  Player hand children: ${playerHand.children.length}`);
+        console.log(`  CPU hand children: ${cpuHand.children.length}`);
+        
+        // 要素が空の場合は少し待ってから再確認
+        if (playerHand.children.length === 0 || cpuHand.children.length === 0) {
+            console.log('⏳ Waiting for DOM elements to populate...');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            console.log('🔍 DOM re-verification:');
+            console.log(`  Player hand children: ${playerHand.children.length}`);
+            console.log(`  CPU hand children: ${cpuHand.children.length}`);
+        }
+    }
+
+    /**
+     * 初期手札ドローアニメーション
+     */
+    async _animateInitialHandDraw() {
+        const playerHand = document.getElementById('player-hand');
+        const cpuHand = document.getElementById('cpu-hand');
+
+        const promises = [];
+
+        if (playerHand) {
+            const playerCards = Array.from(playerHand.children);
+            console.log(`🎴 Player hand has ${playerCards.length} card elements`);
+            
+            // 各カード要素の詳細を確認
+            playerCards.forEach((card, index) => {
+                const img = card.querySelector('img');
+                console.log(`  Player card ${index + 1}: img src = ${img ? img.src : 'no img'}, opacity = ${card.style.opacity}`);
+            });
+            
+            if (playerCards.length > 0) {
+                promises.push(animationManager.animateDealCards(playerCards, 200));
+            }
+        }
+
+        if (cpuHand) {
+            const cpuCards = Array.from(cpuHand.children);
+            console.log(`🎴 CPU hand has ${cpuCards.length} card elements`);
+            
+            // 各カード要素の詳細を確認
+            cpuCards.forEach((card, index) => {
+                const img = card.querySelector('img');
+                console.log(`  CPU card ${index + 1}: img src = ${img ? img.src : 'no img'}, opacity = ${card.style.opacity}`);
+            });
+            
+            if (cpuCards.length > 0) {
+                promises.push(animationManager.animateDealCards(cpuCards, 200));
+            }
+        }
+
+        await Promise.all(promises);
+    }
+
+    /**
+     * サイドカード配置アニメーション
+     */
+    async _animatePrizeCardSetup() {
+        // 実際にカード要素が入っているスロットの子要素を取得
+        const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
+        const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
+
+        const prizeCards = [];
+        
+        // プレイヤーのサイドカード要素を収集
+        playerPrizeSlots.forEach((slot, index) => {
+            const cardElement = slot.querySelector('.relative'); // カード要素
+            if (cardElement) {
+                prizeCards.push(cardElement);
+                console.log(`📋 Found player prize card ${index + 1}`);
+            }
+        });
+        
+        // CPUのサイドカード要素を収集
+        cpuPrizeSlots.forEach((slot, index) => {
+            const cardElement = slot.querySelector('.relative'); // カード要素
+            if (cardElement) {
+                prizeCards.push(cardElement);
+                console.log(`📋 Found CPU prize card ${index + 1}`);
+            }
+        });
+
+        console.log(`🏆 Animating ${prizeCards.length} prize card elements`);
+        
+        if (prizeCards.length > 0) {
+            await animationManager.animateDealCards(prizeCards, 150);
+        } else {
+            console.warn('⚠️ No prize card elements found for animation');
+        }
+    }
+
+    // ==================== アニメーション関連メソッド ====================
+
+    /**
+     * カード配置アニメーション
+     */
+    async _animateCardPlacement(card, zone, index) {
+        const selector = zone === 'active' ? '.player-self .active-bottom' : `.player-self .bottom-bench-${index + 1}`;
+        const targetElement = document.querySelector(selector);
+        
+        if (targetElement) {
+            await animationManager.animatePlayCard(
+                targetElement,
+                { x: 0, y: 100 }, // 手札から
+                { x: targetElement.offsetLeft, y: targetElement.offsetTop }
+            );
+        }
+    }
+
+    /**
+     * ポケモン昇格アニメーション
+     */
+    async _animatePokemonPromotion(playerId, benchIndex) {
+        const playerClass = playerId === 'player' ? '.player-self' : '.opponent-board';
+        const benchSelector = playerId === 'player' ? `.bottom-bench-${benchIndex + 1}` : `.top-bench-${benchIndex + 1}`;
+        const activeSelector = playerId === 'player' ? '.active-bottom' : '.active-top';
+        
+        const benchElement = document.querySelector(`${playerClass} ${benchSelector}`);
+        const activeElement = document.querySelector(`${playerClass} ${activeSelector}`);
+        
+        if (benchElement && activeElement) {
+            await animationManager.animateSmoothCardMove(benchElement, benchElement, activeElement, 'normal');
+        }
+    }
+
+    /**
+     * エネルギー付与アニメーション
+     */
+    async _animateEnergyAttachment(energyId, pokemonId) {
+        const energyElement = document.querySelector(`[data-card-id="${energyId}"]`);
+        const pokemonElement = document.querySelector(`[data-card-id="${pokemonId}"]`);
+        
+        if (energyElement && pokemonElement) {
+            await animationManager.animateEnergyAttach(energyElement, pokemonElement);
+        }
+    }
+
+    /**
+     * サイドカード取得アニメーション
+     */
+    async _animatePrizeTake(playerId, prizeIndex) {
+        const playerClass = playerId === 'player' ? '.player-self' : '.opponent-board';
+        const sideClass = playerId === 'player' ? '.side-left' : '.side-right';
+        const prizeElement = document.querySelector(`${playerClass} ${sideClass} .card-slot:nth-child(${prizeIndex + 1})`);
+        const handElement = document.getElementById(`${playerId}-hand`);
+        
+        if (prizeElement && handElement) {
+            await animationManager.animateSmoothCardMove(prizeElement, prizeElement, handElement, 'normal');
+        }
+    }
+
+    // ==================== ハイライト関連メソッド ====================
+
+    /**
+     * カードハイライト
+     */
+    _highlightCard(cardId, highlight = true) {
+        const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+        if (cardElement) {
+            if (highlight) {
+                animationManager.highlightCard(cardElement);
+            } else {
+                animationManager.unhighlightCard(cardElement);
+            }
+        }
+    }
+
+    /**
+     * エネルギー対象ハイライト
+     */
+    _highlightEnergyTargets() {
+        const playerActive = document.querySelector('.player-self .active-bottom');
+        const playerBench = document.querySelectorAll('.player-self [class*="bottom-bench-"]');
+        
+        if (playerActive) {
+            animationManager.highlightSlot(playerActive, 'energy');
+        }
+        
+        playerBench.forEach(slot => {
+            if (slot.children.length > 0) {
+                animationManager.highlightSlot(slot, 'energy');
+            }
+        });
+    }
+
+    /**
+     * ベンチスロットハイライト
+     */
+    _highlightBenchSlots() {
+        const benchSlots = document.querySelectorAll('.player-self [class*="bottom-bench-"]');
+        benchSlots.forEach(slot => {
+            if (slot.children.length > 0) {
+                animationManager.highlightSlot(slot, 'slot');
+            }
+        });
+    }
+
+    /**
+     * 全ハイライト解除
+     */
+    _clearAllHighlights() {
+        animationManager.clearAllHighlights();
+    }
+
+    /**
+     * カードハイライト解除
+     */
+    _clearCardHighlights() {
+        const selectedCards = document.querySelectorAll('.card-selected');
+        selectedCards.forEach(card => {
+            animationManager.unhighlightCard(card);
+        });
+    }
+
+    // ==================== ユーティリティメソッド ====================
+
+    /**
+     * 遅延処理
+     */
+    _delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 } // End of Game class

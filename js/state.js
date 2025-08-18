@@ -1,4 +1,5 @@
 import { cardMasterList } from './cards.js';
+import { GAME_PHASES } from './phase-manager.js';
 
 // Fisher-Yates shuffle algorithm
 function shuffle(array) {
@@ -41,25 +42,87 @@ function createPlayerState() {
         discard: [],
         prize: [], // Start with empty prize
         prizeRemaining: 6, // Still track remaining prizes
+        prizesToTake: 0, // Number of prizes pending to take
     };
 }
 
 export function createInitialState() {
     return {
+        // Core game state
+        rngSeed: Math.floor(Math.random() * 1000000),
         turn: 1,
-        phase: 'setup',
+        phase: GAME_PHASES.SETUP,
         turnPlayer: 'player',
-        stadium: null,
+        
+        // Turn constraints
         hasDrawnThisTurn: false,
         hasAttachedEnergyThisTurn: false,
+        canRetreat: true,
+        canPlaySupporter: true,
+        
+        // Special states
         pendingAction: null,
+        awaitingInput: false,
+        
+        // Stadium and shared areas
+        stadium: null,
+        
+        // Game log
+        log: [],
+        
+        // UI state
         prompt: {
             message: '手札からたねポケモンを1匹選び、バトル場に出してください。',
             actions: [],
         },
+        
+        // Setup specific state
+        setupSelection: {
+            active: null,
+            bench: [],
+            confirmed: false
+        },
+        
+        // Players
         players: {
             player: createPlayerState(),
             cpu: createPlayerState(),
         },
+        
+        // Win conditions
+        winner: null,
+        gameEndReason: null,
     };
+}
+
+/**
+ * ゲーム状態のディープクローン
+ */
+export function cloneGameState(state) {
+    return JSON.parse(JSON.stringify(state));
+}
+
+/**
+ * プレイヤー状態の安全な取得
+ */
+export function getPlayerState(state, playerId) {
+    const player = state.players[playerId];
+    if (!player) {
+        console.warn(`Player ${playerId} not found in state`);
+        return createPlayerState();
+    }
+    return player;
+}
+
+/**
+ * ログエントリの追加
+ */
+export function addLogEntry(state, entry) {
+    const newState = cloneGameState(state);
+    newState.log.push({
+        turn: state.turn,
+        timestamp: Date.now(),
+        ...entry
+    });
+    return newState;
 }

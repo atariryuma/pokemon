@@ -10,6 +10,9 @@
       "Bash(node:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\c\\Users\\Public\\Documents"
+    ]
   }
 }

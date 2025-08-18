@@ -1,4 +1,5 @@
 import { getCardImagePath } from './cards.js';
+import { animationManager } from './animations.js';
 
 export class View {
     constructor(rootEl) {
@@ -27,9 +28,20 @@ export class View {
         this.attackButton = document.getElementById('attack-button');
         this.endTurnButton = document.getElementById('end-turn-button');
 
-        // Setup Overlay
-        this.setupOverlay = document.getElementById('setup-overlay');
+        // Game Status Panel
+        this.statusPanel = document.getElementById('game-status-panel');
+        this.statusTitle = document.getElementById('status-title');
+        this.statusMessage = document.getElementById('status-message');
+        this.phaseIndicator = document.getElementById('phase-indicator');
+        this.turnIndicator = document.getElementById('turn-indicator');
+        this.currentPlayer = document.getElementById('current-player');
         this.confirmSetupButton = document.getElementById('confirm-setup-button');
+        
+        // Setup Progress Elements
+        this.activeStatus = document.getElementById('active-status');
+        this.benchStatus = document.getElementById('bench-status');
+        this.benchCount = document.getElementById('bench-count');
+        this.setupProgress = document.getElementById('setup-progress');
     }
 
     bindCardClick(handler) {
@@ -37,12 +49,20 @@ export class View {
     }
 
     render(state) {
+        console.log('🎨 View.render() started');
+        console.log('📊 Player hand:', state.players.player.hand.length, 'cards');
+        console.log('📊 Player active:', state.players.player.active?.name_ja || 'None');
+        console.log('📊 CPU hand:', state.players.cpu.hand.length, 'cards');
+        console.log('📊 CPU active:', state.players.cpu.active?.name_ja || 'None');
+        
         this._clearBoard();
         this._renderBoard(this.playerBoard, state.players.player, 'player', state);
         this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu', state);
         this._renderHand(this.playerHand, state.players.player.hand, 'player');
         this._renderHand(this.cpuHand, state.players.cpu.hand, 'cpu');
         this._renderStadium(state);
+        
+        console.log('✅ View.render() completed');
     }
 
     _clearBoard() {
@@ -62,23 +82,44 @@ export class View {
         const discard = Array.isArray(safePlayer.discard) ? safePlayer.discard : [];
         const prize = Array.isArray(safePlayer.prize) ? safePlayer.prize.slice(0, 6) : new Array(6).fill(null);
 
-        // Active
-        const activeSlot = boardElement.querySelector('.active-pokemon');
+        // Active - HTMLのクラス名に合わせて修正
+        const activeSelector = playerType === 'player' ? '.active-bottom' : '.active-top';
+        const activeSlot = boardElement.querySelector(activeSelector);
         if (activeSlot) {
             activeSlot.innerHTML = '';
-            activeSlot.appendChild(this._createCardElement(safePlayer.active || null, playerType, 'active', 0));
+            const cardEl = this._createCardElement(safePlayer.active || null, playerType, 'active', 0);
+            activeSlot.appendChild(cardEl);
+            
+            // セットアップ中はアクティブスロットをクリック可能にする
+            if (playerType === 'player') {
+                activeSlot.style.zIndex = '10'; // Above base layer
+                activeSlot.style.position = 'absolute';
+                activeSlot.classList.add('setup-interactive');
+                this._makeSlotClickable(activeSlot, 'active', 0);
+            }
         }
 
-        // Bench
+        // Bench - HTMLのクラス名に合わせて修正
         for (let i = 0; i < 5; i++) {
-            const benchSlot = boardElement.querySelector(`.bench-${i + 1}`);
+            const benchPrefix = playerType === 'player' ? 'bottom-bench' : 'top-bench';
+            const benchSlot = boardElement.querySelector(`.${benchPrefix}-${i + 1}`);
             if (!benchSlot) continue;
             benchSlot.innerHTML = '';
-            benchSlot.appendChild(this._createCardElement(bench[i] || null, playerType, 'bench', i));
+            const cardEl = this._createCardElement(bench[i] || null, playerType, 'bench', i);
+            benchSlot.appendChild(cardEl);
+            
+            // セットアップ中はベンチスロットをクリック可能にする
+            if (playerType === 'player') {
+                benchSlot.style.zIndex = '10'; // Above base layer
+                benchSlot.style.position = 'absolute';
+                benchSlot.classList.add('setup-interactive');
+                this._makeSlotClickable(benchSlot, 'bench', i);
+            }
         }
 
-        // Discard
-        const discardSlot = boardElement.querySelector('.discard');
+        // Discard - HTMLのクラス名に合わせて修正
+        const discardSelector = playerType === 'player' ? '.bottom-right-trash' : '.top-left-trash';
+        const discardSlot = boardElement.querySelector(discardSelector);
         if (discardSlot) {
             discardSlot.innerHTML = '';
             const topCard = discard.length ? discard[discard.length - 1] : null;
@@ -88,10 +129,9 @@ export class View {
         // Prizes
         this._renderPrizeArea(boardElement, prize, playerType);
 
-        
-
-        // Deck
-        const deckSlot = boardElement.querySelector('.deck');
+        // Deck - HTMLのクラス名に合わせて修正
+        const deckSelector = playerType === 'player' ? '.bottom-right-deck' : '.top-left-deck';
+        const deckSlot = boardElement.querySelector(deckSelector);
         if (deckSlot) {
             deckSlot.innerHTML = '';
             const deckArr = Array.isArray(safePlayer.deck) ? safePlayer.deck : [];
@@ -111,46 +151,65 @@ export class View {
     _renderHand(handElement, hand, playerType) {
         if (!handElement) return;
         const arr = Array.isArray(hand) ? hand : [];
+        
+        console.log(`🃏 Rendering ${arr.length} cards for ${playerType} hand`);
+        
         arr.forEach((card, index) => {
             const isFaceDown = playerType === 'cpu';
             const cardEl = this._createCardElement(card, playerType, 'hand', index, isFaceDown);
             cardEl.classList.add('w-24', 'h-32', 'flex-shrink-0');
+            
+            // 確実にカード要素が表示されるよう設定
+            cardEl.style.opacity = '1';
+            cardEl.style.visibility = 'visible';
+            cardEl.style.display = 'flex';
+            cardEl.style.zIndex = '101'; // Make sure hand cards are above the overlay
+            cardEl.style.position = 'relative';
+            
             handElement.appendChild(cardEl);
+            
+            console.log(`  📋 Added card ${index + 1}/${arr.length} to ${playerType} hand`);
         });
+        
+        // DOM挿入後の強制再描画
+        if (handElement.children.length > 0) {
+            // Force reflow
+            handElement.offsetHeight;
+            console.log(`✅ ${playerType} hand rendering completed: ${handElement.children.length} elements`);
+        }
     }
 
     _renderPrizeArea(boardElement, prize, playerType) {
-        const prizeContainer = boardElement.querySelector('.prizes');
-        if (!prizeContainer) return;
-        prizeContainer.innerHTML = '';
-        prizeContainer.style.position = 'relative';
-        const six = Array.isArray(prize) ? prize.slice(0, 6) : new Array(6).fill(null);
-        const rowTopPct = [0, 34, 68];
-        const backOffset = { x: -5, y: 6 };
-        for (let row = 0; row < 3; row++) {
-            const frontIdx = row;
-            const frontEl = this._createCardElement(six[frontIdx], playerType, 'prize', frontIdx, true);
-            frontEl.style.position = 'absolute';
-            frontEl.style.left = '0%';
-            frontEl.style.top = `${rowTopPct[row]}%`;
-            frontEl.style.width = '100%';
-            frontEl.style.height = 'auto';
-            frontEl.style.aspectRatio = '120 / 168';
-            frontEl.style.zIndex = '10';
-            prizeContainer.appendChild(frontEl);
-
-            const backIdx = row + 3;
-            const backEl = this._createCardElement(six[backIdx], playerType, 'prize', backIdx, true);
-            backEl.style.position = 'absolute';
-            backEl.style.left = '0%';
-            backEl.style.top = `${rowTopPct[row]}%`;
-            backEl.style.width = '100%';
-            backEl.style.height = 'auto';
-            backEl.style.aspectRatio = '120 / 168';
-            backEl.style.zIndex = '5';
-            backEl.style.transform = `translate(${backOffset.x}%, ${backOffset.y}%)`;
-            prizeContainer.appendChild(backEl);
+        // HTMLの実際の構造に合わせて修正
+        const prizeContainerSelector = playerType === 'player' ? '.side-left' : '.side-right';
+        const prizeContainer = boardElement.querySelector(prizeContainerSelector);
+        
+        if (!prizeContainer) {
+            console.warn(`Prize container not found: ${prizeContainerSelector}`);
+            return;
         }
+        
+        console.log(`🏆 Rendering ${prize.length} prize cards for ${playerType} in ${prizeContainerSelector}`);
+        
+        // 各カードスロットにカードを配置
+        const prizeSlots = prizeContainer.querySelectorAll('.card-slot');
+        const six = Array.isArray(prize) ? prize.slice(0, 6) : new Array(6).fill(null);
+        
+        prizeSlots.forEach((slot, index) => {
+            slot.innerHTML = ''; // 既存内容をクリア
+            
+            if (index < six.length) {
+                const card = six[index];
+                const cardEl = this._createCardElement(card, playerType, 'prize', index, true); // 裏向き
+                
+                // カード要素のサイズを調整
+                cardEl.style.width = '100%';
+                cardEl.style.height = '100%';
+                
+                slot.appendChild(cardEl);
+                console.log(`  🃏 Prize card ${index + 1} added to slot`);
+            }
+        });
     }
 
     _renderStadium(state) {
@@ -178,11 +237,37 @@ export class View {
             return container;
         }
 
+        // Debug logging for card creation
+        console.log(`🎨 Creating card element: ${card.name_ja} (${card.name_en}) for ${playerType} ${zone}${index !== undefined ? `[${index}]` : ''}`);
+        console.log(`🖼️ Image path: ${isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en)}`);
+
         const img = document.createElement('img');
-        img.className = 'card-image';
+        // Ensure proper CSS classes for visibility and sizing
+        img.className = 'card-image w-full h-full object-cover rounded-lg';
         img.dataset.dynamic = true;
         img.src = isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = isFaceDown ? 'Card Back' : card.name_ja;
+        
+        // Add error handling for image loading failures
+        img.onerror = function() {
+            console.error(`❌ Failed to load image: ${this.src}`);
+            // Fallback to card back if image fails to load
+            this.src = 'assets/card_back.webp';
+        };
+        
+        // 確実にカードが表示されるよう初期状態を設定
+        img.style.opacity = '1';
+        img.style.visibility = 'visible';
+        img.style.display = 'block';
+        
+        // 画像読み込み完了の確認
+        img.onload = function() {
+            console.log(`✅ Card image loaded: ${this.src}`);
+            // 強制的に表示状態を保証
+            this.style.opacity = '1';
+            this.style.visibility = 'visible';
+            this.style.display = 'block';
+        };
 
         img.dataset.cardId = card.id;
         img.dataset.owner = playerType;
@@ -215,25 +300,28 @@ export class View {
         return container;
     }
 
-    showModal({ title, body, actions }) {
+    async showModal({ title, body, actions }) {
         this.modalTitle.textContent = title;
         this.modalBody.innerHTML = body || '';
         this.modalActions.innerHTML = '';
         actions.forEach(action => {
             const button = document.createElement('button');
             button.textContent = action.text;
-            button.className = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded';
+            button.className = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors';
             button.addEventListener('click', () => {
                 action.callback();
                 this.hideModal();
             });
             this.modalActions.appendChild(button);
         });
-        this.modal.classList.remove('hidden');
+        
+        // アニメーション付きでモーダルを表示
+        await animationManager.animateModalShow(this.modal);
     }
 
-    hideModal() {
-        this.modal.classList.add('hidden');
+    async hideModal() {
+        // アニメーション付きでモーダルを非表示
+        await animationManager.animateModalHide(this.modal);
     }
 
     // Game Message Display
@@ -241,12 +329,28 @@ export class View {
         if (this.gameMessageDisplay) {
             this.gameMessageDisplay.textContent = message;
             this.gameMessageDisplay.classList.remove('hidden');
+            
+            // メッセージアニメーション
+            animationManager.animateMessage(this.gameMessageDisplay);
         }
     }
 
     hideGameMessage() {
         if (this.gameMessageDisplay) {
             this.gameMessageDisplay.classList.add('hidden');
+        }
+    }
+    
+    /**
+     * エラーメッセージ表示
+     */
+    showErrorMessage(message) {
+        if (this.gameMessageDisplay) {
+            this.gameMessageDisplay.textContent = message;
+            this.gameMessageDisplay.classList.remove('hidden');
+            
+            // エラーメッセージアニメーション
+            animationManager.animateError(this.gameMessageDisplay);
         }
     }
 
@@ -286,22 +390,124 @@ export class View {
         });
     }
 
-    // Setup Overlay
-    showSetupOverlay() {
-        if (this.setupOverlay) {
-            this.setupOverlay.classList.remove('hidden');
+    // Game Status Panel
+    updateGameStatus(state) {
+        // フェーズ表示を更新
+        if (this.phaseIndicator) {
+            const phaseNames = {
+                'setup': 'セットアップ',
+                'initialPokemonSelection': 'ポケモン選択',
+                'playerTurn': 'プレイヤーターン',
+                'playerDraw': 'ドロー',
+                'playerMain': 'メインフェーズ',
+                'cpuTurn': 'CPUターン',
+                'gameOver': 'ゲーム終了'
+            };
+            this.phaseIndicator.textContent = phaseNames[state.phase] || state.phase;
+        }
+
+        // ターン数表示
+        if (this.turnIndicator) {
+            this.turnIndicator.textContent = `ターン ${state.turn || 1}`;
+        }
+
+        // 現在のプレイヤー表示
+        if (this.currentPlayer) {
+            const playerNames = {
+                'player': 'プレイヤー',
+                'cpu': 'CPU'
+            };
+            this.currentPlayer.textContent = playerNames[state.turnPlayer] || 'プレイヤー';
+        }
+
+        // メッセージ更新
+        if (this.statusMessage && state.prompt?.message) {
+            this.statusMessage.textContent = state.prompt.message;
         }
     }
 
-    hideSetupOverlay() {
-        if (this.setupOverlay) {
-            this.setupOverlay.classList.add('hidden');
+    updateSetupProgress(state) {
+        if (!this.setupProgress) return;
+
+        // セットアップフェーズでのみ進捗を表示
+        const isSetupPhase = state.phase === 'setup' || state.phase === 'initialPokemonSelection';
+        this.setupProgress.style.display = isSetupPhase ? 'block' : 'none';
+
+        if (!isSetupPhase) return;
+
+        // アクティブポケモンの状態
+        if (this.activeStatus) {
+            const hasActive = state.players.player.active !== null;
+            this.activeStatus.className = hasActive 
+                ? 'w-3 h-3 rounded-full bg-green-500 mr-2' 
+                : 'w-3 h-3 rounded-full bg-red-500 mr-2';
+        }
+
+        // ベンチポケモンの数
+        if (this.benchCount) {
+            const benchCount = state.players.player.bench.filter(slot => slot !== null).length;
+            this.benchCount.textContent = benchCount;
+        }
+
+        // ベンチの状態
+        if (this.benchStatus) {
+            const benchCount = state.players.player.bench.filter(slot => slot !== null).length;
+            this.benchStatus.className = benchCount > 0 
+                ? 'w-3 h-3 rounded-full bg-green-500 mr-2' 
+                : 'w-3 h-3 rounded-full bg-gray-500 mr-2';
+        }
+    }
+
+    updateStatusTitle(title) {
+        if (this.statusTitle) {
+            this.statusTitle.textContent = title;
+        }
+    }
+
+    updateStatusMessage(message) {
+        if (this.statusMessage) {
+            this.statusMessage.textContent = message;
+            console.log('📋 Status message updated:', message);
         }
     }
 
     setConfirmSetupButtonHandler(handler) {
         if (this.confirmSetupButton) {
             this.confirmSetupButton.onclick = handler;
+        }
+    }
+
+    /**
+     * スロットをクリック可能にする
+     */
+    _makeSlotClickable(slotElement, zone, index) {
+        if (!slotElement || !this.cardClickHandler) return;
+        
+        // スロット自体にクリックイベントを追加
+        slotElement.style.cursor = 'pointer';
+        slotElement.style.zIndex = '10';
+        slotElement.style.position = 'absolute';
+        slotElement.style.pointerEvents = 'auto';
+        
+        slotElement.addEventListener('click', (e) => {
+            // 子要素がクリックされた場合も含めて処理
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const dataset = {
+                owner: 'player',
+                zone: zone,
+                index: index.toString(),
+                cardId: null // スロットクリックの場合は空
+            };
+            
+            console.log(`🎯 Slot clicked: ${zone}[${index}]`);
+            this.cardClickHandler(dataset);
+        });
+        
+        // スロットが空の場合の視覚的フィードバック
+        if (!slotElement.querySelector('.relative')) {
+            slotElement.classList.add('border-2', 'border-dashed', 'border-blue-400', 'bg-blue-50');
         }
     }
 }

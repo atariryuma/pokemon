@@ -37,11 +37,47 @@ export class AnimationManager {
    * @param {number} staggerDelay - 遅延時間（ミリ秒）
    */
   async animateDealCards(cardElements, staggerDelay = 100) {
+    console.log(`🎬 Starting deal animation for ${cardElements.length} cards`);
+    
     const promises = cardElements.map((element, index) => {
       return new Promise(resolve => {
         setTimeout(() => {
-          this.addAnimationClass(element, 'animate-deal-card');
-          this.waitForAnimation(element, 'dealCard', resolve);
+          // カード要素が確実に見えるようにする
+          if (element) {
+            // アニメーション前に要素を完全に表示状態にする
+            element.style.opacity = '1';
+            element.style.visibility = 'visible';
+            element.style.display = 'flex';
+            element.style.transform = 'none'; // 初期transformをリセット
+            
+            // 子要素のimg要素も確実に見えるようにする
+            const img = element.querySelector('img');
+            if (img) {
+              img.style.opacity = '1';
+              img.style.visibility = 'visible';
+              img.style.display = 'block';
+            }
+            
+            // 強制的に再描画をトリガー
+            element.offsetHeight;
+            
+            console.log(`🎴 Starting animation for card ${index + 1}/${cardElements.length}`);
+            console.log(`  Before animation - opacity: ${element.style.opacity}, visibility: ${element.style.visibility}`);
+            
+            // CSSアニメーションを開始（opacity: 0 → 1 のアニメーションを実行）
+            this.addAnimationClass(element, 'animate-deal-card');
+            this.waitForAnimation(element, 'dealCard', () => {
+              // アニメーション完了後に確実に表示状態を保証
+              element.style.opacity = '1';
+              element.style.visibility = 'visible';
+              element.style.transform = 'none';
+              console.log(`✅ Animation completed for card ${index + 1}, final opacity: ${element.style.opacity}`);
+              resolve();
+            });
+          } else {
+            console.warn(`⚠️ Card element ${index} is null`);
+            resolve();
+          }
         }, index * staggerDelay);
       });
     });
@@ -321,9 +357,28 @@ export class AnimationManager {
    */
   async animateModalShow(modalElement) {
     return new Promise(resolve => {
-      modalElement.showModal();
-      // CSSトランジションが自動的に適用される
-      setTimeout(resolve, this.config.durations.normal);
+      // div要素の場合はhiddenクラスを削除
+      if (modalElement.tagName.toLowerCase() === 'div') {
+        modalElement.classList.remove('hidden');
+        modalElement.style.opacity = '0';
+        modalElement.style.transform = 'scale(0.8)';
+        
+        // フェードイン・スケールアップアニメーション
+        requestAnimationFrame(() => {
+          modalElement.style.transition = `opacity ${this.config.durations.normal}ms ease, transform ${this.config.durations.normal}ms ease`;
+          modalElement.style.opacity = '1';
+          modalElement.style.transform = 'scale(1)';
+        });
+        
+        setTimeout(() => {
+          modalElement.style.transition = '';
+          resolve();
+        }, this.config.durations.normal);
+      } else {
+        // dialog要素の場合は従来の方法
+        modalElement.showModal();
+        setTimeout(resolve, this.config.durations.normal);
+      }
     });
   }
   
@@ -333,15 +388,31 @@ export class AnimationManager {
    */
   async animateModalHide(modalElement) {
     return new Promise(resolve => {
-      modalElement.style.opacity = '0';
-      modalElement.style.transform = 'scale(0.8)';
-      
-      setTimeout(() => {
-        modalElement.close();
-        modalElement.style.opacity = '';
-        modalElement.style.transform = '';
-        resolve();
-      }, this.config.durations.normal);
+      if (modalElement.tagName.toLowerCase() === 'div') {
+        // div要素の場合はフェードアウト・スケールダウン
+        modalElement.style.transition = `opacity ${this.config.durations.normal}ms ease, transform ${this.config.durations.normal}ms ease`;
+        modalElement.style.opacity = '0';
+        modalElement.style.transform = 'scale(0.8)';
+        
+        setTimeout(() => {
+          modalElement.classList.add('hidden');
+          modalElement.style.transition = '';
+          modalElement.style.opacity = '';
+          modalElement.style.transform = '';
+          resolve();
+        }, this.config.durations.normal);
+      } else {
+        // dialog要素の場合は従来の方法
+        modalElement.style.opacity = '0';
+        modalElement.style.transform = 'scale(0.8)';
+        
+        setTimeout(() => {
+          modalElement.close();
+          modalElement.style.opacity = '';
+          modalElement.style.transform = '';
+          resolve();
+        }, this.config.durations.normal);
+      }
     });
   }
   
