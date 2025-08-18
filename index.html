@@ -14,16 +14,18 @@
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
             background: #1a1a2e;
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
-            margin: 0;
-            padding: 0;
+            overflow-x: hidden; /* 横スクロールを防止 */
+            perspective: 1500px;
+            padding: 6rem 0; /* 上下の余白を十分に確保 */
         }
 
         #game-board {
+            transform-style: preserve-3d;
+            transform: rotateX(35deg);
             position: relative;
             width: 679px;           /* 完全固定サイズ */
             height: 679px;          /* 完全固定サイズ */
-            margin: 2rem auto;      /* 中央配置 */
-            border: 2px solid #333; /* 境界確認用 */
+            margin: 0 auto;         /* 中央配置 */
         }
 
         /* 背景画像用のレイヤー */
@@ -38,37 +40,15 @@
         }
 
         .card-slot {
-            background-color: rgba(255, 0, 0, 0.4); /* 赤色で視認性向上（デバッグ用） */
-            border: 2px solid rgba(255, 255, 0, 0.9); /* 黄色の境界（デバッグ用） */
             border-radius: 6px;
             transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
             position: absolute;
-            z-index: 10; /* プレイマット画像の上に表示 */
+            z-index: 5; /* 手札(z-index: 100)より低く統一 */
             min-width: 20px; /* 最小サイズを確保 */
             min-height: 28px;
         }
 
-        /* 特定のスロットを色分けしてデバッグ */
-        .card-slot[class*="bottom-bench"] {
-            background-color: rgba(0, 255, 0, 0.4); /* 緑：自分のベンチ */
-            border-color: rgba(0, 255, 0, 0.9);
-        }
-
-        .card-slot[class*="top-bench"] {
-            background-color: rgba(0, 0, 255, 0.4); /* 青：相手のベンチ */
-            border-color: rgba(0, 0, 255, 0.9);
-        }
-
-        .card-slot[class*="active"] {
-            background-color: rgba(255, 0, 255, 0.4); /* マゼンタ：アクティブ */
-            border-color: rgba(255, 0, 255, 0.9);
-        }
-
-        .card-slot[class*="side"] {
-            background-color: rgba(255, 165, 0, 0.4); /* オレンジ：サイド */
-            border-color: rgba(255, 165, 0, 0.9);
-        }
 
         /* Side cards stacking effects */
         .side-cards-container {
@@ -81,19 +61,23 @@
 
         .side-cards-container .side-right-1,
         .side-cards-container .side-left-1 {
-            z-index: 13;
+            z-index: 8;
+            transform: translateZ(6px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
         }
 
         .side-cards-container .side-right-2,
         .side-cards-container .side-left-2 {
-            z-index: 12;
-            transform: translate(2px, 2px);
+            z-index: 7;
+            transform: translateZ(3px) translate(2px, 2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.65);
         }
 
         .side-cards-container .side-right-3,
         .side-cards-container .side-left-3 {
-            z-index: 11;
-            transform: translate(4px, 4px);
+            z-index: 6;
+            transform: translateZ(0px) translate(4px, 4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
         }
 
         /* Deck stacking effects */
@@ -145,9 +129,38 @@
 
         /* Stadium special styling */
         .stadium-zone {
-            z-index: 5;
+            z-index: 4;
             background-color: rgba(75, 0, 130, 0.15);
             border-color: rgba(147, 51, 234, 0.3);
+            transform: translateZ(1px);
+        }
+
+        .card-slot:hover {
+            transform: translateY(-8px) scale(1.08);
+            border-color: #4dd0fd;
+            box-shadow: 0 0 25px #4dd0fd80;
+            z-index: 50; /* 手札より下だが他のカードより上 */
+        }
+
+        /* Enhanced hover effects for stacked cards */
+        .side-cards-container .card-slot:hover {
+            transform: translateY(-12px) scale(1.15) !important;
+            z-index: 51;
+        }
+
+        .deck-container:hover {
+            transform: translateY(-6px) scale(1.05);
+            z-index: 50;
+        }
+
+        .deck-container:hover .deck-stack::before {
+            transform: translateZ(2px) rotate(-0.8deg);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+        }
+
+        .deck-container:hover .deck-stack::after {
+            transform: translateZ(1px) rotate(1.2deg);
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
         }
         
         .card-slot::before {
@@ -156,11 +169,11 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 0.7rem;
-            font-weight: 600;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 0.6rem;
+            font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
             pointer-events: none;
         }
         
@@ -184,7 +197,7 @@
 
     </style>
 </head>
-<body>
+<body class="min-h-screen flex items-center justify-center text-white p-4">
 
     <!-- CPU Hand -->
     <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 bg-black/30 flex justify-center items-center p-2 z-10">
@@ -200,24 +213,24 @@
             <div class="card-slot active-top" data-zone="Active"></div>
             
             <!-- Bench Row (5 slots) -->
-            <div class="card-slot top-bench-1" data-zone="Bench 1"></div>
-            <div class="card-slot top-bench-2" data-zone="Bench 2"></div>
-            <div class="card-slot top-bench-3" data-zone="Bench 3"></div>
-            <div class="card-slot top-bench-4" data-zone="Bench 4"></div>
-            <div class="card-slot top-bench-5" data-zone="Bench 5"></div>
+            <div class="card-slot top-bench-1" data-zone="Bench"></div>
+            <div class="card-slot top-bench-2" data-zone="Bench"></div>
+            <div class="card-slot top-bench-3" data-zone="Bench"></div>
+            <div class="card-slot top-bench-4" data-zone="Bench"></div>
+            <div class="card-slot top-bench-5" data-zone="Bench"></div>
             
             <!-- Side Cards (3 stacked) -->
             <div class="side-cards-container side-right">
-                <div class="card-slot side-right-1" data-zone="Side 1"></div>
-                <div class="card-slot side-right-2" data-zone="Side 2"></div>
-                <div class="card-slot side-right-3" data-zone="Side 3"></div>
+                <div class="card-slot side-right-1" data-zone="Prize"></div>
+                <div class="card-slot side-right-2" data-zone="Prize"></div>
+                <div class="card-slot side-right-3" data-zone="Prize"></div>
             </div>
             
             <!-- Deck and Discard -->
             <div class="card-slot deck-container top-left-deck" data-zone="Deck">
                 <div class="deck-stack"></div>
             </div>
-            <div class="card-slot top-left-trash" data-zone="Discard"></div>
+            <div class="card-slot top-left-trash" data-zone="Trash"></div>
         </div>
 
         <!-- Stadium Zone (Shared) -->
@@ -229,24 +242,24 @@
             <div class="card-slot active-bottom" data-zone="Active"></div>
             
             <!-- Bench Row (5 slots) -->
-            <div class="card-slot bottom-bench-1" data-zone="Bench 1"></div>
-            <div class="card-slot bottom-bench-2" data-zone="Bench 2"></div>
-            <div class="card-slot bottom-bench-3" data-zone="Bench 3"></div>
-            <div class="card-slot bottom-bench-4" data-zone="Bench 4"></div>
-            <div class="card-slot bottom-bench-5" data-zone="Bench 5"></div>
+            <div class="card-slot bottom-bench-1" data-zone="Bench"></div>
+            <div class="card-slot bottom-bench-2" data-zone="Bench"></div>
+            <div class="card-slot bottom-bench-3" data-zone="Bench"></div>
+            <div class="card-slot bottom-bench-4" data-zone="Bench"></div>
+            <div class="card-slot bottom-bench-5" data-zone="Bench"></div>
             
             <!-- Side Cards (3 stacked) -->
             <div class="side-cards-container side-left">
-                <div class="card-slot side-left-1" data-zone="Side 1"></div>
-                <div class="card-slot side-left-2" data-zone="Side 2"></div>
-                <div class="card-slot side-left-3" data-zone="Side 3"></div>
+                <div class="card-slot side-left-1" data-zone="Prize"></div>
+                <div class="card-slot side-left-2" data-zone="Prize"></div>
+                <div class="card-slot side-left-3" data-zone="Prize"></div>
             </div>
             
             <!-- Deck and Discard -->
             <div class="card-slot deck-container bottom-right-deck" data-zone="Deck">
                 <div class="deck-stack"></div>
             </div>
-            <div class="card-slot bottom-right-trash" data-zone="Discard"></div>
+            <div class="card-slot bottom-right-trash" data-zone="Trash"></div>
         </div>
     </div>
 
@@ -427,30 +440,7 @@
                     // 直接マッピングのデバッグ情報
                     console.log(`📍 ${key}: (${coords.x},${coords.y}) → (${htmlX},${htmlY}) ${htmlWidth}x${htmlHeight} [直接マッピング]`);
                     
-                    // デバッグラベルの更新（より詳細な情報）
-                    const existingDebug = element.querySelector('.debug-info');
-                    if (existingDebug) {
-                        existingDebug.innerHTML = `<strong>${key}</strong><br/>JSON: (${coords.x},${coords.y})<br/>HTML: (${htmlX},${htmlY})<br/>Size: ${htmlWidth}x${htmlHeight}<br/>1:1直接`;
-                    } else {
-                        const debugInfo = document.createElement('div');
-                        debugInfo.className = 'debug-info';
-                        debugInfo.style.cssText = `
-                            position: absolute;
-                            top: 2px;
-                            left: 2px;
-                            font-size: 8px;
-                            color: white;
-                            background: rgba(0,0,0,0.9);
-                            padding: 3px 5px;
-                            border-radius: 3px;
-                            pointer-events: none;
-                            line-height: 1.3;
-                            z-index: 1000;
-                            font-family: monospace;
-                        `;
-                        debugInfo.innerHTML = `<strong>${key}</strong><br/>JSON: (${coords.x},${coords.y})<br/>HTML: (${htmlX},${htmlY})<br/>Size: ${htmlWidth}x${htmlHeight}<br/>1:1直接`;
-                        element.appendChild(debugInfo);
-                    }
+                    // デバッグ情報は削除（通常のゲーム状態）
                 }
                 
                 console.log(`📊 変換完了: ${transformedCoords.length}個のスロット`);
