@@ -16,7 +16,7 @@
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
             overflow-x: hidden; /* 横スクロールを防止 */
             perspective: 1500px;
-                        padding: 6rem 0; /* 上下の余白を十分に確保 */
+            padding: 6rem 0; /* 上下の余白を十分に確保 */
         }
 
         #game-board {
@@ -206,7 +206,17 @@
             }
         }
 
-        
+        @keyframes playCard {
+            0% {
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                transform: scale(1.1) rotate(5deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
 
         @keyframes attackForward {
             0% { transform: translateX(0) scale(1); }
@@ -245,7 +255,20 @@
             }
         }
 
-        
+        @keyframes energyAttach {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(0.8);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(0.6);
+                opacity: 0.6;
+            }
+        }
 
         @keyframes fadeIn {
             0% { opacity: 0; }
@@ -283,7 +306,9 @@
             animation: drawCard 0.4s ease-out;
         }
 
-        
+        .animate-play-card {
+            animation: playCard 0.5s ease-out;
+        }
 
         .animate-attack {
             animation: attackForward 0.8s ease-out;
@@ -301,7 +326,9 @@
             animation: knockout 1.2s ease-out forwards;
         }
 
-        
+        .animate-energy-attach {
+            animation: energyAttach 0.7s ease-out forwards;
+        }
 
         .animate-fade-in {
             animation: fadeIn 0.3s ease-out;
@@ -470,10 +497,8 @@
         </div>
     </div>
 
-    <!-- Fixed Footer Area: Player Hand and Action Buttons -->
-<div id="fixed-footer-area" class="fixed bottom-0 left-0 w-full flex flex-col items-center z-[100]">
     <!-- Game Controls Panel -->
-    <div id="game-controls" class="flex flex-col items-center p-4 z-20">
+    <div id="game-controls" class="fixed bottom-40 left-0 w-full flex flex-col items-center p-4 z-20">
         <!-- Game Message Display -->
         <div id="game-message-display" class="bg-gray-800/70 text-white text-lg font-bold p-3 rounded-lg mb-4 min-w-[300px] text-center hidden">
             <!-- Messages will be displayed here -->
@@ -492,8 +517,6 @@
             </button>
         </div>
     </div>
-
-
 
     <!-- Game Status Panel (右上固定) -->
     <div id="game-status-panel" class="fixed top-4 right-4 z-50 min-w-80 max-w-96">
@@ -542,12 +565,12 @@
 <div class="scroll-spacer" aria-hidden="true"></div>
 
 <!-- Player Hand -->
-<div id="player-hand" class="h-40 bg-black/50 flex justify-center items-center p-2">
+<div id="player-hand" class="fixed bottom-0 left-0 w-full h-40 bg-black/50 flex justify-center items-center p-2" style="z-index: 100;">
     <!-- プレイヤーの手札はここに動的に追加されます -->
 </div>
 
 <!-- Card Info Panel -->
-<div id="card-info-panel" class="fixed z-50 opacity-0 scale-95 transition-all duration-300 ease-out"></div>
+<div id="card-info-panel" class="hidden fixed z-50"></div>
 
 <!-- Action Modal -->
 <div id="action-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
