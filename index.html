@@ -15,13 +15,14 @@
       <section class="player player--opponent" aria-label="相手側">
         <div class="row row--top">
           <div class="zone prizes" aria-label="相手のサイド"></div>
+          <div class="zone deck deck--opponent" aria-label="相手の山札"></div>
           <div class="zone discard" aria-label="相手のトラッシュ"></div>
         </div>
         <div class="row">
           <div class="zone bench" aria-label="相手のベンチ"></div>
           <div class="zone active" aria-label="相手のバトル場"></div>
         </div>
-        <div class="row">
+        <div class="row row--hand">
           <div class="zone hand hand--opponent" aria-label="相手の手札"></div>
         </div>
       </section>
@@ -29,7 +30,7 @@
       <section class="stadium" aria-label="スタジアム"></section>
 
       <section class="player player--you" aria-label="自分側">
-        <div class="row">
+        <div class="row row--hand">
           <div class="zone hand" id="hand" aria-label="自分の手札"></div>
         </div>
         <div class="row">
@@ -38,6 +39,7 @@
         </div>
         <div class="row row--bottom">
           <div class="zone prizes" id="prizes" aria-label="自分のサイド"></div>
+          <div class="zone deck" id="deck" aria-label="自分の山札"></div>
           <div class="zone discard" id="discard" aria-label="自分のトラッシュ"></div>
         </div>
       </section>
@@ -70,4 +72,4 @@
 
     <script src="js/boot.js"></script>
   </body>
-  </html>
+</html>
