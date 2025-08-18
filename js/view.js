@@ -308,23 +308,37 @@ export class View {
     }
 
     /**
-     * Show detailed card information in a modal.
+     * Show detailed card information in a side panel next to the card.
+     * @param {Object} card - カードデータ
+     * @param {HTMLElement} targetElement - 参照するカード要素
      */
-    showCardInfo(card) {
+    showCardInfo(card, targetElement) {
         if (!card) return;
 
+        const panel = document.getElementById('card-info-panel');
+        if (!panel) return;
+
         const infoHtml = this._generateCardInfoHtml(card);
-        const body = `
+        panel.innerHTML = `
             <div class="max-h-[70vh] overflow-y-auto">
                 <img src="${getCardImagePath(card.name_en)}" alt="${card.name_ja}" class="w-full mb-4" />
                 <div class="text-left text-sm space-y-2">${infoHtml}</div>
             </div>`;
 
-        this.showModal({
-            title: card.name_ja,
-            body: body,
-            actions: [{ text: '閉じる', callback: () => {} }]
-        });
+        if (targetElement) {
+            const rect = targetElement.getBoundingClientRect();
+            panel.style.left = `${rect.left - panel.offsetWidth - 12}px`;
+            panel.style.top = `${rect.top}px`;
+        }
+
+        panel.classList.remove('hidden');
+    }
+
+    hideCardInfo() {
+        const panel = document.getElementById('card-info-panel');
+        if (panel) {
+            panel.classList.add('hidden');
+        }
     }
 
     _generateCardInfoHtml(card) {

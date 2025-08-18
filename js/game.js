@@ -161,20 +161,24 @@ export class Game {
         } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
             // 配置先を選択
             const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
-            
+
             console.log(`🎯 Placing ${this.selectedCardForSetup.name_ja} in ${zone}${zone === 'bench' ? `[${targetIndex}]` : ''}`);
-            
+
+            // DOM上のカード要素を取得（手札のカード）
+            const cardElement = document.querySelector(`[data-card-id="${this.selectedCardForSetup.id}"]`);
+
+            // 先に状態を更新（手札から除外し、配置）
             this.state = this.setupManager.handlePokemonSelection(
-                this.state, 
-                'player', 
-                this.selectedCardForSetup.id, 
-                zone, 
+                this.state,
+                'player',
+                this.selectedCardForSetup.id,
+                zone,
                 targetIndex
             );
-            
-            // 配置アニメーション
-            await this._animateCardPlacement(this.selectedCardForSetup, zone, targetIndex);
-            
+
+            // カード移動アニメーション
+            await this._animateCardPlacement(cardElement, zone, targetIndex);
+
             this.selectedCardForSetup = null;
             this._clearCardHighlights();
             this.state.prompt.message = '次のたねポケモンを選択するか、確定してください。';
@@ -581,7 +585,8 @@ export class Game {
             return;
         }
         
-        if (!this.setupManager.isSetupComplete(this.state)) {
+        const active = this.state.players.player.active;
+        if (!active || active.card_type !== 'Pokémon' || active.stage !== 'BASIC') {
             feedbackSystem.warning('バトル場にたねポケモンを配置してください。');
             this.view.showErrorMessage('バトル場にたねポケモンを配置してください。');
             return;
@@ -751,16 +756,22 @@ export class Game {
     /**
      * カード配置アニメーション
      */
-    async _animateCardPlacement(card, zone, index) {
-        const selector = zone === 'active' ? '.player-self .active-bottom' : `.player-self .bottom-bench-${index + 1}`;
-        const targetElement = document.querySelector(selector);
-        
+    async _animateCardPlacement(cardElement, zone, index) {
+        if (!cardElement) return;
+
+        const targetSelector = zone === 'active'
+            ? '.player-self .active-bottom'
+            : `.player-self .bottom-bench-${index + 1}`;
+        const targetElement = document.querySelector(targetSelector);
+
         if (targetElement) {
-            await animationManager.animatePlayCard(
-                targetElement,
-                { x: 0, y: 100 }, // 手札から
-                { x: targetElement.offsetLeft, y: targetElement.offsetTop }
-            );
+            const fromRect = cardElement.getBoundingClientRect();
+            const toRect = targetElement.getBoundingClientRect();
+
+            const fromPos = { x: fromRect.left, y: fromRect.top };
+            const toPos = { x: toRect.left, y: toRect.top };
+
+            await animationManager.animatePlayCard(cardElement, fromPos, toPos);
         }
     }
 
