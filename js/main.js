@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const game = new Game(root);
+    const game = new Game(root, window.playmatSlotsData);
     game.init();
   }
 

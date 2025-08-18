@@ -1,9 +1,10 @@
 import { getCardImagePath } from './cards.js';
 
 export class View {
-    constructor(rootEl) {
+    constructor(rootEl, playmatSlotsData) {
         this.rootEl = rootEl;
         this.cardClickHandler = null;
+        this.playmatSlotsData = playmatSlotsData;
 
         // Board containers
         this.playerBoard = rootEl.querySelector('.player-board:not(.opponent-board)');
@@ -68,108 +69,97 @@ export class View {
         const discard = Array.isArray(safePlayer.discard) ? safePlayer.discard : [];
         const prize = Array.isArray(safePlayer.prize) ? safePlayer.prize.slice(0, 6) : new Array(6).fill(null);
 
+        // Clear all existing cards from the boardElement (playerBoard or opponentBoard)
+        // This is a more general clear than clearing individual slots.
+        // We will re-add all cards directly to boardElement.
+        boardElement.innerHTML = '';
+
+        // Get relevant slot data based on playerType
+        const namedSlots = this.playmatSlotsData.slots_named;
+        const findSlot = (name) => namedSlots.find(s => s.name === name);
+        const rectFromSlot = (slot) => ({ x: slot.bbox.x_min, y: slot.bbox.y_min, width: slot.size.width, height: slot.size.height });
+
         // Active Pokemon
-        const activeSlot = boardElement.querySelector('.active-pokemon');
-        if (activeSlot) {
-            activeSlot.innerHTML = '';
-            if (safePlayer.active) {
-                activeSlot.appendChild(this._createCardElement(safePlayer.active, playerType, 'active', 0));
-            } else {
-                activeSlot.appendChild(this._createCardElement(null, playerType, 'active', 0));
-            }
+        if (safePlayer.active) {
+            const activeSlotName = playerType === 'player' ? 'active_bottom' : 'active_top';
+            const activeCoords = rectFromSlot(findSlot(activeSlotName));
+            const activeCardEl = this._createCardElement(safePlayer.active, playerType, 'active', 0, activeCoords);
+            boardElement.appendChild(activeCardEl);
+        } else {
+            // Render placeholder for active slot
+            const activeSlotName = playerType === 'player' ? 'active_bottom' : 'active_top';
+            const activeCoords = rectFromSlot(findSlot(activeSlotName));
+            const activeCardEl = this._createCardElement(null, playerType, 'active', 0, activeCoords);
+            boardElement.appendChild(activeCardEl);
         }
 
-        // Bench Pokemon (guard missing slots)
+        // Bench Pokemon
         for (let i = 0; i < 5; i++) {
-            const benchSlot = boardElement.querySelector(`.bench-${i + 1}`);
-            if (!benchSlot) continue;
-            benchSlot.innerHTML = '';
+            const benchSlotName = playerType === 'player' ? `bottom_bench_${i + 1}` : `top_bench_${i + 1}`;
+            const benchCoords = rectFromSlot(findSlot(benchSlotName));
             const card = bench[i];
-            benchSlot.appendChild(this._createCardElement(card, playerType, 'bench', i));
+            const benchCardEl = this._createCardElement(card, playerType, 'bench', i, benchCoords);
+            boardElement.appendChild(benchCardEl);
         }
 
         // Discard Pile
-        const discardSlot = boardElement.querySelector('.discard');
-        if (discardSlot) {
-            discardSlot.innerHTML = '';
-            if (discard.length > 0) {
-                const topCard = discard[discard.length - 1];
-                discardSlot.appendChild(this._createCardElement(topCard, playerType, 'discard', 0));
-            } else {
-                discardSlot.appendChild(this._createCardElement(null, playerType, 'discard', 0));
-            }
+        if (discard.length > 0) {
+            const discardSlotName = playerType === 'player' ? 'bottom_right_trash' : 'top_left_trash';
+            const discardCoords = rectFromSlot(findSlot(discardSlotName));
+            const topCard = discard[discard.length - 1];
+            const discardCardEl = this._createCardElement(topCard, playerType, 'discard', 0, discardCoords);
+            boardElement.appendChild(discardCardEl);
+        } else {
+            // Render placeholder for discard slot
+            const discardSlotName = playerType === 'player' ? 'bottom_right_trash' : 'top_left_trash';
+            const discardCoords = rectFromSlot(findSlot(discardSlotName));
+            const discardCardEl = this._createCardElement(null, playerType, 'discard', 0, discardCoords);
+            boardElement.appendChild(discardCardEl);
         }
 
-        // Prize Cards: desired layout is three vertical cards (front),
-        // with another three behind them peeking out from the front card's left-bottom.
-        const prizeContainer = boardElement.querySelector('.prizes');
-        if (prizeContainer) {
-            prizeContainer.innerHTML = '';
-            prizeContainer.style.position = 'relative';
-            const six = [...prize, ...new Array(Math.max(0, 6 - prize.length)).fill(null)].slice(0, 6);
-            const rowTopPct = [0, 34, 68]; // three vertical slots within the prizes area
-            const cardWidthPct = 100; // occupy the prize slot width
-            const backOffset = { x: -5, y: 6 }; // back card peeks from left-bottom
+        // Prize Cards (simplified for direct positioning)
+        const prizeSlotNames = playerType === 'player' ? ['side_left_1', 'side_left_2', 'side_left_3'] : ['side_right_1', 'side_right_2', 'side_right_3'];
+        const six = [...prize, ...new Array(Math.max(0, 6 - prize.length)).fill(null)].slice(0, 6);
 
-            for (let row = 0; row < 3; row++) {
-                // Front card for this row
-                const frontIdx = row; // first three as front
-                const front = six[frontIdx];
-                const frontEl = this._createCardElement(front, playerType, 'prize', frontIdx, !!front);
-                frontEl.style.position = 'absolute';
-                frontEl.style.width = `${cardWidthPct}%`;
-                frontEl.style.height = 'auto';
-                frontEl.style.aspectRatio = '120 / 168';
-                frontEl.style.left = '0%';
-                frontEl.style.top = `${rowTopPct[row]}%`;
-                frontEl.style.zIndex = '10';
-                prizeContainer.appendChild(frontEl);
-
-                // Back card for this row (if any)
-                const backIdx = row + 3;
-                const back = six[backIdx];
-                const backEl = this._createCardElement(back, playerType, 'prize', backIdx, !!back);
-                backEl.style.position = 'absolute';
-                backEl.style.width = `${cardWidthPct}%`;
-                backEl.style.height = 'auto';
-                backEl.style.aspectRatio = '120 / 168';
-                backEl.style.left = '0%';
-                backEl.style.top = `${rowTopPct[row]}%`;
-                backEl.style.zIndex = '5';
-                // Subtle offset so it peeks from the left-bottom of the front card.
-                // Note: opponent board is rotated 180deg, so this naturally appears reversed for them.
-                backEl.style.transform = `translate(${backOffset.x}%, ${backOffset.y}%)`;
-                prizeContainer.appendChild(backEl);
-            }
+        for (let i = 0; i < 3; i++) { // Render first 3 prizes directly
+            const prizeCoords = rectFromSlot(findSlot(prizeSlotNames[i]));
+            const prizeCardEl = this._createCardElement(six[i], playerType, 'prize', i, prizeCoords, !!six[i]);
+            boardElement.appendChild(prizeCardEl);
         }
+        // For the remaining 3 prizes, we'll just render placeholders for now,
+        // as their exact stacking position is complex and not critical for initial display.
+        for (let i = 3; i < 6; i++) {
+            const prizeCoords = rectFromSlot(findSlot(prizeSlotNames[i % 3])); // Use existing slot coords for placeholders
+            const prizeCardEl = this._createCardElement(null, playerType, 'prize', i, prizeCoords);
+            boardElement.appendChild(prizeCardEl);
+        }
+
 
         // Deck
-        const deckSlot = boardElement.querySelector('.deck');
-        if (deckSlot) {
-            deckSlot.innerHTML = '';
-            const deckArr = Array.isArray(safePlayer.deck) ? safePlayer.deck : [];
-            if (deckArr.length > 0) {
-                const deckCardEl = this._createCardElement(deckArr[0], playerType, 'deck', 0, true);
-                deckSlot.appendChild(deckCardEl);
-                const count = document.createElement('div');
-                count.className = 'absolute bottom-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
-                count.textContent = deckArr.length;
-                deckSlot.appendChild(count);
-            } else {
-                deckSlot.appendChild(this._createCardElement(null, playerType, 'deck', 0));
-            }
+        const deckSlotName = playerType === 'player' ? 'bottom_right_deck' : 'top_left_deck';
+        const deckCoords = rectFromSlot(findSlot(deckSlotName));
+        const deckArr = Array.isArray(safePlayer.deck) ? safePlayer.deck : [];
+        if (deckArr.length > 0) {
+            const deckCardEl = this._createCardElement(deckArr[0], playerType, 'deck', 0, deckCoords, true);
+            boardElement.appendChild(deckCardEl);
+            const count = document.createElement('div');
+            count.className = 'absolute bottom-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
+            count.textContent = deckArr.length;
+            deckCardEl.appendChild(count); // Append count to the card element itself
+        } else {
+            const deckCardEl = this._createCardElement(null, playerType, 'deck', 0, deckCoords);
+            boardElement.appendChild(deckCardEl);
         }
 
-        // Stadium (only render once in the center field)
+        // Stadium (only render once in the center field, directly to rootEl)
         if (playerType === 'player') {
-            const stadiumSlot = document.querySelector('.stadium-slot');
-            if (stadiumSlot) {
-                stadiumSlot.innerHTML = '';
-                if (state && state.stadium) {
-                    stadiumSlot.appendChild(this._createCardElement(state.stadium, 'global', 'stadium', 0));
-                } else {
-                    stadiumSlot.appendChild(this._createCardElement(null, 'global', 'stadium', 0));
-                }
+            const stadiumCoords = rectFromSlot(findSlot('stadium'));
+            if (state && state.stadium) {
+                const stadiumCardEl = this._createCardElement(state.stadium, 'global', 'stadium', 0, stadiumCoords);
+                this.rootEl.appendChild(stadiumCardEl); // Append to rootEl (game-board)
+            } else {
+                const stadiumCardEl = this._createCardElement(null, 'global', 'stadium', 0, stadiumCoords);
+                this.rootEl.appendChild(stadiumCardEl); // Append to rootEl (game-board)
             }
         }
     } // End of _renderBoard
@@ -185,9 +175,22 @@ export class View {
         });
     }
 
-    _createCardElement(card, playerType, zone, index, isFaceDown = false) {
+    _createCardElement(card, playerType, zone, index, coords, isFaceDown = false) { // Added coords parameter
         const container = document.createElement('div');
-        container.className = 'relative w-full h-full'; // Positioning context
+        // Remove original className, apply positioning directly
+        // container.className = 'relative w-full h-full'; // Removed
+
+        // Apply coordinates if provided (for playmat cards)
+        if (coords) {
+            container.style.position = 'absolute';
+            container.style.left = `${coords.x}px`;
+            container.style.top = `${coords.y}px`;
+            container.style.width = `${coords.width}px`;
+            container.style.height = `${coords.height}px`;
+        } else {
+            // For hand cards, keep original styling
+            container.className = 'relative w-full h-full';
+        }
 
         if (!card) {
             container.classList.add('card-placeholder');
@@ -200,6 +203,13 @@ export class View {
         img.src = isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = isFaceDown ? 'Card Back' : card.name_ja;
         
+        // Ensure image fills its container, regardless of container's positioning
+        img.style.position = 'absolute';
+        img.style.top = '0';
+        img.style.left = '0';
+        img.style.width = '100%';
+        img.style.height = '100%';
+
         img.dataset.cardId = card.id;
         img.dataset.owner = playerType;
         img.dataset.zone = zone;

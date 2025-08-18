@@ -3,10 +3,11 @@ import { View } from './view.js';
 import * as Logic from './logic.js';
 
 export class Game {
-    constructor(rootEl) {
+    constructor(rootEl, playmatSlotsData) {
         this.rootEl = rootEl;
         this.state = null;
         this.view = null;
+        this.playmatSlotsData = playmatSlotsData;
     } // End of constructor
 
     _delay(ms) {
