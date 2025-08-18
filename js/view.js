@@ -1,25 +1,16 @@
 import { getCardImagePath } from './cards.js';
 
 export class View {
-    constructor(rootEl) {
-        this.rootEl = rootEl;
+    constructor() {
         this.cardClickHandler = null;
 
-        // Player elements
-        this.playerHand = rootEl.querySelector('#player-hand');
-        this.playerActive = rootEl.querySelector('#player-active');
-        this.playerBench = rootEl.querySelector('#player-bench');
-        this.playerDeck = rootEl.querySelector('#player-deck');
-        this.playerDiscard = rootEl.querySelector('#player-discard');
-        this.playerPrizes = rootEl.querySelector('#player-prizes');
+        // Board containers
+        this.playerBoard = document.querySelector('.player-board:not(.opponent-board)');
+        this.opponentBoard = document.querySelector('.opponent-board');
 
-        // CPU elements
-        this.cpuHand = rootEl.querySelector('#cpu-hand');
-        this.cpuActive = rootEl.querySelector('#cpu-active');
-        this.cpuBench = rootEl.querySelector('#cpu-bench');
-        this.cpuDeck = rootEl.querySelector('#cpu-deck');
-        this.cpuDiscard = rootEl.querySelector('#cpu-discard');
-        this.cpuPrizes = rootEl.querySelector('#cpu-prizes');
+        // Hand containers
+        this.playerHand = document.getElementById('player-hand');
+        this.cpuHand = document.getElementById('cpu-hand');
 
         // Modal elements
         this.modal = document.getElementById('action-modal');
@@ -33,135 +24,109 @@ export class View {
     }
 
     render(state) {
-        this._renderPlayerArea('player', state.players.player);
-        this._renderPlayerArea('cpu', state.players.cpu);
-        // Render prompt/message
+        // Clear everything first
+        this._clearBoard();
+
+        // Render boards
+        this._renderBoard(this.playerBoard, state.players.player, 'player');
+        this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu');
+
+        // Render hands
+        this._renderHand(this.playerHand, state.players.player.hand, 'player');
+        this._renderHand(this.cpuHand, state.players.cpu.hand, 'cpu');
+
+        // Render prompt
         if (state.prompt && state.prompt.message) {
-            // For now, let's use the modal title to display prompts
-            this.modalTitle.textContent = state.prompt.message;
+            // For now, just log it. Modal will be used for actions.
+            console.log('Prompt:', state.prompt.message);
         }
     }
 
-    _renderPlayerArea(playerType, playerState) {
-        const handEl = playerType === 'player' ? this.playerHand : this.cpuHand;
-        const activeEl = playerType === 'player' ? this.playerActive : this.cpuActive;
-        const benchEl = playerType === 'player' ? this.playerBench : this.cpuBench;
-        const deckEl = playerType === 'player' ? this.playerDeck : this.cpuDeck;
-        const discardEl = playerType === 'player' ? this.playerDiscard : this.playerDiscard;
-        const prizeEl = playerType === 'player' ? this.playerPrizes : this.cpuPrizes;
-
-        this._renderHand(handEl, playerState.hand, playerType, 'hand');
-        this._renderActive(activeEl, playerState.active, playerType, 'active');
-        this._renderBench(benchEl, playerState.bench, playerType, 'bench');
-        this._renderDeck(deckEl, playerState.deck, playerType, 'deck');
-        this._renderDiscard(discardEl, playerState.discard, playerType, 'discard');
-        this._renderPrizes(prizeEl, playerState.prize, playerType, 'prize');
+    _clearBoard() {
+        const allSlots = document.querySelectorAll('.card-slot');
+        allSlots.forEach(slot => {
+            const img = slot.querySelector('img');
+            if (img && img.dataset.dynamic) {
+                img.remove();
+            }
+        });
+        this.playerHand.innerHTML = '';
+        this.cpuHand.innerHTML = '';
     }
 
-    _renderZone(element, cards, playerType, zone, options = {}) {
-        element.innerHTML = '';
-        const cardArray = Array.isArray(cards) ? cards : [cards];
-        
-        cardArray.forEach((card, index) => {
-            const cardEl = this._createCardElement(card, playerType, zone, index, options.isFaceDown);
-            element.appendChild(cardEl);
+    _renderBoard(boardElement, playerState, playerType) {
+        // Active Pokemon
+        const activeSlot = boardElement.querySelector('.active-pokemon');
+        if (playerState.active) {
+            activeSlot.appendChild(this._createCardElement(playerState.active, playerType, 'active', 0));
+        }
+
+        // Bench Pokemon
+        playerState.bench.forEach((card, index) => {
+            if (card) {
+                const benchSlot = boardElement.querySelector(`.bench-${index + 1}`);
+                if (benchSlot) {
+                    benchSlot.appendChild(this._createCardElement(card, playerType, 'bench', index));
+                }
+            }
         });
 
-        // For empty fixed-size zones like bench
-        if (options.size && cardArray.length < options.size) {
-            for (let i = cardArray.length; i < options.size; i++) {
-                element.appendChild(this._createCardElement(null, playerType, zone, i));
-            }
+        // Discard Pile
+        const discardSlot = boardElement.querySelector('.discard');
+        if (playerState.discard.length > 0) {
+            const topCard = playerState.discard[playerState.discard.length - 1];
+            discardSlot.appendChild(this._createCardElement(topCard, playerType, 'discard', 0));
         }
     }
 
-    _renderHand(element, hand, playerType, zone) {
-        this._renderZone(element, hand, playerType, zone, { isFaceDown: playerType === 'cpu' });
-    }
-
-    _renderActive(element, activePokemon, playerType, zone) {
-        this._renderZone(element, activePokemon, playerType, zone, { size: 1 });
-    }
-
-    _renderBench(element, bench, playerType, zone) {
-        this._renderZone(element, bench, playerType, zone, { size: 5 });
-    }
-
-    _renderDeck(element, deck, playerType, zone) {
-        element.innerHTML = ''; // Clear previous
-        if (deck.length > 0) {
-            const cardEl = this._createCardElement(deck[0], playerType, zone, 0, true);
-            element.appendChild(cardEl);
-            const count = document.createElement('div');
-            count.className = 'deck-count';
-            count.textContent = deck.length;
-            element.appendChild(count);
-        } else {
-            element.appendChild(this._createCardElement(null, playerType, zone, 0));
-        }
-    }
-
-    _renderDiscard(element, discard, playerType, zone) {
-        element.innerHTML = ''; // Clear previous
-        if (discard.length > 0) {
-            const topCard = discard[discard.length - 1];
-            element.appendChild(this._createCardElement(topCard, playerType, zone, discard.length - 1));
-        } else {
-             element.appendChild(this._createCardElement(null, playerType, zone, 0));
-        }
-    }
-
-    _renderPrizes(element, prizes, playerType, zone) {
-        this._renderZone(element, prizes, playerType, zone, { isFaceDown: true });
+    _renderHand(handElement, hand, playerType) {
+        hand.forEach((card, index) => {
+            const isFaceDown = playerType === 'cpu';
+            const cardEl = this._createCardElement(card, playerType, 'hand', index, isFaceDown);
+            cardEl.classList.add('w-24', 'h-32', 'flex-shrink-0'); // Tailwind classes for hand cards
+            handElement.appendChild(cardEl);
+        });
     }
 
     _createCardElement(card, playerType, zone, index, isFaceDown = false) {
-        if (card) {
-            const cardEl = document.createElement('div');
-            cardEl.className = 'card';
-            cardEl.dataset.cardId = card.id;
-            cardEl.dataset.owner = playerType;
-            cardEl.dataset.zone = zone;
-            cardEl.dataset.index = index;
+        const img = document.createElement('img');
+        img.className = 'card-image';
+        img.dataset.dynamic = true; // Mark as dynamically added
+        img.src = isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en);
+        img.alt = isFaceDown ? 'Card Back' : card.name_ja;
+        
+        img.dataset.cardId = card.id;
+        img.dataset.owner = playerType;
+        img.dataset.zone = zone;
+        img.dataset.index = index;
 
-            const img = document.createElement('img');
-            img.src = isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en);
-            img.alt = isFaceDown ? 'Card Back' : card.name_ja;
-            cardEl.appendChild(img);
-
-            if (this.cardClickHandler) {
-                cardEl.addEventListener('click', (e) => {
-                    this.cardClickHandler(e.currentTarget.dataset);
-                });
-            }
-            return cardEl;
-        } else {
-            const placeholder = document.createElement('div');
-            placeholder.className = 'card-placeholder';
-            return placeholder;
+        if (this.cardClickHandler && !isFaceDown) {
+            img.classList.add('cursor-pointer');
+            img.addEventListener('click', (e) => {
+                this.cardClickHandler(e.currentTarget.dataset);
+            });
         }
+        return img;
     }
 
     showModal({ title, body, actions }) {
         this.modalTitle.textContent = title;
-        this.modalBody.innerHTML = '';
-        if (body) {
-            this.modalBody.appendChild(body);
-        }
+        this.modalBody.innerHTML = body || '';
         this.modalActions.innerHTML = '';
         actions.forEach(action => {
             const button = document.createElement('button');
             button.textContent = action.text;
+            button.className = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded';
             button.addEventListener('click', () => {
                 action.callback();
                 this.hideModal();
             });
             this.modalActions.appendChild(button);
         });
-        this.modal.style.display = 'flex';
+        this.modal.classList.remove('hidden');
     }
 
     hideModal() {
-        this.modal.style.display = 'none';
+        this.modal.classList.add('hidden');
     }
 }
