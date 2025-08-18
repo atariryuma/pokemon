@@ -1,12 +1,17 @@
 import { getCardImagePath } from './cards.js';
 
 export class View {
-    constructor() {
+    constructor(rootEl) {
+        this.rootEl = rootEl;
         this.cardClickHandler = null;
 
         // Board containers
-        this.playerBoard = document.querySelector('.player-board:not(.opponent-board)');
-        this.opponentBoard = document.querySelector('.opponent-board');
+        this.playerBoard = rootEl.querySelector('.player-board:not(.opponent-board)');
+        this.opponentBoard = rootEl.querySelector('.opponent-board');
+
+        console.log('View constructor - rootEl:', rootEl);
+        console.log('View constructor - playerBoard:', this.playerBoard);
+        console.log('View constructor - opponentBoard:', this.opponentBoard);
 
         // Hand containers
         this.playerHand = document.getElementById('player-hand');
@@ -28,8 +33,8 @@ export class View {
         this._clearBoard();
 
         // Render boards
-        this._renderBoard(this.playerBoard, state.players.player, 'player');
-        this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu');
+        this._renderBoard(this.playerBoard, state.players.player, 'player', state);
+        this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu', state);
 
         // Render hands
         this._renderHand(this.playerHand, state.players.player.hand, 'player');
@@ -45,42 +50,106 @@ export class View {
     _clearBoard() {
         const allSlots = document.querySelectorAll('.card-slot');
         allSlots.forEach(slot => {
-            const img = slot.querySelector('img');
-            if (img && img.dataset.dynamic) {
-                img.remove();
+            // Remove dynamically added card containers
+            const container = slot.querySelector('.relative');
+            if (container) {
+                container.remove();
             }
         });
         this.playerHand.innerHTML = '';
         this.cpuHand.innerHTML = '';
     }
 
-    _renderBoard(boardElement, playerState, playerType) {
+    _renderBoard(boardElement, playerState, playerType, state) {
+        if (!boardElement) return;
+
+        const safePlayer = playerState || {};
+        const bench = Array.isArray(safePlayer.bench) ? safePlayer.bench : new Array(5).fill(null);
+        const discard = Array.isArray(safePlayer.discard) ? safePlayer.discard : [];
+        const prize = Array.isArray(safePlayer.prize) ? safePlayer.prize.slice(0, 6) : new Array(6).fill(null);
+
         // Active Pokemon
         const activeSlot = boardElement.querySelector('.active-pokemon');
-        if (playerState.active) {
-            activeSlot.appendChild(this._createCardElement(playerState.active, playerType, 'active', 0));
+        if (activeSlot) {
+            activeSlot.innerHTML = '';
+            if (safePlayer.active) {
+                activeSlot.appendChild(this._createCardElement(safePlayer.active, playerType, 'active', 0));
+            } else {
+                activeSlot.appendChild(this._createCardElement(null, playerType, 'active', 0));
+            }
         }
 
-        // Bench Pokemon
-        playerState.bench.forEach((card, index) => {
-            if (card) {
-                const benchSlot = boardElement.querySelector(`.bench-${index + 1}`);
-                if (benchSlot) {
-                    benchSlot.appendChild(this._createCardElement(card, playerType, 'bench', index));
-                }
-            }
-        });
+        // Bench Pokemon (guard missing slots)
+        for (let i = 0; i < 5; i++) {
+            const benchSlot = boardElement.querySelector(`.bench-${i + 1}`);
+            if (!benchSlot) continue;
+            benchSlot.innerHTML = '';
+            const card = bench[i];
+            benchSlot.appendChild(this._createCardElement(card, playerType, 'bench', i));
+        }
 
         // Discard Pile
         const discardSlot = boardElement.querySelector('.discard');
-        if (playerState.discard.length > 0) {
-            const topCard = playerState.discard[playerState.discard.length - 1];
-            discardSlot.appendChild(this._createCardElement(topCard, playerType, 'discard', 0));
+        if (discardSlot) {
+            discardSlot.innerHTML = '';
+            if (discard.length > 0) {
+                const topCard = discard[discard.length - 1];
+                discardSlot.appendChild(this._createCardElement(topCard, playerType, 'discard', 0));
+            } else {
+                discardSlot.appendChild(this._createCardElement(null, playerType, 'discard', 0));
+            }
         }
-    }
+
+        // Prize Cards
+        const prizeContainer = boardElement.querySelector('.prizes');
+        if (prizeContainer) {
+            prizeContainer.innerHTML = '';
+            const six = [...prize, ...new Array(Math.max(0, 6 - prize.length)).fill(null)].slice(0, 6);
+            six.forEach((card, index) => {
+                const isFaceDown = !!card; // keep facedown visual for existing prizes
+                const el = this._createCardElement(card, playerType, 'prize', index, isFaceDown);
+                el.style.position = 'absolute';
+                el.style.top = `${index * 10}px`;
+                el.style.left = `${index * 5}px`;
+                prizeContainer.appendChild(el);
+            });
+        }
+
+        // Deck
+        const deckSlot = boardElement.querySelector('.deck');
+        if (deckSlot) {
+            deckSlot.innerHTML = '';
+            const deckArr = Array.isArray(safePlayer.deck) ? safePlayer.deck : [];
+            if (deckArr.length > 0) {
+                const deckCardEl = this._createCardElement(deckArr[0], playerType, 'deck', 0, true);
+                deckSlot.appendChild(deckCardEl);
+                const count = document.createElement('div');
+                count.className = 'absolute bottom-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
+                count.textContent = deckArr.length;
+                deckSlot.appendChild(count);
+            } else {
+                deckSlot.appendChild(this._createCardElement(null, playerType, 'deck', 0));
+            }
+        }
+
+        // Stadium (only render once in the center field)
+        if (playerType === 'player') {
+            const stadiumSlot = document.querySelector('.stadium-slot');
+            if (stadiumSlot) {
+                stadiumSlot.innerHTML = '';
+                if (state && state.stadium) {
+                    stadiumSlot.appendChild(this._createCardElement(state.stadium, 'global', 'stadium', 0));
+                } else {
+                    stadiumSlot.appendChild(this._createCardElement(null, 'global', 'stadium', 0));
+                }
+            }
+        }
+    } // End of _renderBoard
 
     _renderHand(handElement, hand, playerType) {
-        hand.forEach((card, index) => {
+        if (!handElement) return;
+        const arr = Array.isArray(hand) ? hand : [];
+        arr.forEach((card, index) => {
             const isFaceDown = playerType === 'cpu';
             const cardEl = this._createCardElement(card, playerType, 'hand', index, isFaceDown);
             cardEl.classList.add('w-24', 'h-32', 'flex-shrink-0'); // Tailwind classes for hand cards
@@ -89,6 +158,14 @@ export class View {
     }
 
     _createCardElement(card, playerType, zone, index, isFaceDown = false) {
+        const container = document.createElement('div');
+        container.className = 'relative w-full h-full'; // Positioning context
+
+        if (!card) {
+            container.classList.add('card-placeholder');
+            return container;
+        }
+
         const img = document.createElement('img');
         img.className = 'card-image';
         img.dataset.dynamic = true; // Mark as dynamically added
@@ -100,13 +177,23 @@ export class View {
         img.dataset.zone = zone;
         img.dataset.index = index;
 
-        if (this.cardClickHandler && !isFaceDown) {
+        if (this.cardClickHandler && (!isFaceDown || (zone === 'prize' && playerType === 'player'))) {
             img.classList.add('cursor-pointer');
             img.addEventListener('click', (e) => {
                 this.cardClickHandler(e.currentTarget.dataset);
             });
         }
-        return img;
+        container.appendChild(img);
+
+        // Add damage counter if needed
+        if (card.damage > 0) {
+            const damageCounter = document.createElement('div');
+            damageCounter.className = 'absolute top-1 right-1 bg-red-600 text-white text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center';
+            damageCounter.textContent = card.damage;
+            container.appendChild(damageCounter);
+        }
+
+        return container;
     }
 
     showModal({ title, body, actions }) {

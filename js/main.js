@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * アプリケーションのエントリーポイント
    */
-  function initializeApp() {
+    function initializeApp() {
     const root = document.getElementById('game-board');
     if (!root) {
       console.error('ゲームボードのルート要素が見つかりません。');

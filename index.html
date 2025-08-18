@@ -14,23 +14,44 @@
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
             background: #1a1a2e;
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
-            overflow: hidden;
-            perspective: 1500px; /* 3D効果のための視点 */
+            overflow-y: auto;
+            perspective: 1500px;
+            padding: 2rem 0; /* 上下に余白を追加 */
         }
 
-        .game-board {
+        :root { --board-zoom: 1.15; } /* 以前と同等の拡大率に調整 */
+
+        #game-board {
             transform-style: preserve-3d;
-            transform: rotateX(25deg); /* ボード全体に少し傾斜をつける */
-            transition: transform 0.5s ease;
+            transform: rotateX(30deg); /* 傾斜を少し調整 */
+            position: relative;
+            /* アスペクト比は 24:14 を維持しつつ、全体を拡大 */
+            width: calc(100vw * var(--board-zoom));
+            height: calc(100vw * (14 / 24) * var(--board-zoom));
+            margin: 0 auto; /* 中央揃え */
+        }
+
+        /* 背景画像用のレイヤー */
+        .board-bg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* 全体表示（トリミングしない） */
+            object-position: center; /* 位置は中央のまま */
+            z-index: -1; /* カードスロットより後ろに配置 */
         }
 
         .card-slot {
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            position: relative;
+            border-radius: 6px; /* カードの角丸に近づける */
             transition: all 0.3s ease;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            /* カードサイズをプレイマットに合うように調整 */
+            width: 8.5%; 
+            height: 25%;
+            position: absolute; /* 絶対位置指定の基準 */
         }
 
         .card-slot:hover {
@@ -50,7 +71,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            pointer-events: none; /* テキストがクリックイベントを妨げないように */
+            pointer-events: none;
         }
         
         .card-image {
@@ -61,106 +82,87 @@
         }
 
         .player-board {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: auto auto;
-            gap: 1rem;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            background: rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            /* 各プレイヤーのフィールドを定義 */
+            position: absolute;
+            width: 100%;
+            height: 50%;
+            left: 0;
         }
         
-        /* ゾーンの配置 */
-        .active-pokemon { grid-column: 4 / span 2; }
-        .bench-1 { grid-column: 1 / span 1; }
-        .bench-2 { grid-column: 2 / span 1; }
-        .bench-3 { grid-column: 3 / span 1; }
-        .bench-4 { grid-column: 6 / span 1; }
-        .bench-5 { grid-column: 7 / span 1; }
-        .deck { grid-column: 8 / span 1; }
-        .discard { grid-column: 8 / span 1; }
-        .prizes { grid-column: 1 / span 1; }
+        .player-board.player-self {
+            bottom: 0;
+        }
 
-        /* 相手のボードを反転 */
-        .opponent-board {
+        .player-board.opponent-board {
+            top: 0;
             transform: rotate(180deg);
         }
 
-        .center-field {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: flex;
-            gap: 2rem;
-        }
+        /* --- スロットの精密配置 (ここが重要) --- */
+        /* %指定でプレイマット画像上の位置に固定します */
+
+        .active-pokemon { bottom: 32%; left: 50%; transform: translateX(-50%); }
         
-        .stadium-slot, .lost-zone-slot {
-             width: 8vw;
-             height: 11.2vw; /* 7:5 aspect ratio */
-             max-width: 120px;
-             max-height: 168px;
-        }
+        .bench-1 { bottom: 3%; left: 20.5%; }
+        .bench-2 { bottom: 3%; left: 30%; }
+        .bench-3 { bottom: 3%; left: 39.5%; }
+        .bench-4 { bottom: 3%; left: 49%; }
+        .bench-5 { bottom: 3%; left: 58.5%; }
+        
+        .deck { bottom: 3%; right: 12%; }
+        .discard { bottom: 3%; right: 2.5%; }
+        
+        /* 注: HTML構造上、サイドは1つのスロットとして配置されます */
+        .prizes { top: 7%; left: 2.5%; }
+
+        /* 盤面の下に余白を追加して、固定手札と重ならないようにするためのスクロールエリア */
+        .scroll-spacer { height: 18rem; }
+
+        /* 以前のフッター下地スタイルは撤去 */
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center text-white p-4">
 
     <!-- CPU Hand -->
     <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 bg-black/30 flex justify-center items-center p-2 z-10">
+        <!-- CPUの手札はここに動的に追加されます -->
     </div>
 
-    <div class="game-board w-full max-w-7xl mx-auto">
+    <div id="game-board" class="w-full max-w-7xl mx-auto">
+        <img class="board-bg" src="assets/playmat.jpg" alt="Playmat" onerror="this.style.display='none'"/>
         <!-- 相手プレイヤーのフィールド -->
-        <div class="player-board opponent-board mb-8">
-            <!-- 1列目: ベンチ & バトルポケモン -->
-            <div class="card-slot prizes row-span-2" data-zone="Prizes">
-                <!-- サイドカードは裏向きで6枚 -->
-                <img src="assets/card_back.webp" alt="サイドカード" class="card-image" onerror="this.src='https://placehold.co/120x168/1a1a2e/ffffff?text=Prize'">
-            </div>
+        <div class="player-board opponent-board">
+            <div class="card-slot active-pokemon" data-zone="Active"></div>
             <div class="card-slot bench-1" data-zone="Bench"></div>
             <div class="card-slot bench-2" data-zone="Bench"></div>
-            <div class="card-slot active-pokemon" data-zone="Active"></div>
+            <div class="card-slot bench-3" data-zone="Bench"></div>
             <div class="card-slot bench-4" data-zone="Bench"></div>
             <div class="card-slot bench-5" data-zone="Bench"></div>
-            <div class="card-slot deck" data-zone="Deck">
-                <img src="assets/card_back.webp" alt="山札" class="card-image" onerror="this.src='https://placehold.co/120x168/1a1a2e/ffffff?text=Deck'">
-            </div>
-            
-            <!-- 2列目: ベンチ & トラッシュ -->
-            <div class="card-slot bench-3 col-start-3" data-zone="Bench"></div>
-            <div class="card-slot discard col-start-8" data-zone="Discard"></div>
-        </div>
-
-        <!-- 中央のフィールド (スタジアム & ロストゾーン) -->
-        <div class="center-field">
-            <div class="card-slot lost-zone-slot" data-zone="Lost Zone"></div>
-            <div class="card-slot stadium-slot" data-zone="Stadium"></div>
+            <div class="card-slot deck" data-zone="Deck"></div>
+            <div class="card-slot discard" data-zone="Discard"></div>
+            <div class="card-slot prizes" data-zone="Prizes"></div>
         </div>
 
         <!-- 自分プレイヤーのフィールド -->
-        <div class="player-board mt-8">
-            <!-- 1列目: トラッシュ & 山札 -->
-            <div class="card-slot discard col-start-1" data-zone="Discard"></div>
-            <div class="card-slot deck col-start-8" data-zone="Deck">
-                 <img src="assets/card_back.webp" alt="山札" class="card-image" onerror="this.src='https://placehold.co/120x168/1a1a2e/ffffff?text=Deck'">
-            </div>
-
-            <!-- 2列目: バトルポケモン & ベンチ -->
-            <div class="card-slot prizes row-span-2 col-start-8" data-zone="Prizes">
-                <img src="assets/card_back.webp" alt="サイドカード" class="card-image" onerror="this.src='https://placehold.co/120x168/1a1a2e/ffffff?text=Prize'">
-            </div>
-            <div class="card-slot bench-1 col-start-2" data-zone="Bench"></div>
-            <div class="card-slot bench-2 col-start-3" data-zone="Bench"></div>
+        <div class="player-board player-self">
             <div class="card-slot active-pokemon" data-zone="Active"></div>
+            <div class="card-slot bench-1" data-zone="Bench"></div>
+            <div class="card-slot bench-2" data-zone="Bench"></div>
+            <div class="card-slot bench-3" data-zone="Bench"></div>
             <div class="card-slot bench-4" data-zone="Bench"></div>
-            <div class="card-slot bench-5 col-start-7" data-zone="Bench"></div>
+            <div class="card-slot bench-5" data-zone="Bench"></div>
+            <div class="card-slot deck" data-zone="Deck"></div>
+            <div class="card-slot discard" data-zone="Discard"></div>
+            <div class="card-slot prizes" data-zone="Prizes"></div>
         </div>
     </div>
 
+    <!-- Extra scroll space so bench doesn't sit under the fixed hand overlay -->
+    <div class="scroll-spacer" aria-hidden="true"></div>
+
     <!-- Player Hand -->
     <div id="player-hand" class="fixed bottom-0 left-0 w-full h-40 bg-black/50 flex justify-center items-center p-2 z-10">
+        <!-- プレイヤーの手札はここに動的に追加されます -->
     </div>
 
     <!-- Action Modal -->
@@ -172,5 +174,6 @@
         </div>
     </div>
 
+    <script src="js/main.js" type="module"></script>
 </body>
 </html>

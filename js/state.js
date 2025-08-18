@@ -52,6 +52,9 @@ export function createInitialState() {
         phase: 'setup',
         turnPlayer: 'player',
         stadium: null,
+        hasDrawnThisTurn: false,
+        hasAttachedEnergyThisTurn: false,
+        pendingAction: null,
         prompt: {
             message: '手札からたねポケモンを1匹選び、バトル場に出してください。',
             actions: [],
