@@ -288,6 +288,7 @@ export class Game {
         switch (this.state.phase) {
             case GAME_PHASES.SETUP:
             case GAME_PHASES.INITIAL_POKEMON_SELECTION:
+                this.view.showActionButtons(['confirm-setup-button']);
                 // バトルポケモンが選択されていない場合はボタンを無効化
                 const confirmButton = document.getElementById('confirm-setup-button');
                 if (confirmButton) {

@@ -93,7 +93,6 @@ export class View {
             // セットアップ中はアクティブスロットをクリック可能にする
             if (playerType === 'player') {
                 activeSlot.style.zIndex = '10'; // Above base layer
-                activeSlot.style.position = 'absolute';
                 activeSlot.classList.add('setup-interactive');
                 this._makeSlotClickable(activeSlot, 'active', 0);
             }
@@ -111,7 +110,6 @@ export class View {
             // セットアップ中はベンチスロットをクリック可能にする
             if (playerType === 'player') {
                 benchSlot.style.zIndex = '10'; // Above base layer
-                benchSlot.style.position = 'absolute';
                 benchSlot.classList.add('setup-interactive');
                 this._makeSlotClickable(benchSlot, 'bench', i);
             }
@@ -288,6 +286,15 @@ export class View {
                 this.cardClickHandler(e.currentTarget.dataset);
             });
         }
+
+        // Show card details on right-click for face-up cards
+        if (!isFaceDown) {
+            img.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.showCardInfo(card);
+            });
+        }
+
         container.appendChild(img);
 
         if (card.damage > 0) {
@@ -298,6 +305,56 @@ export class View {
         }
 
         return container;
+    }
+
+    /**
+     * Show detailed card information in a modal.
+     */
+    showCardInfo(card) {
+        if (!card) return;
+
+        const infoHtml = this._generateCardInfoHtml(card);
+        const body = `
+            <div class="max-h-[70vh] overflow-y-auto">
+                <img src="${getCardImagePath(card.name_en)}" alt="${card.name_ja}" class="w-full mb-4" />
+                <div class="text-left text-sm space-y-2">${infoHtml}</div>
+            </div>`;
+
+        this.showModal({
+            title: card.name_ja,
+            body: body,
+            actions: [{ text: '閉じる', callback: () => {} }]
+        });
+    }
+
+    _generateCardInfoHtml(card) {
+        let html = `<p><strong>${card.name_ja}</strong> (${card.name_en})</p>`;
+        html += `<p>Type: ${card.card_type}</p>`;
+
+        if (card.card_type === 'Pokemon') {
+            if (card.hp !== undefined) html += `<p>HP: ${card.hp}</p>`;
+            if (card.types) html += `<p>属性: ${card.types.join(', ')}</p>`;
+            if (card.ability) {
+                html += `<div><strong>特性: ${card.ability.name_ja}</strong><p class="whitespace-pre-wrap">${card.ability.text_ja}</p></div>`;
+            }
+            if (card.attacks) {
+                html += '<div><strong>ワザ:</strong>';
+                card.attacks.forEach(atk => {
+                    const cost = atk.cost ? atk.cost.join(', ') : '';
+                    const damage = atk.damage !== undefined ? atk.damage : '';
+                    html += `<div class="mt-1"><span class="font-bold">${atk.name_ja}</span> [${cost}] ${damage}<br/><span class="whitespace-pre-wrap">${atk.text_ja || ''}</span></div>`;
+                });
+                html += '</div>';
+            }
+        } else if (card.card_type === 'Energy') {
+            if (card.energy_type) html += `<p>エネルギー: ${card.energy_type}</p>`;
+            if (card.text_ja) html += `<p class="whitespace-pre-wrap">${card.text_ja}</p>`;
+        } else if (card.card_type === 'Trainer') {
+            if (card.trainer_type) html += `<p>トレーナー: ${card.trainer_type}</p>`;
+            if (card.text_ja) html += `<p class="whitespace-pre-wrap">${card.text_ja}</p>`;
+        }
+
+        return html;
     }
 
     async showModal({ title, body, actions }) {
@@ -486,7 +543,6 @@ export class View {
         // スロット自体にクリックイベントを追加
         slotElement.style.cursor = 'pointer';
         slotElement.style.zIndex = '10';
-        slotElement.style.position = 'absolute';
         slotElement.style.pointerEvents = 'auto';
         
         slotElement.addEventListener('click', (e) => {
