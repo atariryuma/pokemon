@@ -1,0 +1,1 @@
+{"card_type":"Pokémon","name":"Longhorn Beetle","stage":"BASIC","hp":70,"type":"Darkness","attacks":[{"name":"Eat Fruit","cost":["Water"],"damage":40,"effect":"This attack does 30 more damage."}],"ability":null,"weakness":{"type":"Fire","value":"×2"},"resistance":{"type":"Grass","value":"-20"},"retreat_cost":["Colorless"]}

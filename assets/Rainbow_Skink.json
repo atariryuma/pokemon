@@ -1,0 +1,1 @@
+{"card_type":"Pokémon","name":"Rainbow Skink","stage":"BASIC","hp":170,"type":"Metal","attacks":[{"name":"Hide","cost":["Psychic","Colorless"],"damage":100,"effect":"The opponent's next attack does 0 damage."}],"ability":null,"weakness":{"type":"Fighting","value":"×2"},"resistance":{"type":"Grass","value":"-20"},"retreat_cost":["Colorless"]}

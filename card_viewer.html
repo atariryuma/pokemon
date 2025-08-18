@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Card Viewer</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-wrap: wrap; gap: 20px; padding: 20px; }
+        .card-display { border: 1px solid #ccc; padding: 10px; border-radius: 8px; width: 180px; text-align: center; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+        .card-display img { max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 10px; }
+        .card-display p { margin: 5px 0; font-size: 0.9em; }
+        .card-display .name-en { font-weight: bold; }
+        .card-display .name-ja { color: #555; }
+        .card-display .card-type { font-style: italic; color: #777; }
+        .card-display .hp { color: #d9534f; }
+    </style>
+</head>
+<body>
+    <h1>Pokémon Card Viewer</h1>
+    <div id="card-container"></div>
+
+    <script type="module" src="js/cards.js"></script>
+    <script type="module" src="js/card_viewer.js"></script>
+</body>
+</html>
