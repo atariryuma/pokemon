@@ -1,0 +1,704 @@
+{
+  "image_size": {
+    "width": 679,
+    "height": 679
+  },
+  "avg_aspect_ratio_h_over_w": 1.3955942243613477,
+  "card_median_size": {
+    "width": 74,
+    "height": 103
+  },
+  "slots_named": [
+    {
+      "name": "bottom_bench_1",
+      "id": "slot_01",
+      "bbox": {
+        "x_min": 149,
+        "y_min": 548,
+        "x_max": 222,
+        "y_max": 650
+      },
+      "center": {
+        "x": 185.5,
+        "y": 599.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.21944,
+        "y_min": 0.807069,
+        "x_max": 0.326951,
+        "y_max": 0.95729
+      },
+      "center_norm_0_1": {
+        "x": 0.273196,
+        "y": 0.88218
+      }
+    },
+    {
+      "name": "bottom_bench_2",
+      "id": "slot_02",
+      "bbox": {
+        "x_min": 231,
+        "y_min": 548,
+        "x_max": 304,
+        "y_max": 650
+      },
+      "center": {
+        "x": 267.5,
+        "y": 599.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.340206,
+        "y_min": 0.807069,
+        "x_max": 0.447717,
+        "y_max": 0.95729
+      },
+      "center_norm_0_1": {
+        "x": 0.393962,
+        "y": 0.88218
+      }
+    },
+    {
+      "name": "bottom_bench_3",
+      "id": "slot_03",
+      "bbox": {
+        "x_min": 310,
+        "y_min": 548,
+        "x_max": 383,
+        "y_max": 650
+      },
+      "center": {
+        "x": 346.5,
+        "y": 599.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.456554,
+        "y_min": 0.807069,
+        "x_max": 0.564065,
+        "y_max": 0.95729
+      },
+      "center_norm_0_1": {
+        "x": 0.510309,
+        "y": 0.88218
+      }
+    },
+    {
+      "name": "bottom_bench_4",
+      "id": "slot_04",
+      "bbox": {
+        "x_min": 389,
+        "y_min": 548,
+        "x_max": 462,
+        "y_max": 650
+      },
+      "center": {
+        "x": 425.5,
+        "y": 599.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.572901,
+        "y_min": 0.807069,
+        "x_max": 0.680412,
+        "y_max": 0.95729
+      },
+      "center_norm_0_1": {
+        "x": 0.626657,
+        "y": 0.88218
+      }
+    },
+    {
+      "name": "bottom_bench_5",
+      "id": "slot_05",
+      "bbox": {
+        "x_min": 469,
+        "y_min": 549,
+        "x_max": 542,
+        "y_max": 651
+      },
+      "center": {
+        "x": 505.5,
+        "y": 600.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.690722,
+        "y_min": 0.808542,
+        "x_max": 0.798233,
+        "y_max": 0.958763
+      },
+      "center_norm_0_1": {
+        "x": 0.744477,
+        "y": 0.883652
+      }
+    },
+    {
+      "name": "top_bench_1",
+      "id": "slot_09",
+      "bbox": {
+        "x_min": 134,
+        "y_min": 22,
+        "x_max": 207,
+        "y_max": 124
+      },
+      "center": {
+        "x": 170.5,
+        "y": 73.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "top bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.197349,
+        "y_min": 0.032401,
+        "x_max": 0.30486,
+        "y_max": 0.182622
+      },
+      "center_norm_0_1": {
+        "x": 0.251105,
+        "y": 0.107511
+      }
+    },
+    {
+      "name": "top_bench_2",
+      "id": "slot_10",
+      "bbox": {
+        "x_min": 216,
+        "y_min": 22,
+        "x_max": 289,
+        "y_max": 124
+      },
+      "center": {
+        "x": 252.5,
+        "y": 73.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "top bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.318115,
+        "y_min": 0.032401,
+        "x_max": 0.425626,
+        "y_max": 0.182622
+      },
+      "center_norm_0_1": {
+        "x": 0.37187,
+        "y": 0.107511
+      }
+    },
+    {
+      "name": "top_bench_3",
+      "id": "slot_11",
+      "bbox": {
+        "x_min": 295,
+        "y_min": 22,
+        "x_max": 368,
+        "y_max": 124
+      },
+      "center": {
+        "x": 331.5,
+        "y": 73.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "top bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.434462,
+        "y_min": 0.032401,
+        "x_max": 0.541973,
+        "y_max": 0.182622
+      },
+      "center_norm_0_1": {
+        "x": 0.488218,
+        "y": 0.107511
+      }
+    },
+    {
+      "name": "top_bench_4",
+      "id": "slot_12",
+      "bbox": {
+        "x_min": 374,
+        "y_min": 22,
+        "x_max": 447,
+        "y_max": 124
+      },
+      "center": {
+        "x": 410.5,
+        "y": 73.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "top bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.55081,
+        "y_min": 0.032401,
+        "x_max": 0.658321,
+        "y_max": 0.182622
+      },
+      "center_norm_0_1": {
+        "x": 0.604566,
+        "y": 0.107511
+      }
+    },
+    {
+      "name": "top_bench_5",
+      "id": "slot_13",
+      "bbox": {
+        "x_min": 454,
+        "y_min": 24,
+        "x_max": 527,
+        "y_max": 125
+      },
+      "center": {
+        "x": 490.5,
+        "y": 74.5
+      },
+      "size": {
+        "width": 74,
+        "height": 102
+      },
+      "aspect_ratio_h_over_w": 1.3783783783783783,
+      "region_hint": "top bench row",
+      "bbox_norm_0_1": {
+        "x_min": 0.66863,
+        "y_min": 0.035346,
+        "x_max": 0.776141,
+        "y_max": 0.184094
+      },
+      "center_norm_0_1": {
+        "x": 0.722386,
+        "y": 0.10972
+      }
+    },
+    {
+      "name": "bottom_right_trash",
+      "id": "slot_06",
+      "bbox": {
+        "x_min": 564,
+        "y_min": 519,
+        "x_max": 636,
+        "y_max": 622
+      },
+      "center": {
+        "x": 600.0,
+        "y": 570.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.424658,
+      "region_hint": "bottom-right (Trash)",
+      "bbox_norm_0_1": {
+        "x_min": 0.830633,
+        "y_min": 0.764359,
+        "x_max": 0.936672,
+        "y_max": 0.916053
+      },
+      "center_norm_0_1": {
+        "x": 0.883652,
+        "y": 0.840206
+      }
+    },
+    {
+      "name": "top_left_deck",
+      "id": "top_left_deck",
+      "bbox": {
+        "x_min": 43,
+        "y_min": 178,
+        "x_max": 116,
+        "y_max": 281
+      },
+      "center": {
+        "x": 79.5,
+        "y": 229.5
+      },
+      "size": {
+        "width": 74,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.405405,
+      "region_hint": "top-left (Deck)",
+      "bbox_norm_0_1": {
+        "x_min": 0.063328,
+        "y_min": 0.26215,
+        "x_max": 0.170839,
+        "y_max": 0.413844
+      },
+      "center_norm_0_1": {
+        "x": 0.117084,
+        "y": 0.337997
+      }
+    },
+    {
+      "name": "side_right_1",
+      "id": "side_right_1",
+      "bbox": {
+        "x_min": 564,
+        "y_min": 38,
+        "x_max": 636,
+        "y_max": 141
+      },
+      "center": {
+        "x": 600.0,
+        "y": 89.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.4246575342465753,
+      "region_hint": "right edge (Side)",
+      "bbox_norm_0_1": {
+        "x_min": 0.830633,
+        "y_min": 0.055965,
+        "x_max": 0.936672,
+        "y_max": 0.207658
+      },
+      "center_norm_0_1": {
+        "x": 0.883652,
+        "y": 0.131811
+      }
+    },
+    {
+      "name": "side_right_2",
+      "id": "side_right_2",
+      "bbox": {
+        "x_min": 564,
+        "y_min": 143,
+        "x_max": 636,
+        "y_max": 246
+      },
+      "center": {
+        "x": 600.0,
+        "y": 194.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.4246575342465753,
+      "region_hint": "right edge (Side)",
+      "bbox_norm_0_1": {
+        "x_min": 0.830633,
+        "y_min": 0.210604,
+        "x_max": 0.936672,
+        "y_max": 0.362297
+      },
+      "center_norm_0_1": {
+        "x": 0.883652,
+        "y": 0.286451
+      }
+    },
+    {
+      "name": "side_right_3",
+      "id": "side_right_3",
+      "bbox": {
+        "x_min": 564,
+        "y_min": 248,
+        "x_max": 636,
+        "y_max": 351
+      },
+      "center": {
+        "x": 600.0,
+        "y": 299.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.4246575342465753,
+      "region_hint": "right edge (Side)",
+      "bbox_norm_0_1": {
+        "x_min": 0.830633,
+        "y_min": 0.365243,
+        "x_max": 0.936672,
+        "y_max": 0.516937
+      },
+      "center_norm_0_1": {
+        "x": 0.883652,
+        "y": 0.44109
+      }
+    },
+    {
+      "name": "side_left_1",
+      "id": "side_left_1",
+      "bbox": {
+        "x_min": 43,
+        "y_min": 332,
+        "x_max": 115,
+        "y_max": 435
+      },
+      "center": {
+        "x": 79.0,
+        "y": 383.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.4246575342465753,
+      "region_hint": "left edge (Side)",
+      "bbox_norm_0_1": {
+        "x_min": 0.063328,
+        "y_min": 0.488954,
+        "x_max": 0.169367,
+        "y_max": 0.640648
+      },
+      "center_norm_0_1": {
+        "x": 0.116348,
+        "y": 0.564801
+      }
+    },
+    {
+      "name": "side_left_2",
+      "id": "side_left_2",
+      "bbox": {
+        "x_min": 43,
+        "y_min": 435,
+        "x_max": 115,
+        "y_max": 538
+      },
+      "center": {
+        "x": 79.0,
+        "y": 486.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.4246575342465753,
+      "region_hint": "left edge (Side)",
+      "bbox_norm_0_1": {
+        "x_min": 0.063328,
+        "y_min": 0.640648,
+        "x_max": 0.169367,
+        "y_max": 0.792342
+      },
+      "center_norm_0_1": {
+        "x": 0.116348,
+        "y": 0.716495
+      }
+    },
+    {
+      "name": "side_left_3",
+      "id": "side_left_3",
+      "bbox": {
+        "x_min": 43,
+        "y_min": 538,
+        "x_max": 115,
+        "y_max": 641
+      },
+      "center": {
+        "x": 79.0,
+        "y": 589.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.4246575342465753,
+      "region_hint": "left edge (Side)",
+      "bbox_norm_0_1": {
+        "x_min": 0.063328,
+        "y_min": 0.792342,
+        "x_max": 0.169367,
+        "y_max": 0.944035
+      },
+      "center_norm_0_1": {
+        "x": 0.116348,
+        "y": 0.868189
+      }
+    },
+    {
+      "name": "active_top",
+      "id": "active_top",
+      "bbox": {
+        "x_min": 302,
+        "y_min": 168,
+        "x_max": 375,
+        "y_max": 270
+      },
+      "center": {
+        "x": 338.5,
+        "y": 219.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.391892,
+      "region_hint": "top center (Battle Field)",
+      "bbox_norm_0_1": {
+        "x_min": 0.444772,
+        "y_min": 0.247423,
+        "x_max": 0.552283,
+        "y_max": 0.397644
+      },
+      "center_norm_0_1": {
+        "x": 0.498527,
+        "y": 0.322533
+      }
+    },
+    {
+      "name": "active_bottom",
+      "id": "active_bottom",
+      "bbox": {
+        "x_min": 302,
+        "y_min": 408,
+        "x_max": 375,
+        "y_max": 510
+      },
+      "center": {
+        "x": 338.5,
+        "y": 459.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.391892,
+      "region_hint": "bottom center (Battle Field)",
+      "bbox_norm_0_1": {
+        "x_min": 0.444772,
+        "y_min": 0.600884,
+        "x_max": 0.552283,
+        "y_max": 0.751105
+      },
+      "center_norm_0_1": {
+        "x": 0.498527,
+        "y": 0.675994
+      }
+    },
+    {
+      "name": "stadium",
+      "id": "stadium",
+      "bbox": {
+        "x_min": 463,
+        "y_min": 283,
+        "x_max": 538,
+        "y_max": 392
+      },
+      "center": {
+        "x": 500.5,
+        "y": 337.5
+      },
+      "size": {
+        "width": 76,
+        "height": 110
+      },
+      "aspect_ratio_h_over_w": 1.447368,
+      "region_hint": "center-right (Stadium, shared)",
+      "bbox_norm_0_1": {
+        "x_min": 0.681885,
+        "y_min": 0.416789,
+        "x_max": 0.792342,
+        "y_max": 0.57732
+      },
+      "center_norm_0_1": {
+        "x": 0.737113,
+        "y": 0.497054
+      }
+    },
+    {
+      "name": "top_left_trash",
+      "id": "top_left_trash",
+      "bbox": {
+        "x_min": 43,
+        "y_min": 56,
+        "x_max": 116,
+        "y_max": 159
+      },
+      "center": {
+        "x": 79.5,
+        "y": 107.5
+      },
+      "size": {
+        "width": 74,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.405405,
+      "region_hint": "top-left (Trash)",
+      "bbox_norm_0_1": {
+        "x_min": 0.063328,
+        "y_min": 0.082474,
+        "x_max": 0.170839,
+        "y_max": 0.234168
+      },
+      "center_norm_0_1": {
+        "x": 0.117084,
+        "y": 0.158321
+      }
+    },
+    {
+      "name": "bottom_right_deck",
+      "id": "bottom_right_deck",
+      "bbox": {
+        "x_min": 564,
+        "y_min": 399,
+        "x_max": 636,
+        "y_max": 502
+      },
+      "center": {
+        "x": 600.0,
+        "y": 450.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.424658,
+      "region_hint": "bottom-right (Deck)",
+      "bbox_norm_0_1": {
+        "x_min": 0.830633,
+        "y_min": 0.587629,
+        "x_max": 0.936672,
+        "y_max": 0.739323
+      },
+      "center_norm_0_1": {
+        "x": 0.883652,
+        "y": 0.663476
+      }
+    }
+  ],
+  "notes": "Side columns were added heuristically by aligning to deck/trash x-range and scanning for high-contrast borders; positions are top-to-bottom for right, and bottom-side for left."
+}

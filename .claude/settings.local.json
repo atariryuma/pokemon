@@ -6,7 +6,8 @@
       "WebFetch(domain:www.pokemon-card.com)",
       "Bash(del style.css)",
       "Bash(rm:*)",
-      "Bash(timeout 3 curl -s http://localhost:8000)"
+      "Bash(timeout 3 curl -s http://localhost:8000)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

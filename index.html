@@ -14,50 +14,140 @@
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
             background: #1a1a2e;
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
-            overflow-y: auto;
-            perspective: 1500px;
-            padding: 2rem 0; /* 上下に余白を追加 */
+            margin: 0;
+            padding: 0;
         }
 
-        :root { --board-zoom: 1.15; } /* 以前と同等の拡大率に調整 */
-
         #game-board {
-            transform-style: preserve-3d;
-            transform: rotateX(30deg); /* 傾斜を少し調整 */
             position: relative;
-            /* アスペクト比は 24:14 を維持しつつ、全体を拡大 */
-            width: calc(100vw * var(--board-zoom));
-            height: calc(100vw * (14 / 24) * var(--board-zoom));
-            margin: 0 auto; /* 中央揃え */
+            width: 679px;           /* 完全固定サイズ */
+            height: 679px;          /* 完全固定サイズ */
+            margin: 2rem auto;      /* 中央配置 */
+            border: 2px solid #333; /* 境界確認用 */
         }
 
         /* 背景画像用のレイヤー */
         .board-bg {
             position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* 全体表示（トリミングしない） */
-            object-position: center; /* 位置は中央のまま */
-            z-index: -1; /* カードスロットより後ろに配置 */
+            top: 0;
+            left: 0;
+            width: 679px;           /* 完全固定サイズ */
+            height: 679px;          /* 完全固定サイズ */
+            object-fit: none;       /* 1:1ピクセルマッピング */
+            z-index: 1;
         }
 
         .card-slot {
-            background-color: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 6px; /* カードの角丸に近づける */
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-            /* カードサイズをプレイマットに合うように調整 */
-            width: 8.5%; 
-            height: 25%;
-            position: absolute; /* 絶対位置指定の基準 */
+            background-color: rgba(255, 0, 0, 0.4); /* 赤色で視認性向上（デバッグ用） */
+            border: 2px solid rgba(255, 255, 0, 0.9); /* 黄色の境界（デバッグ用） */
+            border-radius: 6px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            position: absolute;
+            z-index: 10; /* プレイマット画像の上に表示 */
+            min-width: 20px; /* 最小サイズを確保 */
+            min-height: 28px;
         }
 
-        .card-slot:hover {
-            transform: translateY(-5px) scale(1.05);
-            border-color: rgba(77, 192, 253, 0.8);
-            box-shadow: 0 0 20px rgba(77, 192, 253, 0.5);
+        /* 特定のスロットを色分けしてデバッグ */
+        .card-slot[class*="bottom-bench"] {
+            background-color: rgba(0, 255, 0, 0.4); /* 緑：自分のベンチ */
+            border-color: rgba(0, 255, 0, 0.9);
+        }
+
+        .card-slot[class*="top-bench"] {
+            background-color: rgba(0, 0, 255, 0.4); /* 青：相手のベンチ */
+            border-color: rgba(0, 0, 255, 0.9);
+        }
+
+        .card-slot[class*="active"] {
+            background-color: rgba(255, 0, 255, 0.4); /* マゼンタ：アクティブ */
+            border-color: rgba(255, 0, 255, 0.9);
+        }
+
+        .card-slot[class*="side"] {
+            background-color: rgba(255, 165, 0, 0.4); /* オレンジ：サイド */
+            border-color: rgba(255, 165, 0, 0.9);
+        }
+
+        /* Side cards stacking effects */
+        .side-cards-container {
+            position: relative;
+        }
+
+        .side-cards-container .card-slot {
+            position: absolute;
+        }
+
+        .side-cards-container .side-right-1,
+        .side-cards-container .side-left-1 {
+            z-index: 13;
+        }
+
+        .side-cards-container .side-right-2,
+        .side-cards-container .side-left-2 {
+            z-index: 12;
+            transform: translate(2px, 2px);
+        }
+
+        .side-cards-container .side-right-3,
+        .side-cards-container .side-left-3 {
+            z-index: 11;
+            transform: translate(4px, 4px);
+        }
+
+        /* Deck stacking effects */
+        .deck-container {
+            position: relative;
+        }
+
+        .deck-stack {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .deck-stack {
+            --deck-height: 6px;
+        }
+
+        .deck-stack::before,
+        .deck-stack::after {
+            content: '';
+            position: absolute;
+            width: 98%;
+            height: 98%;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .deck-stack::before {
+            top: calc(-1 * var(--deck-height) / 3);
+            left: -1px;
+            z-index: -1;
+            transform: rotate(-0.5deg);
+            background: linear-gradient(135deg, rgba(20, 20, 40, 0.6), rgba(10, 10, 20, 0.4));
+        }
+
+        .deck-stack::after {
+            top: calc(-2 * var(--deck-height) / 3);
+            left: -2px;
+            z-index: -2;
+            transform: rotate(0.8deg);
+            opacity: 0.7;
+            background: linear-gradient(135deg, rgba(30, 30, 50, 0.5), rgba(15, 15, 25, 0.3));
+        }
+
+        /* Stadium special styling */
+        .stadium-zone {
+            z-index: 5;
+            background-color: rgba(75, 0, 130, 0.15);
+            border-color: rgba(147, 51, 234, 0.3);
         }
         
         .card-slot::before {
@@ -67,7 +157,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             color: rgba(255, 255, 255, 0.3);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.1em;
@@ -77,83 +167,86 @@
         .card-image {
             width: 100%;
             height: 100%;
-            border-radius: 6px;
+            border-radius: 8px;
             object-fit: cover;
         }
 
         .player-board {
-            /* 各プレイヤーのフィールドを定義 */
             position: absolute;
             width: 100%;
-            height: 50%;
+            height: 100%; /* ボード全体を基準にする */
+            top: 0;
             left: 0;
         }
-        
-        .player-board.player-self {
-            bottom: 0;
-        }
-
-        .player-board.opponent-board {
-            top: 0;
-            transform: rotate(180deg);
-        }
-
-        /* --- スロットの精密配置 (ここが重要) --- */
-        /* %指定でプレイマット画像上の位置に固定します */
-
-        .active-pokemon { bottom: 32%; left: 50%; transform: translateX(-50%); }
-        
-        .bench-1 { bottom: 3%; left: 20.5%; }
-        .bench-2 { bottom: 3%; left: 30%; }
-        .bench-3 { bottom: 3%; left: 39.5%; }
-        .bench-4 { bottom: 3%; left: 49%; }
-        .bench-5 { bottom: 3%; left: 58.5%; }
-        
-        .deck { bottom: 3%; right: 12%; }
-        .discard { bottom: 3%; right: 2.5%; }
-        
-        /* 注: HTML構造上、サイドは1つのスロットとして配置されます */
-        .prizes { top: 7%; left: 2.5%; }
 
         /* 盤面の下に余白を追加して、固定手札と重ならないようにするためのスクロールエリア */
         .scroll-spacer { height: 18rem; }
 
-        /* 以前のフッター下地スタイルは撤去 */
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center text-white p-4">
+<body>
 
     <!-- CPU Hand -->
     <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 bg-black/30 flex justify-center items-center p-2 z-10">
         <!-- CPUの手札はここに動的に追加されます -->
     </div>
 
-    <div id="game-board" class="w-full max-w-7xl mx-auto">
-        <img class="board-bg" src="assets/playmat.jpg" alt="Playmat" onerror="this.style.display='none'"/>
+    <div id="game-board">
+        <img class="board-bg" src="assets/playmat/playmat.jpg" alt="Playmat" onerror="this.style.display='none'"/>
+        
         <!-- 相手プレイヤーのフィールド -->
         <div class="player-board opponent-board">
-            <div class="card-slot active-pokemon" data-zone="Active"></div>
-            <div class="card-slot bench-1" data-zone="Bench"></div>
-            <div class="card-slot bench-2" data-zone="Bench"></div>
-            <div class="card-slot bench-3" data-zone="Bench"></div>
-            <div class="card-slot bench-4" data-zone="Bench"></div>
-            <div class="card-slot bench-5" data-zone="Bench"></div>
-            <div class="card-slot deck" data-zone="Deck"></div>
-            <div class="card-slot discard" data-zone="Discard"></div>
-            <div class="card-slot prizes" data-zone="Prizes"></div>
+            <!-- Active Pokemon -->
+            <div class="card-slot active-top" data-zone="Active"></div>
+            
+            <!-- Bench Row (5 slots) -->
+            <div class="card-slot top-bench-1" data-zone="Bench 1"></div>
+            <div class="card-slot top-bench-2" data-zone="Bench 2"></div>
+            <div class="card-slot top-bench-3" data-zone="Bench 3"></div>
+            <div class="card-slot top-bench-4" data-zone="Bench 4"></div>
+            <div class="card-slot top-bench-5" data-zone="Bench 5"></div>
+            
+            <!-- Side Cards (3 stacked) -->
+            <div class="side-cards-container side-right">
+                <div class="card-slot side-right-1" data-zone="Side 1"></div>
+                <div class="card-slot side-right-2" data-zone="Side 2"></div>
+                <div class="card-slot side-right-3" data-zone="Side 3"></div>
+            </div>
+            
+            <!-- Deck and Discard -->
+            <div class="card-slot deck-container top-left-deck" data-zone="Deck">
+                <div class="deck-stack"></div>
+            </div>
+            <div class="card-slot top-left-trash" data-zone="Discard"></div>
         </div>
+
+        <!-- Stadium Zone (Shared) -->
+        <div class="card-slot stadium-zone" data-zone="Stadium"></div>
 
         <!-- 自分プレイヤーのフィールド -->
         <div class="player-board player-self">
-            <div class="card-slot active-pokemon" data-zone="Active"></div>
-            <div class="card-slot bench-1" data-zone="Bench"></div>
-            <div class="card-slot bench-2" data-zone="Bench"></div>
-            <div class="card-slot bench-3" data-zone="Bench"></div>
-            <div class="card-slot bench-4" data-zone="Bench"></div>
-            <div class="card-slot bench-5" data-zone="Bench"></div>
-            <div class="card-slot deck" data-zone="Deck"></div>
-            <div class="card-slot discard" data-zone="Discard"></div>
-            <div class="card-slot prizes" data-zone="Prizes"></div>
+            <!-- Active Pokemon -->
+            <div class="card-slot active-bottom" data-zone="Active"></div>
+            
+            <!-- Bench Row (5 slots) -->
+            <div class="card-slot bottom-bench-1" data-zone="Bench 1"></div>
+            <div class="card-slot bottom-bench-2" data-zone="Bench 2"></div>
+            <div class="card-slot bottom-bench-3" data-zone="Bench 3"></div>
+            <div class="card-slot bottom-bench-4" data-zone="Bench 4"></div>
+            <div class="card-slot bottom-bench-5" data-zone="Bench 5"></div>
+            
+            <!-- Side Cards (3 stacked) -->
+            <div class="side-cards-container side-left">
+                <div class="card-slot side-left-1" data-zone="Side 1"></div>
+                <div class="card-slot side-left-2" data-zone="Side 2"></div>
+                <div class="card-slot side-left-3" data-zone="Side 3"></div>
+            </div>
+            
+            <!-- Deck and Discard -->
+            <div class="card-slot deck-container bottom-right-deck" data-zone="Deck">
+                <div class="deck-stack"></div>
+            </div>
+            <div class="card-slot bottom-right-trash" data-zone="Discard"></div>
         </div>
     </div>
 
@@ -174,6 +267,271 @@
         </div>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const gameBoard = document.getElementById('game-board');
+            const bgImage = document.querySelector('.board-bg');
+            const playerBoards = {
+                self: document.querySelector('.player-board.player-self'),
+                opponent: document.querySelector('.player-board.opponent-board')
+            };
+
+            // JSONからプレイマットのスロット情報を読み込み
+            let data = null;
+            try {
+                const res = await fetch('assets/playmat/playmat_slots_named.json');
+                data = await res.json();
+            } catch (e) {
+                console.error('Failed to load playmat slot data:', e);
+            }
+            if (!data) return;
+
+            const imgSize = data.image_size || { width: 679, height: 679 };
+            const cardSize = (data.card_median_size) || { width: 74, height: 103 };
+            const named = Array.isArray(data.slots_named) ? data.slots_named : [];
+
+            const find = (name) => named.find(s => s.name === name);
+            const rectFrom = (slot) => ({ x: slot.bbox.x_min, y: slot.bbox.y_min, width: slot.size.width, height: slot.size.height });
+
+            const coordsSelf = {};
+            const coordsOpp = {};
+            const coordsShared = {};
+
+            // Bench slots (exact coordinates from playmat)
+            for (let i = 1; i <= 5; i++) {
+                const bottomBench = find(`bottom_bench_${i}`);
+                const topBench = find(`top_bench_${i}`);
+                if (bottomBench) coordsSelf[`bottom-bench-${i}`] = rectFrom(bottomBench);
+                if (topBench) coordsOpp[`top-bench-${i}`] = rectFrom(topBench);
+            }
+
+            // Active pokemon areas (exact coordinates)
+            const activeBottom = find('active_bottom');
+            const activeTop = find('active_top');
+            if (activeBottom) coordsSelf['active-bottom'] = rectFrom(activeBottom);
+            if (activeTop) coordsOpp['active-top'] = rectFrom(activeTop);
+
+            // Side cards (exact coordinates for 3 slots each)
+            for (let i = 1; i <= 3; i++) {
+                const leftSide = find(`side_left_${i}`);
+                const rightSide = find(`side_right_${i}`);
+                if (leftSide) coordsSelf[`side-left-${i}`] = rectFrom(leftSide);
+                if (rightSide) coordsOpp[`side-right-${i}`] = rectFrom(rightSide);
+            }
+
+            // Deck and discard areas (exact coordinates)
+            const bottomRightDeck = find('bottom_right_deck');
+            const bottomRightTrash = find('bottom_right_trash');
+            const topLeftDeck = find('top_left_deck');
+            const topLeftTrash = find('top_left_trash');
+            if (bottomRightDeck) coordsSelf['bottom-right-deck'] = rectFrom(bottomRightDeck);
+            if (bottomRightTrash) coordsSelf['bottom-right-trash'] = rectFrom(bottomRightTrash);
+            if (topLeftDeck) coordsOpp['top-left-deck'] = rectFrom(topLeftDeck);
+            if (topLeftTrash) coordsOpp['top-left-trash'] = rectFrom(topLeftTrash);
+
+            // Stadium (shared zone)
+            const stadium = find('stadium');
+            if (stadium) coordsShared['stadium-zone'] = rectFrom(stadium);
+
+            function applyCoords(map, boardEl){
+                if (!boardEl || !gameBoard) return;
+                
+                // 背景画像の実際の表示状態をチェック
+                const bgImage = gameBoard.querySelector('.board-bg');
+                const containerRect = gameBoard.getBoundingClientRect();
+                
+                console.group('🔍 背景プレイマット状態確認');
+                console.log('📦 game-board container:', {
+                    width: containerRect.width.toFixed(0),
+                    height: containerRect.height.toFixed(0),
+                    css: {
+                        width: gameBoard.style.width || 'auto',
+                        height: gameBoard.style.height || 'auto',
+                        aspectRatio: '1/1',
+                        transform: 'rotateX(35deg)'
+                    }
+                });
+                
+                if (bgImage) {
+                    const bgRect = bgImage.getBoundingClientRect();
+                    console.log('🖼️ .board-bg element:', {
+                        width: bgRect.width.toFixed(0),
+                        height: bgRect.height.toFixed(0),
+                        css: {
+                            objectFit: 'contain',
+                            objectPosition: 'center center',
+                            inset: '0'
+                        }
+                    });
+                    
+                    console.log('⚠️ 問題の可能性:', {
+                        containerVsBg: containerRect.width === bgRect.width ? '✅ 一致' : '❌ 不一致',
+                        naturalSize: bgImage.naturalWidth ? `${bgImage.naturalWidth}x${bgImage.naturalHeight}` : '未読み込み',
+                        computedStyle: getComputedStyle(bgImage).objectFit
+                    });
+                }
+                console.groupEnd();
+                
+                // 完全固定サイズ：679x679px
+                const PLAYMAT_WIDTH = 679;
+                const PLAYMAT_HEIGHT = 679;
+                
+                // 超シンプル：スケール = 1, オフセット = 0
+                const scale = 1;
+                const offsetX = 0;
+                const offsetY = 0;
+                
+                console.group('📊 完全固定サイズ（1:1直接マッピング）');
+                console.log('📦 Container:', `${containerRect.width.toFixed(0)}x${containerRect.height.toFixed(0)}`);
+                console.log('📺 Playmat:', `${PLAYMAT_WIDTH}x${PLAYMAT_HEIGHT}px (固定)`);
+                console.log('🎯 Scale Factor:', `${scale} (1:1直接マッピング)`);
+                console.log('📏 Offset:', `(${offsetX}, ${offsetY}) - オフセットなし`);
+                console.groupEnd();
+                
+                // シンプルにプレイマット座標データをそのまま使用
+                
+                // 各カードスロットの座標を変換
+                const transformedCoords = [];
+                for (const [key, coords] of Object.entries(map)) {
+                    const element = boardEl.querySelector(`.${key}`);
+                    if (!element) {
+                        console.warn(`❌ Element not found: ${key}`);
+                        continue;
+                    }
+                    
+                    // 直接ピクセルマッピング（計算なし）
+                    const htmlX = coords.x;  // 直接
+                    const htmlY = coords.y;  // 直接
+                    const htmlWidth = coords.width;   // 直接
+                    const htmlHeight = coords.height; // 直接
+                    
+                    // 変換結果の妥当性チェック
+                    if (htmlWidth < 10 || htmlHeight < 10) {
+                        console.warn(`⚠️ Suspiciously small size for ${key}: ${htmlWidth.toFixed(1)}x${htmlHeight.toFixed(1)}`);
+                    }
+                    if (htmlX < 0 || htmlY < 0 || htmlX > containerRect.width || htmlY > containerRect.height) {
+                        console.warn(`⚠️ Coordinates out of bounds for ${key}: (${htmlX.toFixed(1)}, ${htmlY.toFixed(1)})`);
+                    }
+                    
+                    transformedCoords.push({key, htmlX, htmlY, htmlWidth, htmlHeight});
+                    
+                    // CSSプロパティを設定（left/topは左上原点基準）
+                    element.style.position = 'absolute';
+                    element.style.left = `${htmlX}px`;
+                    element.style.top = `${htmlY}px`;
+                    element.style.width = `${htmlWidth}px`;
+                    element.style.height = `${htmlHeight}px`;
+                    element.style.display = 'block';
+                    element.style.opacity = '1';
+                    
+                    // 直接マッピングのデバッグ情報
+                    console.log(`📍 ${key}: (${coords.x},${coords.y}) → (${htmlX},${htmlY}) ${htmlWidth}x${htmlHeight} [直接マッピング]`);
+                    
+                    // デバッグラベルの更新（より詳細な情報）
+                    const existingDebug = element.querySelector('.debug-info');
+                    if (existingDebug) {
+                        existingDebug.innerHTML = `<strong>${key}</strong><br/>JSON: (${coords.x},${coords.y})<br/>HTML: (${htmlX},${htmlY})<br/>Size: ${htmlWidth}x${htmlHeight}<br/>1:1直接`;
+                    } else {
+                        const debugInfo = document.createElement('div');
+                        debugInfo.className = 'debug-info';
+                        debugInfo.style.cssText = `
+                            position: absolute;
+                            top: 2px;
+                            left: 2px;
+                            font-size: 8px;
+                            color: white;
+                            background: rgba(0,0,0,0.9);
+                            padding: 3px 5px;
+                            border-radius: 3px;
+                            pointer-events: none;
+                            line-height: 1.3;
+                            z-index: 1000;
+                            font-family: monospace;
+                        `;
+                        debugInfo.innerHTML = `<strong>${key}</strong><br/>JSON: (${coords.x},${coords.y})<br/>HTML: (${htmlX},${htmlY})<br/>Size: ${htmlWidth}x${htmlHeight}<br/>1:1直接`;
+                        element.appendChild(debugInfo);
+                    }
+                }
+                
+                console.log(`📊 変換完了: ${transformedCoords.length}個のスロット`);
+            }
+
+            function updateDeckHeight(deckElement, cardCount) {
+                if (!deckElement) return;
+                const stack = deckElement.querySelector('.deck-stack');
+                if (!stack) return;
+                
+                // Calculate height based on card count (max 60 cards, max 20px height)
+                const maxHeight = 20;
+                const height = Math.min(maxHeight, Math.max(2, cardCount * 0.3));
+                
+                // Update the pseudo-elements for stacking effect
+                const before = stack.style;
+                before.setProperty('--deck-height', `${height}px`);
+            }
+
+            function updateLayout(){
+                applyCoords(coordsSelf, playerBoards.self);
+                applyCoords(coordsOpp, playerBoards.opponent);
+                
+                // Apply shared coordinates (stadium) to the game board directly
+                if (coordsShared && gameBoard) {
+                    applyCoords(coordsShared, gameBoard);
+                }
+                
+                // Update deck heights (placeholder - will be updated when integrated with game state)
+                const playerDeck = playerBoards.self?.querySelector('.deck-container');
+                const opponentDeck = playerBoards.opponent?.querySelector('.deck-container');
+                updateDeckHeight(playerDeck, 40); // Example count
+                updateDeckHeight(opponentDeck, 35); // Example count
+            }
+
+            // 初期化処理：背景画像とDOMの準備完了を待つ
+            function initializeLayout() {
+                console.log('🚀 Initializing playmat layout...');
+                
+                // RequestAnimationFrameで次の描画フレームを待つ（ベストプラクティス）
+                requestAnimationFrame(() => {
+                    updateLayout();
+                    console.log('✅ Playmat layout initialization completed');
+                });
+            }
+
+            // 背景画像の状態を確認してレイアウト開始
+            if (bgImage) {
+                if (bgImage.complete && bgImage.naturalHeight > 0) {
+                    // 画像が既に読み込み済み
+                    console.log('📸 Playmat image already loaded');
+                    initializeLayout();
+                } else {
+                    // 画像の読み込み完了を待つ
+                    console.log('⏳ Waiting for playmat image to load...');
+                    bgImage.addEventListener('load', () => {
+                        console.log('📸 Playmat image loaded successfully');
+                        initializeLayout();
+                    }, { once: true });
+                    
+                    bgImage.addEventListener('error', () => {
+                        console.error('❌ Failed to load playmat image');
+                        initializeLayout(); // 画像なしでも配置は実行
+                    }, { once: true });
+                }
+            } else {
+                console.warn('⚠️ Background image element not found');
+                initializeLayout();
+            }
+            
+            // リサイズ時の処理（デバウンス付き）
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    console.log('🔄 Window resized, updating layout...');
+                    updateLayout();
+                }, 100);
+            });
+        });
+    </script>
     <script src="js/main.js" type="module"></script>
 </body>
 </html>

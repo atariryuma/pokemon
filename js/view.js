@@ -100,19 +100,47 @@ export class View {
             }
         }
 
-        // Prize Cards
+        // Prize Cards: desired layout is three vertical cards (front),
+        // with another three behind them peeking out from the front card's left-bottom.
         const prizeContainer = boardElement.querySelector('.prizes');
         if (prizeContainer) {
             prizeContainer.innerHTML = '';
+            prizeContainer.style.position = 'relative';
             const six = [...prize, ...new Array(Math.max(0, 6 - prize.length)).fill(null)].slice(0, 6);
-            six.forEach((card, index) => {
-                const isFaceDown = !!card; // keep facedown visual for existing prizes
-                const el = this._createCardElement(card, playerType, 'prize', index, isFaceDown);
-                el.style.position = 'absolute';
-                el.style.top = `${index * 10}px`;
-                el.style.left = `${index * 5}px`;
-                prizeContainer.appendChild(el);
-            });
+            const rowTopPct = [0, 34, 68]; // three vertical slots within the prizes area
+            const cardWidthPct = 100; // occupy the prize slot width
+            const backOffset = { x: -5, y: 6 }; // back card peeks from left-bottom
+
+            for (let row = 0; row < 3; row++) {
+                // Front card for this row
+                const frontIdx = row; // first three as front
+                const front = six[frontIdx];
+                const frontEl = this._createCardElement(front, playerType, 'prize', frontIdx, !!front);
+                frontEl.style.position = 'absolute';
+                frontEl.style.width = `${cardWidthPct}%`;
+                frontEl.style.height = 'auto';
+                frontEl.style.aspectRatio = '120 / 168';
+                frontEl.style.left = '0%';
+                frontEl.style.top = `${rowTopPct[row]}%`;
+                frontEl.style.zIndex = '10';
+                prizeContainer.appendChild(frontEl);
+
+                // Back card for this row (if any)
+                const backIdx = row + 3;
+                const back = six[backIdx];
+                const backEl = this._createCardElement(back, playerType, 'prize', backIdx, !!back);
+                backEl.style.position = 'absolute';
+                backEl.style.width = `${cardWidthPct}%`;
+                backEl.style.height = 'auto';
+                backEl.style.aspectRatio = '120 / 168';
+                backEl.style.left = '0%';
+                backEl.style.top = `${rowTopPct[row]}%`;
+                backEl.style.zIndex = '5';
+                // Subtle offset so it peeks from the left-bottom of the front card.
+                // Note: opponent board is rotated 180deg, so this naturally appears reversed for them.
+                backEl.style.transform = `translate(${backOffset.x}%, ${backOffset.y}%)`;
+                prizeContainer.appendChild(backEl);
+            }
         }
 
         // Deck

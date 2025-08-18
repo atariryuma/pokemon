@@ -1,0 +1,277 @@
+{
+  "image_size": {
+    "width": 679,
+    "height": 679
+  },
+  "slot_count": 14,
+  "avg_aspect_ratio_h_over_w": 1.3955942243613477,
+  "slots": [
+    {
+      "id": "slot_01",
+      "bbox": {
+        "x_min": 149,
+        "y_min": 548,
+        "x_max": 222,
+        "y_max": 650
+      },
+      "center": {
+        "x": 185.5,
+        "y": 599.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row"
+    },
+    {
+      "id": "slot_02",
+      "bbox": {
+        "x_min": 231,
+        "y_min": 548,
+        "x_max": 304,
+        "y_max": 650
+      },
+      "center": {
+        "x": 267.5,
+        "y": 599.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row"
+    },
+    {
+      "id": "slot_03",
+      "bbox": {
+        "x_min": 310,
+        "y_min": 548,
+        "x_max": 383,
+        "y_max": 650
+      },
+      "center": {
+        "x": 346.5,
+        "y": 599.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row"
+    },
+    {
+      "id": "slot_04",
+      "bbox": {
+        "x_min": 389,
+        "y_min": 548,
+        "x_max": 462,
+        "y_max": 650
+      },
+      "center": {
+        "x": 425.5,
+        "y": 599.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row"
+    },
+    {
+      "id": "slot_05",
+      "bbox": {
+        "x_min": 469,
+        "y_min": 549,
+        "x_max": 542,
+        "y_max": 651
+      },
+      "center": {
+        "x": 505.5,
+        "y": 600.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "bottom bench row"
+    },
+    {
+      "id": "slot_06",
+      "bbox": {
+        "x_min": 564,
+        "y_min": 520,
+        "x_max": 636,
+        "y_max": 623
+      },
+      "center": {
+        "x": 600.0,
+        "y": 571.5
+      },
+      "size": {
+        "width": 73,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.4246575342465753,
+      "region_hint": "bottom-right (Deck/Trash area)"
+    },
+    {
+      "id": "slot_07",
+      "bbox": {
+        "x_min": 43,
+        "y_min": 178,
+        "x_max": 116,
+        "y_max": 280
+      },
+      "center": {
+        "x": 79.5,
+        "y": 229.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "left edge"
+    },
+    {
+      "id": "slot_08",
+      "bbox": {
+        "x_min": 564,
+        "y_min": 399,
+        "x_max": 636,
+        "y_max": 501
+      },
+      "center": {
+        "x": 600.0,
+        "y": 450.0
+      },
+      "size": {
+        "width": 73,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.4109589041095891,
+      "region_hint": "right edge"
+    },
+    {
+      "id": "slot_09",
+      "bbox": {
+        "x_min": 134,
+        "y_min": 22,
+        "x_max": 207,
+        "y_max": 124
+      },
+      "center": {
+        "x": 170.5,
+        "y": 73.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "top bench row"
+    },
+    {
+      "id": "slot_10",
+      "bbox": {
+        "x_min": 216,
+        "y_min": 22,
+        "x_max": 289,
+        "y_max": 124
+      },
+      "center": {
+        "x": 252.5,
+        "y": 73.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "top bench row"
+    },
+    {
+      "id": "slot_11",
+      "bbox": {
+        "x_min": 295,
+        "y_min": 22,
+        "x_max": 368,
+        "y_max": 124
+      },
+      "center": {
+        "x": 331.5,
+        "y": 73.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "top bench row"
+    },
+    {
+      "id": "slot_12",
+      "bbox": {
+        "x_min": 374,
+        "y_min": 22,
+        "x_max": 447,
+        "y_max": 124
+      },
+      "center": {
+        "x": 410.5,
+        "y": 73.0
+      },
+      "size": {
+        "width": 74,
+        "height": 103
+      },
+      "aspect_ratio_h_over_w": 1.3918918918918919,
+      "region_hint": "top bench row"
+    },
+    {
+      "id": "slot_13",
+      "bbox": {
+        "x_min": 454,
+        "y_min": 24,
+        "x_max": 527,
+        "y_max": 125
+      },
+      "center": {
+        "x": 490.5,
+        "y": 74.5
+      },
+      "size": {
+        "width": 74,
+        "height": 102
+      },
+      "aspect_ratio_h_over_w": 1.3783783783783783,
+      "region_hint": "top bench row"
+    },
+    {
+      "id": "slot_14",
+      "bbox": {
+        "x_min": 43,
+        "y_min": 56,
+        "x_max": 116,
+        "y_max": 159
+      },
+      "center": {
+        "x": 79.5,
+        "y": 107.5
+      },
+      "size": {
+        "width": 74,
+        "height": 104
+      },
+      "aspect_ratio_h_over_w": 1.4054054054054055,
+      "region_hint": "top-left (Deck/Trash area)"
+    }
+  ],
+  "notes": "Coordinates are pixel-based with origin at top-left of the image provided."
+}
