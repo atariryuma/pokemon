@@ -74,18 +74,15 @@ export class SetupManager {
    */
   async shuffleDeckAnimation(deckElement) {
     return new Promise(resolve => {
-      deckElement.classList.add('animate-shuffle');
-      
       // シャッフルエフェクト（3回震わせる）
       let shakeCount = 0;
       const shakeInterval = setInterval(() => {
         deckElement.style.transform = `translateX(${Math.random() * 6 - 3}px) translateY(${Math.random() * 6 - 3}px)`;
         shakeCount++;
-        
+
         if (shakeCount >= 6) {
           clearInterval(shakeInterval);
           deckElement.style.transform = '';
-          deckElement.classList.remove('animate-shuffle');
           resolve();
         }
       }, 100);
