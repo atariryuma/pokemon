@@ -35,7 +35,8 @@ export class View {
         this.phaseIndicator = document.getElementById('phase-indicator');
         this.turnIndicator = document.getElementById('turn-indicator');
         this.currentPlayer = document.getElementById('current-player');
-        this.confirmSetupButton = document.getElementById('confirm-setup-button');
+        this.confirmSetupButton = document.getElementById('confirm-initial-pokemon-button');
+        this.initialPokemonSelectionUI = document.getElementById('initial-pokemon-selection');
         
         // Setup Progress Elements
         this.activeStatus = document.getElementById('active-status');
@@ -522,6 +523,19 @@ export class View {
                 button.classList.add('hidden');
             }
         });
+        this.hideInitialPokemonSelectionUI();
+    }
+
+    showInitialPokemonSelectionUI() {
+        if (this.initialPokemonSelectionUI) {
+            this.initialPokemonSelectionUI.classList.remove('hidden');
+        }
+    }
+
+    hideInitialPokemonSelectionUI() {
+        if (this.initialPokemonSelectionUI) {
+            this.initialPokemonSelectionUI.classList.add('hidden');
+        }
     }
 
     // Game Status Panel

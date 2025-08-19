@@ -297,23 +297,29 @@ export class Game {
         switch (this.state.phase) {
             case GAME_PHASES.SETUP:
             case GAME_PHASES.INITIAL_POKEMON_SELECTION:
-                this.view.showActionButtons(['confirm-setup-button']);
+                this.view.showGameMessage(this.state.prompt.message);
+                this.view.showActionButtons(['confirm-initial-pokemon-button']);
+                this.view.showInitialPokemonSelectionUI();
                 // バトルポケモンが選択されていない場合はボタンを無効化
-                const confirmButton = document.getElementById('confirm-setup-button');
+                const confirmButton = document.getElementById('confirm-initial-pokemon-button');
                 if (confirmButton) {
-                    if (this.state.players.player.active) {
+                    const playerActive = this.state.players.player.active;
+                    const hasBasicPokemonInActive = playerActive && playerActive.card_type === 'Pokémon' && playerActive.stage === 'BASIC';
+
+                    if (hasBasicPokemonInActive) {
                         confirmButton.disabled = false;
                         confirmButton.textContent = '確定';
                         confirmButton.classList.remove('opacity-50', 'cursor-not-allowed');
                     } else {
                         confirmButton.disabled = true;
-                        confirmButton.textContent = 'バトル場にポケモンを配置してください';
+                        confirmButton.textContent = 'バトル場にたねポケモンを配置してください';
                         confirmButton.classList.add('opacity-50', 'cursor-not-allowed');
                     }
                 }
                 break;
 
             case GAME_PHASES.PLAYER_DRAW:
+                this.view.hideInitialPokemonSelectionUI();
                 this.view.showGameMessage(this.state.prompt.message);
                 break;
 
