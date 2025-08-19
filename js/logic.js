@@ -93,6 +93,7 @@ export function drawCard(state, player) {
             ...state,
             phase: 'game-over',
             winner: player === 'player' ? 'cpu' : 'player',
+            gameEndReason: 'deck_out',
         };
     }
 
@@ -432,10 +433,10 @@ export function takePrizeCard(state, player, prizeIndex) {
 export function checkForWinner(state) {
     // Check prize card condition
     if (state.players.player.prizeRemaining <= 0) {
-        return { ...state, phase: 'game-over', winner: 'player' };
+        return { ...state, phase: 'game-over', winner: 'player', gameEndReason: 'prizes' };
     }
     if (state.players.cpu.prizeRemaining <= 0) {
-        return { ...state, phase: 'game-over', winner: 'cpu' };
+        return { ...state, phase: 'game-over', winner: 'cpu', gameEndReason: 'prizes' };
     }
 
     // Check if a player has no pokemon left in play (active or bench)
@@ -443,10 +444,10 @@ export function checkForWinner(state) {
     const isCpuOutOfPokemon = !state.players.cpu.active && state.players.cpu.bench.every(p => p === null);
 
     if (isPlayerOutOfPokemon) {
-        return { ...state, phase: 'game-over', winner: 'cpu' };
+        return { ...state, phase: 'game-over', winner: 'cpu', gameEndReason: 'no_pokemon' };
     }
     if (isCpuOutOfPokemon) {
-        return { ...state, phase: 'game-over', winner: 'player' };
+        return { ...state, phase: 'game-over', winner: 'player', gameEndReason: 'no_pokemon' };
     }
 
     return state; // No winner yet

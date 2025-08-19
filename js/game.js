@@ -73,6 +73,11 @@ export class Game {
         this._updateUI();
         
         // Check for game end conditions
+        if (newState.phase === GAME_PHASES.GAME_OVER) {
+            this._handleGameOver(newState.winner, newState.gameEndReason);
+            return;
+        }
+
         const gameEndCheck = this.phaseManager.shouldEndGame(newState);
         if (gameEndCheck) {
             this._handleGameOver(gameEndCheck.winner, gameEndCheck.reason);
