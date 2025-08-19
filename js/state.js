@@ -101,19 +101,32 @@ export function createInitialState() {
  * ゲーム状態のディープクローン
  */
 export function cloneGameState(state) {
-    // 基本プロパティが欠けていてもゲームが進行できるように補完
-    const cloned = JSON.parse(JSON.stringify(state || {}));
+    // JSON.parse(JSON.stringify(...)) では手札配列が意図せず消失するケースがあったため
+    // structuredClone を使用し、フォールバックとして JSON ベースのクローンも用意する
+    let cloned;
+    try {
+        cloned = structuredClone(state || {});
+    } catch (e) {
+        cloned = JSON.parse(JSON.stringify(state || {}));
+    }
 
     if (!Array.isArray(cloned.log)) {
         cloned.log = [];
     }
 
-    // players が消失した場合に備えて最低限の構造を補完
+    // players 構造の補完と手札配列の保護
     if (!cloned.players) {
         cloned.players = {
             player: createPlayerState(),
             cpu: createPlayerState(),
         };
+    }
+
+    if (!Array.isArray(cloned.players.player.hand)) {
+        cloned.players.player.hand = [];
+    }
+    if (!Array.isArray(cloned.players.cpu.hand)) {
+        cloned.players.cpu.hand = [];
     }
 
     return cloned;
