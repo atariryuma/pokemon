@@ -69,18 +69,16 @@ playerType: 'player' | 'cpu'
 
 ## 🎴 ゾーン識別子 (Zone Identifiers)
 
-### ゲームゾーン
-```javascript
-const ZONES = {
-  HAND: 'hand',
-  DECK: 'deck',
-  ACTIVE: 'active',
-  BENCH: 'bench',
-  DISCARD: 'discard',
-  PRIZE: 'prize',
-  STADIUM: 'stadium'
-};
-```
+ゲーム内の各ゾーンは、コード内で文字列リテラルとして識別されます。
+
+### ゾーン名
+- `hand`
+- `deck`
+- `active`
+- `bench`
+- `discard`
+- `prize`
+- `stadium`
 
 ### データ構造でのマッピング
 ```javascript
@@ -110,10 +108,10 @@ PlayerState = {
 .top-bench-1, .top-bench-2, .top-bench-3, .top-bench-4, .top-bench-5              /* CPU側 */
 ```
 
-### サイドカード (3枚表示)
+### サイドカード (6枚表示)
 ```css
-.side-left-1, .side-left-2, .side-left-3   /* プレイヤー側 */
-.side-right-1, .side-right-2, .side-right-3 /* CPU側 */
+.side-left .card-slot:nth-child(1) ... :nth-child(6)   /* プレイヤー側 */
+.side-right .card-slot:nth-child(1) ... :nth-child(6) /* CPU側 */
 ```
 
 ### デッキ・トラッシュ
@@ -124,7 +122,7 @@ PlayerState = {
 
 ### 共通要素
 ```css
-.stadium-zone      /* スタジアムカード */
+.stadium-slot      /* スタジアムカード */
 .deck-container    /* デッキスタッキング効果用 */
 .side-cards-container  /* サイドカードスタッキング効果用 */
 ```
@@ -290,51 +288,141 @@ PlayerState = {
 ### ロジック関数 (logic.js)
 ```javascript
 // カード移動
-export function playBasicToBench(state, playerId, cardId)
+export function placeCardInActive(state, player, cardId)
+export function placeCardOnBench(state, player, cardId, benchIndex)
 export function evolvePokemon(state, playerId, baseId, evolveId)
 export function attachEnergy(state, playerId, energyId, pokemonId)
+export function retreat(state, player, fromActiveId, toBenchIndex)
+export function promoteToActive(state, player, benchIndex)
+export function takePrizeCard(state, player, prizeIndex)
 
 // ゲーム処理
-export function performAttack(state, attackerId, attackIndex)
+export function performAttack(state, attackingPlayerId, attackIndex)
 export function checkForKnockout(state, defendingPlayerId)
 export function checkForWinner(state)
 
 // ユーティリティ
+export function findCardInHand(playerState, cardId)
 export function findPokemonById(playerState, pokemonId)
 export function hasEnoughEnergy(pokemon, attack)
-export function drawCard(state, playerId, count = 1)
+export function drawCard(state, playerId)
 ```
 
 ### View関数 (view.js)
 ```javascript
 // 描画
+render(state)
+_clearBoard()
 _renderBoard(boardElement, playerState, playerType, state)
-_createCardElement(card, playerType, zone, index)
-_renderPrizeArea(boardElement, prizes, playerType)
+_renderHand(handElement, hand, playerType)
+_renderPrizeArea(boardElement, prize, playerType)
+_renderStadium(state)
+_createCardElement(card, playerType, zone, index, isFaceDown)
 
 // UI制御
+bindCardClick(handler)
+setConfirmSetupButtonHandler(handler)
+showModal({ title, body, actions })
+hideModal()
 showGameMessage(message)
 hideGameMessage()
+showErrorMessage(message)
+showActionButtons(buttonsToShow)
+hideActionButtons()
+showInitialPokemonSelectionUI()
+hideInitialPokemonSelectionUI()
 updateGameStatus(state)
 updateSetupProgress(state)
+updateStatusTitle(title)
+updateStatusMessage(message)
 
-// イベント
-setCardClickHandler(handler)
+// イベント・ハイライト
+_makeSlotClickable(slotElement, zone, index)
+_initHandDock()
+_positionHandAgainstBoard(desiredOverlapPx)
+_getDesiredHandGap()
+_updateHandContainerHeight()
+_debugZOrder()
 showCardInfo(card, targetElement)
+hideCardInfo()
+_generateCardInfoHtml(card)
 ```
 
 ### ターン管理 (turn-manager.js)
 ```javascript
-// ターン制御
+// クラス: TurnManager
+constructor()
 startPlayerTurn(state)
+handlePlayerDraw(state)
+handlePlayerMainPhase(state, action, actionData)
+handlePlayBasicPokemon(state, { cardId, benchIndex })
+handleAttachEnergy(state, { energyId, pokemonId })
+handleUseTrainer(state, { cardId, trainerType })
+handleRetreat(state, { fromActiveId, toBenchIndex })
+handleAttackDeclaration(state, { attackIndex })
+executeAttack(state)
 endPlayerTurn(state)
 startCpuTurn(state)
+executeCpuTurn(state)
+cpuPromoteToActive(state)
+cpuPlayBasicPokemon(state)
+cpuAttachEnergy(state)
+cpuCanAttack(state)
+cpuPerformAttack(state)
 endCpuTurn(state)
+processSpecialConditions(state, playerId)
+animateCardDraw(playerId)
+animateAttack(attackerId, state)
+animateEnergyAttachment(playerId)
+simulateCpuThinking(baseTime)
+getTurnActions()
+reset()
+```
 
-// アクション処理
-handleAttackDeclaration(state, {attackIndex})
-executeAttack(state)
-handleCardPlay(state, {cardId, targetSlot})
+### アニメーション管理 (animations.js)
+```javascript
+// クラス: AnimationManager
+constructor()
+animateDealCards(cardElements, staggerDelay)
+animateDrawCard(cardElement)
+animateDealCardsNoFade(cardElements, staggerDelay)
+animateInitialHandDeal(cardElements, staggerDelay)
+animatePrizeDeal(elements, staggerDelay)
+animatePlayCard(cardElement, fromPosition, toPosition)
+animateSmoothCardMove(cardElement, fromContainer, toContainer, animationType)
+animateAttack(attackerElement, defenderElement)
+animateHPDamage(hpElement)
+animateKnockout(pokemonElement)
+animateEnergyAttach(energyElement, targetElement)
+highlightCard(cardElement)
+unhighlightCard(cardElement)
+highlightSlot(slotElement, type)
+unhighlightSlot(slotElement, type)
+clearAllHighlights()
+animateMessage(messageElement)
+animateError(messageElement)
+animateHandEntry(cardElements)
+animateModalShow(modalElement)
+animateModalHide(modalElement)
+animateEvolution(pokemonElement, evolutionCard)
+animateSpecialCondition(pokemonElement, condition)
+flipCardFaceUp(cardElement, newImageSrc)
+animateAdvancedAttack(attackerElement, defenderElement, attackType)
+clearAllAnimations()
+getElementPosition(element)
+destroy()
+
+// プライベートメソッド (内部使用)
+_getConditionIcon(condition)
+_createDefaultAttackEffect(container, attackerRect, defenderRect)
+_animateDamageImpact(defenderElement)
+_createLightningEffect(container, attackerRect, defenderRect) // 例: 未実装
+_createFireEffect(container, attackerRect, defenderRect)     // 例: 未実装
+_createWaterEffect(container, attackerRect, defenderRect)    // 例: 未実装
+_createGrassEffect(container, attackerRect, defenderRect)    // 例: 未実装
+addAnimationClass(element, className)
+removeAnimationClass(element, className)
+waitForAnimation(element, animationName, callback)
 ```
 
 ---
@@ -354,6 +442,9 @@ handleCardPlay(state, {cardId, targetSlot})
 .animate-fade-in        /* フェードイン */
 .animate-slide-in-bottom /* 下からスライド */
 .animate-evolution      /* 進化 */
+.animate-deal-card-nofade /* フェードなし配布 */
+.animate-evolution-placement /* 進化配置 */
+.error-message          /* エラーメッセージ */
 ```
 
 ### 状態表示クラス
@@ -361,7 +452,6 @@ handleCardPlay(state, {cardId, targetSlot})
 .card-selected          /* 選択中カード */
 .slot-highlight         /* スロットハイライト */
 .energy-target-highlight /* エネルギー対象ハイライト */
-.error-message          /* エラーメッセージ */
 ```
 
 ---
