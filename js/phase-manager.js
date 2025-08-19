@@ -195,14 +195,6 @@ export class PhaseManager {
       };
     }
     
-    // 山札切れ条件
-    if (state.players.player.deck.length === 0 || state.players.cpu.deck.length === 0) {
-      return {
-        winner: state.players.player.deck.length === 0 ? 'cpu' : 'player',
-        reason: 'deck_out'
-      };
-    }
-    
     return null;
   }
 
