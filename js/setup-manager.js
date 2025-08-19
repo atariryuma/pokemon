@@ -141,16 +141,16 @@ export class SetupManager {
     const cpuHand = document.getElementById('cpu-hand');
 
     if (playerHand) {
-      const playerCards = Array.from(playerHand.children);
+      const playerCards = Array.from(playerHand.querySelectorAll('.relative'));
       if (playerCards.length > 0) {
-        await animationManager.animateDealCards(playerCards, 200);
+        await animationManager.animateInitialHandDeal(playerCards, 200);
       }
     }
 
     if (cpuHand) {
-      const cpuCards = Array.from(cpuHand.children);
+      const cpuCards = Array.from(cpuHand.querySelectorAll('.relative'));
       if (cpuCards.length > 0) {
-        await animationManager.animateDealCards(cpuCards, 200);
+        await animationManager.animateInitialHandDeal(cpuCards, 200);
       }
     }
   }
@@ -265,15 +265,9 @@ export class SetupManager {
       : document.getElementById('cpu-hand');
 
     if (handElement) {
-      // 手札を一旦フェードアウト
-      handElement.style.opacity = '0';
-      
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // 新しい手札をフェードイン
-      handElement.style.opacity = '1';
-      
-      const cards = Array.from(handElement.children);
+      // コンテナの不透明度は触らない（バグ原因のため）
+      // 新しい手札の入場のみをアニメーション
+      const cards = Array.from(handElement.querySelectorAll('.relative'));
       if (cards.length > 0) {
         await animationManager.animateHandEntry(cards);
       }
@@ -319,7 +313,7 @@ export class SetupManager {
     const allPrizes = [...Array.from(playerPrizes), ...Array.from(cpuPrizes)];
     
     if (allPrizes.length > 0) {
-      await animationManager.animateDealCards(allPrizes, 150);
+      await animationManager.animatePrizeDeal(allPrizes, 150);
     }
   }
 

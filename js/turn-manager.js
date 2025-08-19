@@ -600,8 +600,12 @@ export class TurnManager {
       ? document.getElementById('player-hand')
       : document.getElementById('cpu-hand');
 
-    if (handElement && handElement.lastElementChild) {
-      await animationManager.animateDrawCard(handElement.lastElementChild);
+    if (handElement) {
+      const cards = handElement.querySelectorAll('.relative');
+      const lastCard = cards.length ? cards[cards.length - 1] : null;
+      if (lastCard) {
+        await animationManager.animateDrawCard(lastCard);
+      }
     }
   }
 

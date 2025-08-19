@@ -779,7 +779,8 @@ export class Game {
         const promises = [];
 
         if (playerHand) {
-            const playerCards = Array.from(playerHand.children);
+            // Select actual card elements inside the hand (skip inner wrapper)
+            const playerCards = Array.from(playerHand.querySelectorAll('.relative'));
             console.log(`🎴 Player hand has ${playerCards.length} card elements`);
             
             // 各カード要素の詳細を確認
@@ -789,12 +790,12 @@ export class Game {
             });
             
             if (playerCards.length > 0) {
-                promises.push(animationManager.animateDealCards(playerCards, 200));
+                promises.push(animationManager.animateInitialHandDeal(playerCards, 200));
             }
         }
 
         if (cpuHand) {
-            const cpuCards = Array.from(cpuHand.children);
+            const cpuCards = Array.from(cpuHand.querySelectorAll('.relative'));
             console.log(`🎴 CPU hand has ${cpuCards.length} card elements`);
             
             // 各カード要素の詳細を確認
@@ -804,7 +805,7 @@ export class Game {
             });
             
             if (cpuCards.length > 0) {
-                promises.push(animationManager.animateDealCards(cpuCards, 200));
+                promises.push(animationManager.animateInitialHandDeal(cpuCards, 200));
             }
         }
 
@@ -842,7 +843,7 @@ export class Game {
         console.log(`🏆 Animating ${prizeCards.length} prize card elements`);
         
         if (prizeCards.length > 0) {
-            await animationManager.animateDealCards(prizeCards, 150);
+            await animationManager.animatePrizeDeal(prizeCards, 150);
         } else {
             console.warn('⚠️ No prize card elements found for animation');
         }

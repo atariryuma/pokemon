@@ -47,19 +47,22 @@ export class AnimationManager {
         setTimeout(() => {
           // カード要素が確実に見えるようにする
           if (element) {
+            // 対象は可能なら内側の画像要素に限定（親のscale等と干渉しないため）
+            const target = element.querySelector('img') || element;
             // アニメーション前に要素を完全に表示状態にする
             element.style.opacity = '1';
             element.style.visibility = 'visible';
             element.style.display = 'flex';
-            element.style.transform = 'none'; // 初期transformをリセット
-            
+
             // 子要素のimg要素も確実に見えるようにする
             const img = element.querySelector('img');
             if (img) {
-              img.style.opacity = '1';
+              img.classList.add('is-animating'); // make hidden via CSS
               img.style.visibility = 'visible';
               img.style.display = 'block';
             }
+            // 親のtransform（ドックのscale等）は維持し、アニメは内側に適用
+            target.style.transform = 'none';
             
             // 強制的に再描画をトリガー
             element.offsetHeight;
@@ -68,12 +71,19 @@ export class AnimationManager {
             console.log(`  Before animation - opacity: ${element.style.opacity}, visibility: ${element.style.visibility}`);
             
             // CSSアニメーションを開始（opacity: 0 → 1 のアニメーションを実行）
-            this.addAnimationClass(element, 'animate-deal-card');
-            this.waitForAnimation(element, 'dealCard', () => {
+            // Ensure starting opacity 0 via class if img
+            if (target.tagName && target.tagName.toLowerCase() === 'img') {
+              target.classList.add('is-animating');
+            }
+            this.addAnimationClass(target, 'animate-deal-card');
+            this.waitForAnimation(target, 'dealCard', () => {
               // アニメーション完了後に確実に表示状態を保証
               element.style.opacity = '1';
               element.style.visibility = 'visible';
-              element.style.transform = 'none';
+              target.style.transform = 'none';
+              if (target.tagName && target.tagName.toLowerCase() === 'img') {
+                target.classList.remove('is-animating');
+              }
               console.log(`✅ Animation completed for card ${index + 1}, final opacity: ${element.style.opacity}`);
               resolve();
             });
@@ -94,9 +104,71 @@ export class AnimationManager {
    */
   async animateDrawCard(cardElement) {
     return new Promise(resolve => {
-      this.addAnimationClass(cardElement, 'animate-draw-card');
-      this.waitForAnimation(cardElement, 'drawCard', resolve);
+      const target = cardElement?.querySelector('img') || cardElement;
+      if (!target) return resolve();
+      if (target.tagName && target.tagName.toLowerCase() === 'img') {
+        target.classList.add('is-animating');
+      }
+      this.addAnimationClass(target, 'animate-draw-card');
+      this.waitForAnimation(target, 'drawCard', () => {
+        if (target.tagName && target.tagName.toLowerCase() === 'img') {
+          target.classList.remove('is-animating');
+        }
+        resolve();
+      });
     });
+  }
+
+  /**
+   * 初回配布用（フェードなし）
+   */
+  async animateDealCardsNoFade(cardElements, staggerDelay = 100) {
+    const promises = cardElements.map((element, index) => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          if (element) {
+            const target = element.querySelector('img') || element;
+            // 表示状態を保証（不透明のまま）
+            element.style.opacity = '1';
+            element.style.visibility = 'visible';
+            element.style.display = 'flex';
+            if (target) {
+              target.style.opacity = '1';
+              target.style.visibility = 'visible';
+              target.style.display = 'block';
+            }
+            target.style.transform = 'none';
+
+            // 強制リフロー
+            element.offsetHeight;
+
+            this.addAnimationClass(target, 'animate-deal-card-nofade');
+            this.waitForAnimation(target, 'dealCardNoFade', () => {
+              target.style.transform = 'none';
+              resolve();
+            });
+          } else {
+            resolve();
+          }
+        }, index * staggerDelay);
+      });
+    });
+
+    return Promise.all(promises);
+  }
+  /**
+   * Wrapper: initial hand deal
+   */
+  async animateInitialHandDeal(cardElements, staggerDelay = 100) {
+    // 初回配布はフェードさせず、移動のみ
+    return this.animateDealCardsNoFade(cardElements, staggerDelay);
+  }
+
+  /**
+   * Wrapper: prize deal
+   */
+  async animatePrizeDeal(elements, staggerDelay = 100) {
+    return this.animateDealCards(elements, staggerDelay);
   }
   
   /**

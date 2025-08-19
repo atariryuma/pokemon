@@ -13,6 +13,7 @@ export class View {
 
         // Hand containers
         this.playerHand = document.getElementById('player-hand');
+        this.playerHandInner = document.getElementById('player-hand-inner');
         this.cpuHand = document.getElementById('cpu-hand');
 
         // Modal elements
@@ -47,6 +48,9 @@ export class View {
         
         // Message system
         this.createMessageContainer();
+
+        // Initialize Mac Dock–style magnification for player's hand
+        this._initHandDock();
     }
 
     bindCardClick(handler) {
@@ -119,11 +123,20 @@ export class View {
         this._clearBoard();
         this._renderBoard(this.playerBoard, state.players.player, 'player', state);
         this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu', state);
-        this._renderHand(this.playerHand, state.players.player.hand, 'player');
+        this._renderHand(this.playerHandInner || this.playerHand, state.players.player.hand, 'player');
         this._renderHand(this.cpuHand, state.players.cpu.hand, 'cpu');
         this._renderStadium(state);
-        
+
         console.log('✅ View.render() completed');
+
+        // Ensure previous dynamic height (if any) is cleared, rely on fixed CSS height
+        const hand = document.getElementById('player-hand');
+        if (hand) hand.style.height = '';
+        // Then adjust vertical position: default TCG style = slight gap below board
+        this._positionHandAgainstBoard(this._getDesiredHandGap());
+
+        // Debug Z-order once per render (sample)
+        this._debugZOrder();
     }
 
     _clearBoard() {
@@ -135,7 +148,11 @@ export class View {
         });
         
         // Clear hand areas
-        if (this.playerHand) this.playerHand.innerHTML = '';
+        if (this.playerHandInner) {
+            this.playerHandInner.innerHTML = '';
+        } else if (this.playerHand) {
+            this.playerHand.innerHTML = '';
+        }
         if (this.cpuHand) this.cpuHand.innerHTML = '';
         
         console.log('✅ Board cleared');
@@ -224,19 +241,36 @@ export class View {
     _renderHand(handElement, hand, playerType) {
         if (!handElement) return;
         const arr = Array.isArray(hand) ? hand : [];
+
+        // Clear existing cards before rendering new ones
+        handElement.innerHTML = '';
         
         console.log(`🃏 Rendering ${arr.length} cards for ${playerType} hand`);
         
         arr.forEach((card, index) => {
             const isFaceDown = playerType === 'cpu';
             const cardEl = this._createCardElement(card, playerType, 'hand', index, isFaceDown);
-            cardEl.classList.add('w-24', 'h-32', 'flex-shrink-0');
+            if (playerType === 'cpu') {
+                // CPU hand baseline size
+                cardEl.classList.add('w-20', 'h-28', 'flex-shrink-0');
+            } else {
+                // Match player's initial hand sizing to CPU hand
+                cardEl.classList.add('w-20', 'h-28', 'flex-shrink-0');
+            }
+            if (playerType === 'player') {
+                cardEl.classList.add('hand-card');
+                // default scale matches CPU hand (no shrink)
+                cardEl.style.transform = 'translateY(0) scale(1)';
+                // match CPU-like spacing (~4px gap between cards)
+                cardEl.style.marginLeft = '2px';
+                cardEl.style.marginRight = '2px';
+            }
             
             // 確実にカード要素が表示されるよう設定
             cardEl.style.opacity = '1';
             cardEl.style.visibility = 'visible';
             cardEl.style.display = 'flex';
-            cardEl.style.zIndex = '101'; // Make sure hand cards are above the overlay
+            cardEl.style.zIndex = '61'; // Ensure hand cards stack above board but below UI
             cardEl.style.position = 'relative';
             
             handElement.appendChild(cardEl);
@@ -249,6 +283,215 @@ export class View {
             // Force reflow
             handElement.offsetHeight;
             console.log(`✅ ${playerType} hand rendering completed: ${handElement.children.length} elements`);
+        }
+    }
+
+    /**
+     * Initialize Mac Dock–style proximity magnification for the player's hand.
+     */
+    _initHandDock() {
+        const container = document.getElementById('player-hand-inner') || document.getElementById('player-hand');
+        if (!container) return;
+
+        const RADIUS = 180;        // influence radius in px
+        const BASE_SCALE = 1.0;    // baseline equals CPU hand size
+        const MAX_SCALE = 1.3;     // expand larger than normal for clarity
+        const MAX_LIFT = 34;       // px translateY upwards at center
+        const BASE_GAP = 2;        // px default spacing per side (~CPU gap-x-1)
+        const MAX_GAP = 6;         // px spacing per side near cursor
+
+        let rafId = null;
+        let pendingX = null;
+
+        const resetAll = () => {
+            const cards = container.querySelectorAll('.hand-card');
+            cards.forEach(el => {
+                el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
+                el.style.marginLeft = `${BASE_GAP}px`;
+                el.style.marginRight = `${BASE_GAP}px`;
+                el.style.zIndex = '101';
+            });
+        };
+
+        const applyAt = (x) => {
+            const cards = container.querySelectorAll('.hand-card');
+            let maxScale = 0;
+            let maxEl = null;
+            cards.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const d = Math.abs(centerX - x);
+                const t = Math.max(0, 1 - d / RADIUS); // 0..1
+                const scale = BASE_SCALE + (MAX_SCALE - BASE_SCALE) * (t * t);
+                const lift = -MAX_LIFT * (t * t);
+                const gap = BASE_GAP + (MAX_GAP - BASE_GAP) * (t * t);
+                if (scale > 0) {
+                    el.style.transform = `translateY(${lift}px) scale(${scale.toFixed(3)})`;
+                }
+                el.style.marginLeft = `${gap}px`;
+                el.style.marginRight = `${gap}px`;
+                if (scale > maxScale) {
+                    maxScale = scale;
+                    maxEl = el;
+                }
+            });
+            // Raise stacking for the card closest to the cursor
+            cards.forEach(el => { el.style.zIndex = '61'; });
+            if (maxEl) maxEl.style.zIndex = '62';
+        };
+
+        const onMove = (e) => {
+            pendingX = e.clientX;
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                applyAt(pendingX);
+                rafId = null;
+            });
+        };
+
+        container.addEventListener('mousemove', onMove);
+        container.addEventListener('mouseleave', resetAll);
+        // Allow normal vertical page scroll while hovering hand (no interception)
+        // Touch support: tap to center magnify under finger, then reset on end
+        container.addEventListener('touchmove', (e) => {
+            if (!e.touches || e.touches.length === 0) return;
+            applyAt(e.touches[0].clientX);
+        }, { passive: true });
+        container.addEventListener('touchend', resetAll);
+
+        // Reposition on load and resize
+        window.addEventListener('load', () => this._positionHandAgainstBoard(this._getDesiredHandGap()));
+        window.addEventListener('resize', () => { 
+            this._positionHandAgainstBoard(this._getDesiredHandGap());
+        });
+    }
+
+    /**
+     * Adjust player's hand so that maximized cards graze the playmat bottom edge.
+     * @param {number} desiredOverlapPx - target overlap amount in pixels
+     */
+    _positionHandAgainstBoard(desiredOverlapPx = 12) {
+        try {
+            const board = document.getElementById('game-board');
+            const handInner = this.playerHandInner || document.getElementById('player-hand-inner');
+            if (!board || !handInner) return;
+
+            // Find a representative card to measure
+            const sampleCard = handInner.querySelector('.hand-card');
+            if (!sampleCard) return;
+
+            const boardRect = board.getBoundingClientRect();
+
+            // Reset to a known baseline before measurement to avoid cumulative drift
+            handInner.style.marginTop = '0px';
+            handInner.style.transform = 'translateY(0px)';
+            // Force reflow, then measure at baseline
+            // eslint-disable-next-line no-unused-expressions
+            handInner.offsetHeight;
+            const baseRect = sampleCard.getBoundingClientRect();
+
+            // Predict the top position when a card is at maximum magnification.
+            // Use the same constants as the dock behavior.
+            const BASE_SCALE = 1.0;
+            const MAX_SCALE = 1.3;
+            const MAX_LIFT = 34; // px
+
+            // current rect is for BASE_SCALE (collapsed). Extra height at max scale:
+            const scaleRatio = (MAX_SCALE / BASE_SCALE);
+            const extraHeight = baseRect.height * (scaleRatio - 1);
+            const predictedMaxTop = baseRect.top - extraHeight - MAX_LIFT;
+
+            // Target top position of the card at maximum scale.
+            // If desiredOverlapPx < 0 => treat as GAP below board of |value| pixels.
+            // If desiredOverlapPx > 0 => treat as OVERLAP into board of value pixels.
+            const isGap = desiredOverlapPx < 0;
+            const magnitude = Math.abs(desiredOverlapPx);
+            const targetTopAtMax = isGap
+                ? (boardRect.bottom + magnitude)   // gap below board
+                : (boardRect.bottom - magnitude);  // overlap into board
+            const delta = targetTopAtMax - predictedMaxTop; // positive -> push hand downward
+
+            if (Math.abs(delta) > 0.5) {
+                // Use translateY so we can move up (negative) or down (positive)
+                const clamped = Math.max(-480, Math.min(480, delta));
+                handInner.style.transform = `translateY(${clamped.toFixed(1)}px)`;
+            } else {
+                handInner.style.transform = 'translateY(0px)';
+            }
+        } catch (e) {
+            console.warn('Failed to position hand against board:', e);
+        }
+    }
+
+    /**
+     * Decide a pleasant default gap between playmat bottom and hand (negative px means gap).
+     * Adapts to viewport height: smaller screens use smaller gap.
+     */
+    _getDesiredHandGap() {
+        const h = window.innerHeight || 800;
+        if (h < 720) return -4;   // tighter on short viewports
+        if (h < 900) return -6;   // medium
+        return -8;                // roomy
+    }
+
+    /**
+     * Dynamically set #player-hand height to fit the tallest card at max magnification.
+     */
+    _updateHandContainerHeight() {
+        try {
+            const hand = document.getElementById('player-hand');
+            const handInner = this.playerHandInner || document.getElementById('player-hand-inner');
+            if (!hand || !handInner) return;
+
+            const sample = handInner.querySelector('.hand-card');
+            if (!sample) return;
+
+            // Use same dock constants
+            const BASE_SCALE = 1.0;
+            const MAX_SCALE = 1.3;
+            const MAX_LIFT = 34; // px
+
+            const rect = sample.getBoundingClientRect(); // current (base scale)
+            const scaleRatio = (MAX_SCALE / BASE_SCALE);
+            const maxHeight = rect.height * scaleRatio + MAX_LIFT + 12; // +12px breathing room
+
+            hand.style.height = `${Math.ceil(maxHeight)}px`;
+        } catch (e) {
+            console.warn('Failed to update hand container height:', e);
+        }
+    }
+
+    /**
+     * Dump key Z-order related computed styles for troubleshooting.
+     */
+    _debugZOrder() {
+        try {
+            const board = document.getElementById('game-board');
+            const hand = document.getElementById('player-hand');
+            const handInner = this.playerHandInner || document.getElementById('player-hand-inner');
+            const sampleHandCard = handInner?.querySelector('.hand-card');
+            const modal = document.getElementById('action-modal');
+
+            const info = (el, label) => el ? {
+                label,
+                z: getComputedStyle(el).zIndex,
+                pos: getComputedStyle(el).position,
+                transform: getComputedStyle(el).transform,
+                pointer: getComputedStyle(el).pointerEvents,
+                overflow: `${getComputedStyle(el).overflowX}/${getComputedStyle(el).overflowY}`
+            } : { label, missing: true };
+
+            console.group('Z-ORDER DEBUG');
+            console.table([
+                info(board, '#game-board'),
+                info(hand, '#player-hand'),
+                info(handInner, '#player-hand-inner'),
+                info(sampleHandCard, '.hand-card(sample)'),
+                info(modal, '#action-modal')
+            ]);
+            console.groupEnd();
+        } catch (e) {
+            console.warn('Z-ORDER DEBUG failed:', e);
         }
     }
 
@@ -326,6 +569,8 @@ export class View {
         const img = document.createElement('img');
         // Ensure proper CSS classes for visibility and sizing
         img.className = 'card-image w-full h-full object-contain rounded-lg'; // Change object-cover to object-contain
+        // Remove any stale animation-hidden class to avoid invisible cards
+        img.classList.remove('is-animating');
         img.style.aspectRatio = '74 / 103'; // Enforce aspect ratio
         img.dataset.dynamic = true;
         img.src = isFaceDown ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);

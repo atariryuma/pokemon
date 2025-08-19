@@ -77,12 +77,12 @@ export function getCardImagePath(cardNameEn) {
             "Metal": "Energy_Colorless" // Metal uses Colorless as fallback
         };
         const imageName = energyImageMap[energyType] || "Energy_Colorless";
-        return `assets/cards/energy/${imageName}.webp`;
+        return `assets/cards/energy/${imageName}.webp`; // Changed path
     }
 
     // ポケモンカード
     const fileName = specialNames[cardNameEn] || cardNameEn.replace(/ /g, '_');
-    return `assets/cards/pokemon/${fileName}.webp`;
+    return `assets/cards/pokemon/${fileName}.webp`; // Changed path
 }
 
 /**
@@ -121,38 +121,3 @@ export const nameTranslations = {
     "Metal Energy": "はがね エネルギー"
 };
 
-/**
- * 静的フォールバックデータ（簡略版）
- */
-function getStaticFallbackData() {
-    return [
-        {
-            "card_type": "Pokémon",
-            "name_en": "Akamayabato",
-            "name_ja": "アカメバト",
-            "stage": "BASIC",
-            "hp": 130,
-            "type": "Colorless",
-            "attacks": [{
-                "name_en": "Scratch",
-                "name_ja": "ひっかく",
-                "cost": ["Lightning"],
-                "damage": 90
-            }],
-            "weakness": { "type": "Darkness", "value": "×2" },
-            "retreat_cost": ["Colorless"]
-        },
-        {
-            "card_type": "Basic Energy",
-            "name_en": "Colorless Energy",
-            "name_ja": "無色 エネルギー",
-            "energy_type": "Colorless"
-        },
-        {
-            "card_type": "Basic Energy",
-            "name_en": "Fire Energy",
-            "name_ja": "ほのお エネルギー", 
-            "energy_type": "Fire"
-        }
-    ];
-}

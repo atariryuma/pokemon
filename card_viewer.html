@@ -301,39 +301,141 @@
 
     <script type="module">
         import { loadCardsFromJSON, getCardMasterList, getCardImagePath } from './js/data-manager.js';
-        
-        // カードデータを読み込み
-        await loadCardsFromJSON();
-        const cardMasterList = getCardMasterList();
 
+        let cardMasterList = [];
         let currentFilter = 'all';
         let currentSearch = '';
 
+        // Function to update statistics display
         function updateStats() {
             const totalCards = cardMasterList.length;
             const pokemonCount = cardMasterList.filter(card => card.card_type === 'Pokémon').length;
             const energyCount = cardMasterList.filter(card => card.card_type === 'Basic Energy').length;
+            const trainerCount = cardMasterList.filter(card => card.card_type === 'Trainer').length;
+
 
             document.getElementById('total-cards').textContent = totalCards;
             document.getElementById('pokemon-count').textContent = pokemonCount;
             document.getElementById('energy-count').textContent = energyCount;
+            // You might want to add a trainer count display as well
+            // document.getElementById('trainer-count').textContent = trainerCount;
         }
 
+        // Helper to format energy cost for display
         function formatEnergyCost(cost) {
-            if (!cost || !Array.isArray(cost)) return '無し';
+            if (!cost || !Array.isArray(cost) || cost.length === 0) return '無し';
+            // Assuming cost is an array of strings like ["Colorless", "Fire"]
+            // You might want to map these to symbols or images later
             return cost.join(', ');
         }
 
+        // Function to create a single card HTML element
         function createCardElement(card) {
             const cardDiv = document.createElement('div');
             cardDiv.className = 'card-display';
             cardDiv.setAttribute('data-type', card.card_type);
 
-            const typeClass = card.card_type === 'Pokémon' ? 'type-pokemon' : 'type-energy';
+            let typeClass = '';
+            if (card.card_type === 'Pokémon') {
+                typeClass = 'type-pokemon';
+            } else if (card.card_type === 'Basic Energy') { // Changed from 'Energy' to 'Basic Energy'
+                typeClass = 'type-energy';
+            } else if (card.card_type === 'Trainer') {
+                typeClass = 'type-trainer'; // Add CSS for trainer type if needed
+            }
+
+
+            // Determine image source and alt text
+            const imgSrc = getCardImagePath(card.name_en);
+            const imgAlt = card.name_ja;
+
+            let detailsHtml = '';
+            if (card.card_type === 'Pokémon') {
+                detailsHtml = `
+                    <div class="detail-row">
+                        <span class="detail-label">ステージ</span>
+                        <span class="detail-value">${card.stage || '不明'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">HP</span>
+                        <span class="detail-value hp-value">${card.hp || '不明'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">タイプ</span>
+                        <span class="detail-value">${card.type || '不明'}</span> <!-- Changed from card.types to card.type -->
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">弱点</span>
+                        <span class="detail-value">${card.weakness ? `${card.weakness.type} ${card.weakness.value}` : '無し'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">抵抗力</span>
+                        <span class="detail-value">${card.resistance ? `${card.resistance.type} ${card.resistance.value}` : '無し'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">逃げるコスト</span>
+                        <span class="detail-value">${'⚪'.repeat(card.retreat_cost ? card.retreat_cost.length : 0)}</span> <!-- Corrected for array length -->
+                    </div>
+                    ${card.ability ? `
+                        <div class="attacks-list">
+                            <div class="detail-label" style="margin-bottom: 10px;">特性</div>
+                            <div class="attack-item">
+                                <div class="attack-name">${card.ability.name_ja || card.ability.name_en}</div>
+                                <div style="font-size: 0.85em; margin-top: 5px; color: #666;">${card.ability.effect_ja || card.ability.effect_en}</div> <!-- Changed to effect_ja/en -->
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${card.attacks && card.attacks.length > 0 ? `
+                        <div class="attacks-list">
+                            <div class="detail-label" style="margin-bottom: 10px;">ワザ</div>
+                            ${card.attacks.map(attack => `
+                                <div class="attack-item">
+                                    <div class="attack-name">${attack.name_ja || attack.name_en}</div>
+                                    <div class="attack-cost">コスト: ${formatEnergyCost(attack.cost)}</div>
+                                    <div style="font-weight: bold; color: #e74c3c;">ダメージ: ${attack.damage !== undefined ? attack.damage : '効果のみ'}</div>
+                                    ${attack.effect_ja ? `<div style="font-size: 0.85em; margin-top: 5px; color: #666;">${attack.effect_ja}</div>` : ''} <!-- Changed to effect_ja -->
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                `;
+            } else if (card.card_type === 'Basic Energy') { // Changed from 'Energy' to 'Basic Energy'
+                detailsHtml = `
+                    <div class="detail-row">
+                        <span class="detail-label">エネルギータイプ</span>
+                        <span class="detail-value">${card.energy_type || '不明'}</span>
+                    </div>
+                    <!-- Removed is_basic check as it's not in cards-master.json -->
+                    ${card.effect_ja ? ` <!-- Changed from text_ja to effect_ja -->
+                        <div class="attacks-list">
+                            <div class="detail-label" style="margin-bottom: 10px;">効果</div>
+                            <div class="attack-item">
+                                <div style="font-size: 0.85em; margin-top: 5px; color: #666;">${card.effect_ja}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+            } else if (card.card_type === 'Trainer') {
+                detailsHtml = `
+                    <div class="detail-row">
+                        <span class="detail-label">トレーナータイプ</span>
+                        <span class="detail-value">${card.trainer_type || '不明'}</span>
+                    </div>
+                    ${card.effect_ja ? ` <!-- Changed from text_ja to effect_ja -->
+                        <div class="attacks-list">
+                            <div class="detail-label" style="margin-bottom: 10px;">効果</div>
+                            <div class="attack-item">
+                                <div style="font-size: 0.85em; margin-top: 5px; color: #666;">${card.effect_ja}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+            }
+
 
             cardDiv.innerHTML = `
                 <div class="card-header">
-                    <img class="card-image" src="${getCardImagePath(card.name_en)}" alt="${card.name_ja}" 
+                    <img class="card-image" src="${imgSrc}" alt="${imgAlt}"
                          onerror="this.src='assets/ui/card_back.webp'">
                     <div class="card-info">
                         <div class="card-names">
@@ -345,104 +447,80 @@
                 </div>
 
                 <div class="card-details">
-                    ${card.card_type === 'Pokémon' ? `
-                        <div class="detail-row">
-                            <span class="detail-label">ステージ</span>
-                            <span class="detail-value">${card.stage || '不明'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">HP</span>
-                            <span class="detail-value hp-value">${card.hp || '不明'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">タイプ</span>
-                            <span class="detail-value">${card.type || '不明'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">弱点</span>
-                            <span class="detail-value">${card.weakness ? `${card.weakness.type} ${card.weakness.value}` : '無し'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">抵抗力</span>
-                            <span class="detail-value">${card.resistance && card.resistance.type !== 'None' ? `${card.resistance.type} ${card.resistance.value}` : '無し'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">逃げるコスト</span>
-                            <span class="detail-value">${formatEnergyCost(card.retreat_cost)}</span>
-                        </div>
-                        ${card.attacks && card.attacks.length > 0 ? `
-                            <div class="attacks-list">
-                                <div class="detail-label" style="margin-bottom: 10px;">ワザ</div>
-                                ${card.attacks.map(attack => `
-                                    <div class="attack-item">
-                                        <div class="attack-name">${attack.name_ja || attack.name_en}</div>
-                                        <div class="attack-cost">コスト: ${formatEnergyCost(attack.cost)}</div>
-                                        <div style="font-weight: bold; color: #e74c3c;">ダメージ: ${attack.damage || 0}</div>
-                                        ${attack.effect_ja ? `<div style="font-size: 0.85em; margin-top: 5px; color: #666;">${attack.effect_ja}</div>` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    ` : `
-                        <div class="detail-row">
-                            <span class="detail-label">エネルギータイプ</span>
-                            <span class="detail-value">${card.name_en.split(' ')[0]}</span>
-                        </div>
-                    `}
+                    ${detailsHtml}
                 </div>
             `;
 
             return cardDiv;
         }
 
+        // Function to filter cards based on current filter and search
         function filterCards() {
-            const filteredCards = cardMasterList.filter(card => {
+            return cardMasterList.filter(card => {
                 const matchesFilter = currentFilter === 'all' || card.card_type === currentFilter;
-                const matchesSearch = currentSearch === '' || 
+                const matchesSearch = currentSearch === '' ||
                     card.name_en.toLowerCase().includes(currentSearch.toLowerCase()) ||
                     card.name_ja.includes(currentSearch);
                 return matchesFilter && matchesSearch;
             });
-
-            return filteredCards;
         }
 
+        // Function to render cards to the container
         function renderCards() {
             const container = document.getElementById('cards-container');
             const filteredCards = filterCards();
+
+            // Clear previous content
+            container.innerHTML = '';
 
             if (filteredCards.length === 0) {
                 container.innerHTML = '<div class="no-results">該当するカードが見つかりませんでした</div>';
                 return;
             }
 
-            container.innerHTML = '';
             filteredCards.forEach(card => {
                 container.appendChild(createCardElement(card));
             });
         }
 
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', () => {
-            updateStats();
-            renderCards();
+        // Main initialization function
+        async function init() {
+            // Show loading message
+            const cardsContainer = document.getElementById('cards-container');
+            cardsContainer.innerHTML = '<div class="loading">データを読み込んでいます...</div>';
 
-            // Filter buttons
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentFilter = btn.getAttribute('data-filter');
+            try {
+                // Load card data
+                cardMasterList = await loadCardsFromJSON();
+                console.log('Card data loaded:', cardMasterList.length, 'cards');
+
+                // Update stats and render cards
+                updateStats();
+                renderCards();
+
+                // Attach event listeners after initial render
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentFilter = btn.getAttribute('data-filter');
+                        renderCards();
+                    });
+                });
+
+                document.getElementById('search-input').addEventListener('input', (e) => {
+                    currentSearch = e.target.value;
                     renderCards();
                 });
-            });
 
-            // Search
-            document.getElementById('search-input').addEventListener('input', (e) => {
-                currentSearch = e.target.value;
-                renderCards();
-            });
-        });
+            } catch (error) {
+                console.error('Failed to initialize card viewer:', error);
+                cardsContainer.innerHTML = '<div class="no-results" style="color: red;">カードデータの読み込みに失敗しました。コンソールを確認してください。</div>';
+            }
+        }
+
+        // Run initialization when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

@@ -19,6 +19,9 @@
             padding: 6rem 0; /* 上下の余白を十分に確保 */
         }
 
+        /* Z-Order Guidelines (lowest -> highest)
+           10: Board base, 15: slots/cards, 20–25: hover/highlights, 60: hands, 80: HUD, 90: panels, 100: modals */
+
         #game-board {
             transform-style: preserve-3d;
             transform: rotateX(35deg);
@@ -26,6 +29,7 @@
             width: 679px;           /* 完全固定サイズ */
             height: 679px;          /* 完全固定サイズ */
             margin: 0 auto;         /* 中央配置 */
+            z-index: 10;            /* ボード基底レイヤー */
         }
 
         /* 背景画像用のレイヤー */
@@ -36,7 +40,7 @@
             width: 679px;           /* 完全固定サイズ */
             height: 679px;          /* 完全固定サイズ */
             object-fit: none;       /* 1:1ピクセルマッピング */
-            z-index: 1;
+            z-index: 10;
         }
 
         .card-slot {
@@ -44,7 +48,7 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
             position: absolute;
-            z-index: 5; /* 手札(z-index: 100)より低く統一 */
+            z-index: 15; /* ボード上の標準カードレイヤー */
             min-width: 20px; /* 最小サイズを確保 */
             min-height: 28px;
             overflow: visible; /* Explicitly set overflow to visible */
@@ -52,18 +56,16 @@
 
         /* セットアップ時のカードスロット */
         .card-slot.setup-interactive {
-            z-index: 50 !important; /* オーバーレイの上に表示 */
+            z-index: 24 !important; /* ボード内で前面 */
         }
 
         /* プレイヤーのボード全体をオーバーレイより上に */
         .player-board.player-self {
-            z-index: 50;
+            z-index: 15;
         }
 
         /* 手札の個別カード要素 */
-        #player-hand .relative {
-            z-index: 101 !important;
-        }
+        #player-hand .relative { z-index: 61 !important; }
 
 
         /* Side cards stacking effects */
@@ -77,21 +79,21 @@
 
         .side-cards-container .side-right-1,
         .side-cards-container .side-left-1 {
-            z-index: 8;
+            z-index: 16;
             transform: translateZ(6px);
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
         }
 
         .side-cards-container .side-right-2,
         .side-cards-container .side-left-2 {
-            z-index: 7;
+            z-index: 15;
             transform: translateZ(3px) translate(2px, 2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.65);
         }
 
         .side-cards-container .side-right-3,
         .side-cards-container .side-left-3 {
-            z-index: 6;
+            z-index: 14;
             transform: translateZ(0px) translate(4px, 4px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
         }
@@ -145,7 +147,7 @@
 
         /* Stadium special styling */
         .stadium-zone {
-            z-index: 4;
+            z-index: 14;
             background-color: rgba(75, 0, 130, 0.15);
             border-color: rgba(147, 51, 234, 0.3);
             transform: translateZ(1px);
@@ -155,18 +157,18 @@
             transform: translateY(-8px) scale(1.08);
             border-color: #4dd0fd;
             box-shadow: 0 0 25px #4dd0fd80;
-            z-index: 50; /* 手札より下だが他のカードより上 */
+            z-index: 22; /* ボード内で前面 */
         }
 
         /* Enhanced hover effects for stacked cards */
         .side-cards-container .card-slot:hover {
             transform: translateY(-12px) scale(1.15) !important;
-            z-index: 51;
+            z-index: 23;
         }
 
         .deck-container:hover {
             transform: translateY(-6px) scale(1.05);
-            z-index: 50;
+            z-index: 22;
         }
 
         .deck-container:hover .deck-stack::before {
@@ -184,6 +186,18 @@
             0% {
                 transform: translateY(-100px) rotate(10deg);
                 opacity: 0;
+            }
+            100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        /* 初回配布向け（不透明のまま移動のみ） */
+        @keyframes dealCardNoFade {
+            0% {
+                transform: translateY(-100px) rotate(10deg);
+                opacity: 1;
             }
             100% {
                 transform: translateY(0) rotate(0deg);
@@ -302,6 +316,10 @@
             animation: dealCard 0.6s ease-out;
         }
 
+        .animate-deal-card-nofade {
+            animation: dealCardNoFade 0.6s ease-out;
+        }
+
         .animate-draw-card {
             animation: drawCard 0.4s ease-out;
         }
@@ -393,6 +411,10 @@
             object-fit: cover;
         }
 
+        /* Hand image visibility safety: default visible; only hidden during deal/draw */
+        #player-hand img.card-image { opacity: 1; transition: opacity 0.3s ease; }
+        #player-hand img.card-image.is-animating { opacity: 0; }
+
         .card-placeholder {
             background-color: rgba(255, 255, 255, 0.05); /* Light grey, semi-transparent */
             border: 1px dashed rgba(255, 255, 255, 0.2); /* Dashed white border */
@@ -416,7 +438,7 @@
         }
 
         /* 盤面の下に余白を追加して、固定手札と重ならないようにするためのスクロールエリア */
-        .scroll-spacer { height: 18rem; }
+        .scroll-spacer { height: 16rem; }
 
         #card-info-panel {
             width: 260px;
@@ -429,12 +451,66 @@
             font-size: 0.875rem;
         }
 
+        /* Hand Dock (Mac Dock-like magnification) */
+        #player-hand.hand-dock {
+            user-select: none;
+            -webkit-user-select: none;
+            contain: layout paint;
+            overflow: visible;           /* allow cards to grow upward without clipping */
+            pointer-events: none;        /* let clicks pass through empty hand area */
+            z-index: 60 !important;      /* hands above board, below UI */
+            transform: none !important;  /* keep out of 3D stacking issues */
+            will-change: auto;
+        }
+        #player-hand-inner {            /* interactive sub-container */
+            pointer-events: auto;
+            margin-top: 0px;            /* dynamic positioning handles vertical offset */
+            display: inline-flex;
+            align-items: flex-end;
+            max-width: 100%;
+            overflow-x: visible;        /* revert: no horizontal scrolling */
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+            scrollbar-gutter: stable both-edges;
+            will-change: transform;     /* for smooth vertical positioning */
+        }
+        #player-hand.hand-dock .hand-card {
+            transition: transform 140ms ease, filter 140ms ease;
+            will-change: transform;
+            transform-origin: bottom center;
+            filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+            position: relative;          /* for z-index to apply */
+            z-index: 61;
+        }
+
+        /* CPU手札も前面に（操作透過） */
+        #cpu-hand {
+            z-index: 60 !important;
+            pointer-events: none;
+            transform: none !important;
+            will-change: auto;
+        }
+        #cpu-hand .relative { z-index: 61 !important; }
+
+        /* UI layers */
+        #game-message-display { position: relative; z-index: 80; }
+        #card-info-panel { z-index: 90 !important; }
+        #action-modal { z-index: 100 !important; }
+        #player-hand.hand-dock .hand-card img {
+            pointer-events: auto;
+        }
+        /* default: compact size centered */
+        #player-hand.hand-dock .hand-card {
+            transform: translateY(0) scale(0.6);
+        }
+
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center text-white p-4">
 
     <!-- CPU Hand -->
-    <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 bg-black/30 flex justify-center items-center p-2 gap-x-1 z-10">
+    <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 flex justify-center items-center p-2 gap-x-1 z-10">
         <!-- CPUの手札はここに動的に追加されます -->
     </div>
 
@@ -525,7 +601,7 @@
             </div>
 
             <!-- Game Message Display -->
-            <div id="game-message-display" class="bg-gray-800/70 text-white text-sm font-bold p-3 rounded-lg mb-4 text-center hidden">
+            <div id="game-message-display" class="text-white text-sm font-bold px-3 py-2 mb-4 text-center hidden">
                 <!-- Messages will be displayed here -->
             </div>
 
@@ -556,8 +632,8 @@
 <div class="scroll-spacer" aria-hidden="true"></div>
 
 <!-- Player Hand -->
-<div id="player-hand" class="fixed bottom-0 left-0 w-full h-40 bg-black/50 flex justify-center items-center p-2 gap-x-4" style="z-index: 100;">
-    <!-- プレイヤーの手札はここに動的に追加されます -->
+<div id="player-hand" class="fixed bottom-0 left-0 w-full h-52 flex justify-center items-end p-2 hand-dock" style="z-index: 100;">
+    <div id="player-hand-inner" class="inline-flex items-end gap-0"></div>
 </div>
 
 <!-- Card Info Panel -->
