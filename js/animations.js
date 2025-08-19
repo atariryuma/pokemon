@@ -112,7 +112,7 @@ export class AnimationManager {
       cardElement.style.left = `${fromPosition.x}px`;
       cardElement.style.top = `${fromPosition.y}px`;
       cardElement.style.zIndex = '9999';
-      cardElement.style.transform = 'scale(1.1) rotate(5deg)'; // Initial "lifted" state
+      cardElement.style.transform = 'rotate(5deg)'; // Initial "lifted" state
       cardElement.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
 
       // Force reflow to ensure initial styles are applied before transition starts
@@ -509,6 +509,48 @@ export class AnimationManager {
         this.removeAnimationClass(pokemonElement, effectClass);
         resolve();
       });
+    });
+  }
+  
+  /**
+   * カードを裏面から表面にフリップするアニメーション
+   * @param {Element} cardElement - カード要素
+   * @param {string} newImageSrc - 表面の画像パス
+   */
+  async flipCardFaceUp(cardElement, newImageSrc) {
+    return new Promise(resolve => {
+      if (!cardElement || !newImageSrc) {
+        console.warn('flipCardFaceUp: Missing cardElement or newImageSrc');
+        return resolve();
+      }
+
+      const imgElement = cardElement.querySelector('img');
+      if (!imgElement) {
+        console.warn('flipCardFaceUp: img element not found in cardElement');
+        return resolve();
+      }
+
+      // 最初の半分のアニメーション（裏面が見えなくなるまで）
+      imgElement.style.transition = 'transform 0.3s ease-in';
+      imgElement.style.transform = 'rotateY(90deg)';
+
+      setTimeout(() => {
+        // 画像を切り替える
+        imgElement.src = newImageSrc;
+        imgElement.alt = 'Card Front';
+
+        // 後半のアニメーション（表面が見えるように）
+        imgElement.style.transition = 'transform 0.3s ease-out';
+        imgElement.style.transform = 'rotateY(180deg)'; // 最終的に0degに戻るように
+
+        // アニメーション完了後にスタイルをリセット
+        imgElement.addEventListener('transitionend', function handler() {
+          imgElement.removeEventListener('transitionend', handler);
+          imgElement.style.transition = '';
+          imgElement.style.transform = ''; // 最終状態をリセット
+          resolve();
+        }, { once: true });
+      }, 300); // 0.3s後に画像を切り替え
     });
   }
   

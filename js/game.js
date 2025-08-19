@@ -6,6 +6,7 @@ import { feedbackSystem } from './feedback.js';
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
+import { getCardImagePath } from './cards.js';
 
 export class Game {
     constructor(rootEl, playmatSlotsData) {
@@ -164,6 +165,7 @@ export class Game {
                 console.log('❌ Invalid card selection:', card?.name_ja || 'Unknown card');
             }
         } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
+            console.log(`DEBUG: Attempting to place card. selectedCardForSetup: ${this.selectedCardForSetup.name_ja}`);
             // 配置先を選択
             const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
 
@@ -642,8 +644,41 @@ export class Game {
 
         feedbackSystem.success('セットアップ完了！ゲーム開始です！');
         
-        this.state = await this.setupManager.confirmSetup(this.state);
-        this._updateState(this.state);
+        // 状態を更新して、カードが表面になるようにする
+        let newState = await this.setupManager.confirmSetup(this.state);
+        this._updateState(newState);
+
+        // カードをフリップするアニメーション
+        const allPokemonElements = [];
+
+        // プレイヤーのバトル場とベンチ
+        if (newState.players.player.active) {
+            const activeEl = document.querySelector('.player-self .active-bottom .relative');
+            if (activeEl) allPokemonElements.push({ element: activeEl, card: newState.players.player.active });
+        }
+        newState.players.player.bench.forEach((pokemon, index) => {
+            if (pokemon) {
+                const benchEl = document.querySelector(`.player-self .bottom-bench-${index + 1} .relative`);
+                if (benchEl) allPokemonElements.push({ element: benchEl, card: pokemon });
+            }
+        });
+
+        // CPUのバトル場とベンチ
+        if (newState.players.cpu.active) {
+            const activeEl = document.querySelector('.opponent-board .active-top .relative');
+            if (activeEl) allPokemonElements.push({ element: activeEl, card: newState.players.cpu.active });
+        }
+        newState.players.cpu.bench.forEach((pokemon, index) => {
+            if (pokemon) {
+                const benchEl = document.querySelector(`.opponent-board .top-bench-${index + 1} .relative`);
+                if (benchEl) allPokemonElements.push({ element: benchEl, card: pokemon });
+            }
+        });
+
+        // 各ポケモンをフリップ
+        for (const { element, card } of allPokemonElements) {
+            await animationManager.flipCardFaceUp(element, getCardImagePath(card.name_en));
+        }
         
         console.log('✅ Setup confirmed, game starting!');
     }
