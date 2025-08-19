@@ -682,6 +682,15 @@ export class AnimationManager {
   addAnimationClass(element, className) {
     if (!element) return;
     
+    // Debug: Check if this element has damage badges before animation
+    const existingDamageBadges = element.querySelectorAll('[id^="damage-badge-"]');
+    if (existingDamageBadges.length > 0) {
+      console.log(`🎬 ⚠️ Animation starting on element with ${existingDamageBadges.length} damage badges. Animation: ${className}`);
+      existingDamageBadges.forEach((badge, index) => {
+        console.log(`  🏷️ Badge ${index + 1}: ${badge.id}, visibility: ${badge.style.visibility}, display: ${badge.style.display}`);
+      });
+    }
+    
     element.classList.add(className);
     
     // アクティブアニメーション追跡
@@ -720,6 +729,15 @@ export class AnimationManager {
     const duration = this.config.durations[animationName] || this.config.durations.normal;
     
     const cleanup = () => {
+      // Debug: Check damage badges after animation cleanup
+      const damagebadges = element.querySelectorAll('[id^="damage-badge-"]');
+      if (damagebadges.length > 0) {
+        console.log(`🎬 ✅ Animation cleanup for ${animationName}. ${damagebadges.length} damage badges still present`);
+        damagebadges.forEach((badge, index) => {
+          console.log(`  🏷️ Badge ${index + 1} after cleanup: ${badge.id}, visible: ${badge.style.visibility !== 'hidden' && badge.style.display !== 'none'}`);
+        });
+      }
+      
       element.classList.remove(`animate-${animationName.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
       if (callback) callback();
     };

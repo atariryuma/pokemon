@@ -1,3 +1,5 @@
+import { GAME_PHASES } from './phase-manager.js';
+
 /**
  * Finds a card in a player's hand.
  * @param {object} playerState - The state of the player.
@@ -298,11 +300,25 @@ export function performAttack(state, attackingPlayerId, attackIndex) {
     // For now, just base damage.
     // TODO: Implement weakness and resistance.
     const damage = attack.damage || 0;
+    const previousDamage = defender.damage || 0;
+    const newDamage = previousDamage + damage;
+
+    console.log(`⚔️ DAMAGE CALCULATION: ${attacker.name_ja} attacks ${defender.name_ja}`);
+    console.log(`  💥 Attack damage: ${damage}`);
+    console.log(`  🩸 Previous damage: ${previousDamage}`);
+    console.log(`  🔴 New total damage: ${newDamage}`);
 
     const updatedDefender = {
         ...defender,
-        damage: (defender.damage || 0) + damage,
+        damage: newDamage,
     };
+
+    console.log(`✅ Defender updated:`, {
+        name: updatedDefender.name_ja,
+        hp: updatedDefender.hp,
+        damage: updatedDefender.damage,
+        damageType: typeof updatedDefender.damage
+    });
 
     return {
         ...state,
@@ -357,22 +373,38 @@ export function checkForKnockout(state, defendingPlayerId) {
     const defenderState = state.players[defendingPlayerId];
     const defender = defenderState.active;
 
+    console.log(`🔍 Checking knockout for ${defendingPlayerId}:`, {
+        pokemon: defender?.name_ja,
+        damage: defender?.damage || 0,
+        hp: defender?.hp,
+        isKO: defender && defender.damage >= defender.hp
+    });
+
     if (!defender || !defender.damage || defender.damage < defender.hp) {
+        console.log('✅ No knockout occurred');
         return state; // No KO
     }
 
     // It's a KO!
+    console.log(`💀 KNOCKOUT! ${defender.name_ja} is knocked out`);
     const attackingPlayerId = defendingPlayerId === 'player' ? 'cpu' : 'player';
     const attackerState = state.players[attackingPlayerId];
 
     // Move KO'd pokemon and its cards to discard
     const newDiscard = [...defenderState.discard, defender, ...(defender.attached_energy || [])];
 
+    // ベンチにポケモンがいるかチェック
+    const hasBenchPokemon = defenderState.bench.some(p => p !== null);
+    console.log(`🔎 ${defendingPlayerId} has bench pokemon:`, hasBenchPokemon);
+    console.log(`🎯 Prize update: ${attackingPlayerId} gains 1 prize (${attackerState.prizeRemaining} -> ${attackerState.prizeRemaining - 1})`);
+
     const newState = {
         ...state,
-        phase: 'awaiting-new-active', // Force defender to choose a new active
+        phase: hasBenchPokemon ? GAME_PHASES.AWAITING_NEW_ACTIVE : state.phase, // Only change phase if bench has pokemon
         prompt: {
-            message: `${defendingPlayerId === 'player' ? 'あなた' : '相手'}のバトルポケモンがきぜつした。ベンチから新しいポケモンを選んでください。`,
+            message: hasBenchPokemon 
+                ? `${defendingPlayerId === 'player' ? 'あなた' : '相手'}のバトルポケモンがきぜつした。ベンチから新しいポケモンを選んでください。`
+                : state.prompt?.message,
         },
         players: {
             ...state.players,
@@ -389,6 +421,7 @@ export function checkForKnockout(state, defendingPlayerId) {
         },
     };
 
+    console.log(`🔄 Post-KO phase: ${newState.phase}`);
     return newState;
 }
 
@@ -431,33 +464,37 @@ export function takePrizeCard(state, player, prizeIndex) {
  * @returns {object} The new state, potentially with a winner.
  */
 export function checkForWinner(state) {
+    console.log('🏆 Checking win conditions...');
+    
     // Check prize card condition
+    console.log(`🎯 Prize remaining - Player: ${state.players.player.prizeRemaining}, CPU: ${state.players.cpu.prizeRemaining}`);
     if (state.players.player.prizeRemaining <= 0) {
-        return { ...state, phase: 'game-over', winner: 'player', gameEndReason: 'prizes' };
+        console.log('🏆 GAME OVER: Player wins by prizes!');
+        return { ...state, phase: 'gameOver', winner: 'player', gameEndReason: 'prizes' };
     }
     if (state.players.cpu.prizeRemaining <= 0) {
-        return { ...state, phase: 'game-over', winner: 'cpu', gameEndReason: 'prizes' };
+        console.log('🏆 GAME OVER: CPU wins by prizes!');
+        return { ...state, phase: 'gameOver', winner: 'cpu', gameEndReason: 'prizes' };
     }
 
     // Check if a player has no pokemon left in play (active or bench)
     const isPlayerOutOfPokemon = !state.players.player.active && state.players.player.bench.every(p => p === null);
     const isCpuOutOfPokemon = !state.players.cpu.active && state.players.cpu.bench.every(p => p === null);
+    
+    console.log(`🔍 Pokemon status - Player out: ${isPlayerOutOfPokemon}, CPU out: ${isCpuOutOfPokemon}`);
+    console.log(`🔍 Player active: ${state.players.player.active?.name_ja || 'none'}, bench: ${state.players.player.bench.filter(p => p).length}/5`);
+    console.log(`🔍 CPU active: ${state.players.cpu.active?.name_ja || 'none'}, bench: ${state.players.cpu.bench.filter(p => p).length}/5`);
 
     if (isPlayerOutOfPokemon) {
-        return { ...state, phase: 'game-over', winner: 'cpu', gameEndReason: 'no_pokemon' };
+        console.log('🏆 GAME OVER: CPU wins - Player has no pokemon!');
+        return { ...state, phase: GAME_PHASES.GAME_OVER, winner: 'cpu', gameEndReason: 'no_pokemon' };
     }
     if (isCpuOutOfPokemon) {
-        return { ...state, phase: 'game-over', winner: 'player', gameEndReason: 'no_pokemon' };
+        console.log('🏆 GAME OVER: Player wins - CPU has no pokemon!');
+        return { ...state, phase: GAME_PHASES.GAME_OVER, winner: 'player', gameEndReason: 'no_pokemon' };
     }
 
+    console.log('✅ No winner yet, game continues');
     return state; // No winner yet
 }
 
-/**
- * レガシーセットアップ関数（非推奨）
- * 新しいSetupManagerを使用してください
- */
-export function setupGame(state) {
-    console.warn('⚠️ setupGame() is deprecated. Use SetupManager instead.');
-    return state; // 何もしない
-}

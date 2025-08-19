@@ -1,5 +1,6 @@
 import { getCardImagePath } from './cards.js';
 import { animationManager } from './animations.js';
+import { GAME_PHASES } from './phase-manager.js';
 
 export class View {
     constructor(rootEl) {
@@ -43,10 +44,49 @@ export class View {
         this.benchStatus = document.getElementById('bench-status');
         this.benchCount = document.getElementById('bench-count');
         this.setupProgress = document.getElementById('setup-progress');
+        
+        // Message system
+        this.createMessageContainer();
     }
 
     bindCardClick(handler) {
         this.cardClickHandler = handler;
+    }
+
+    createMessageContainer() {
+        // Create a simple message container if it doesn't exist
+        if (!document.getElementById('message-container')) {
+            const container = document.createElement('div');
+            container.id = 'message-container';
+            container.className = 'fixed top-4 right-4 z-50 space-y-2';
+            document.body.appendChild(container);
+        }
+        this.messageContainer = document.getElementById('message-container');
+    }
+
+    showMessage(text, type = 'info') {
+        const message = document.createElement('div');
+        const colors = {
+            success: 'bg-green-600',
+            info: 'bg-blue-600',
+            warning: 'bg-yellow-600',
+            error: 'bg-red-600'
+        };
+        
+        message.className = `${colors[type] || colors.info} text-white px-4 py-2 rounded shadow-lg transition-opacity duration-300`;
+        message.textContent = text;
+        
+        this.messageContainer.appendChild(message);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            message.style.opacity = '0';
+            setTimeout(() => {
+                if (message.parentNode) {
+                    message.parentNode.removeChild(message);
+                }
+            }, 300);
+        }, 3000);
     }
 
     render(state) {
@@ -55,6 +95,26 @@ export class View {
         console.log('📊 Player active:', state.players.player.active?.name_ja || 'None');
         console.log('📊 CPU hand:', state.players.cpu.hand.length, 'cards');
         console.log('📊 CPU active:', state.players.cpu.active?.name_ja || 'None');
+        
+        // Enhanced damage state debugging
+        if (state.players.player.active?.damage > 0) {
+            console.log(`💥 RENDER: Player active ${state.players.player.active.name_ja} has ${state.players.player.active.damage} damage`);
+        }
+        if (state.players.cpu.active?.damage > 0) {
+            console.log(`💥 RENDER: CPU active ${state.players.cpu.active.name_ja} has ${state.players.cpu.active.damage} damage`);
+        }
+        
+        // Check bench pokemon for damage
+        state.players.player.bench.forEach((pokemon, index) => {
+            if (pokemon?.damage > 0) {
+                console.log(`💥 RENDER: Player bench[${index}] ${pokemon.name_ja} has ${pokemon.damage} damage`);
+            }
+        });
+        state.players.cpu.bench.forEach((pokemon, index) => {
+            if (pokemon?.damage > 0) {
+                console.log(`💥 RENDER: CPU bench[${index}] ${pokemon.name_ja} has ${pokemon.damage} damage`);
+            }
+        });
         
         this._clearBoard();
         this._renderBoard(this.playerBoard, state.players.player, 'player', state);
@@ -67,14 +127,20 @@ export class View {
     }
 
     _clearBoard() {
+        console.log('🧹 Clearing board');
+        
         const allSlots = document.querySelectorAll('.card-slot');
         allSlots.forEach(slot => {
             slot.innerHTML = '';
         });
+        
+        // Clear hand areas
         if (this.playerHand) this.playerHand.innerHTML = '';
         if (this.cpuHand) this.cpuHand.innerHTML = '';
+        
+        console.log('✅ Board cleared');
     }
-
+    
     _renderBoard(boardElement, playerState, playerType, state) {
         if (!boardElement) return;
 
@@ -87,9 +153,17 @@ export class View {
         const activeSelector = playerType === 'player' ? '.active-bottom' : '.active-top';
         const activeSlot = boardElement.querySelector(activeSelector);
         if (activeSlot) {
+            console.log(`🎯 Rendering active slot for ${playerType}: ${activeSelector}`);
+            if (safePlayer.active) {
+                console.log(`🃏 Active pokemon: ${safePlayer.active.name_ja} (damage: ${safePlayer.active.damage || 0})`);
+            }
+            
             activeSlot.innerHTML = '';
             const cardEl = this._createCardElement(safePlayer.active || null, playerType, 'active', 0);
             activeSlot.appendChild(cardEl);
+            
+            // Verify the card element was added correctly
+            console.log(`✅ Active card element added for ${playerType}. Slot children: ${activeSlot.children.length}`);
             
             // セットアップ中はアクティブスロットをクリック可能にする
             if (playerType === 'player') {
@@ -237,9 +311,17 @@ export class View {
             return container;
         }
 
-        // Debug logging for card creation
+        // Enhanced debug logging for card creation
         console.log(`🎨 Creating card element: ${card.name_ja} (${card.name_en}) for ${playerType} ${zone}${index !== undefined ? `[${index}]` : ''}`);
         console.log(`🖼️ Image path: ${isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en)}`);
+        console.log(`🔍 Card damage state:`, {
+            damage: card.damage,
+            damageType: typeof card.damage,
+            hasDamage: card.damage > 0,
+            cardType: card.card_type,
+            playerType,
+            zone
+        });
 
         const img = document.createElement('img');
         // Ensure proper CSS classes for visibility and sizing
@@ -306,10 +388,13 @@ export class View {
 
         container.appendChild(img);
 
+        // Simple damage badge creation
         if (card.damage > 0) {
             const damageCounter = document.createElement('div');
             damageCounter.className = 'absolute top-1 right-1 bg-red-600 text-white text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center';
             damageCounter.textContent = card.damage;
+            damageCounter.style.pointerEvents = 'none';
+            damageCounter.style.zIndex = '30';
             container.appendChild(damageCounter);
         }
 
@@ -591,7 +676,7 @@ export class View {
         if (!this.setupProgress) return;
 
         // セットアップフェーズでのみ進捗を表示
-        const isSetupPhase = state.phase === 'setup' || state.phase === 'initialPokemonSelection';
+        const isSetupPhase = state.phase === GAME_PHASES.SETUP || state.phase === GAME_PHASES.INITIAL_POKEMON_SELECTION;
         this.setupProgress.style.display = isSetupPhase ? 'block' : 'none';
 
         if (!isSetupPhase) return;

@@ -2,7 +2,6 @@ import { createInitialState } from './state.js';
 import { View } from './view.js';
 import * as Logic from './logic.js';
 import { animationManager } from './animations.js';
-import { feedbackSystem } from './feedback.js';
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
@@ -160,8 +159,7 @@ export class Game {
                 this.view.updateStatusMessage(this.state.prompt.message);
                 console.log(`✅ Selected Pokemon for setup: ${card.name_ja}`);
             } else {
-                feedbackSystem.warning('たねポケモンのみ選択できます。');
-                this.view.showErrorMessage('たねポケモンのみ選択できます。');
+                this.view.showMessage('たねポケモンのみ選択できます。', 'warning');
                 console.log('❌ Invalid card selection:', card?.name_ja || 'Unknown card');
             }
         } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
@@ -193,8 +191,7 @@ export class Game {
             this._updateState(this.state);
         } else if ((zone === 'active' || zone === 'bench') && !this.selectedCardForSetup) {
             // カードが選択されていない状態でスロットをクリックした場合
-            feedbackSystem.warning('先に手札からたねポケモンを選択してください。');
-            this.view.showErrorMessage('先に手札からたねポケモンを選択してください。');
+            this.view.showMessage('先に手札からたねポケモンを選択してください。', 'warning');
         }
     }
 
@@ -203,12 +200,12 @@ export class Game {
      */
     async _handlePlayerDraw() {
         if (this.state.hasDrawnThisTurn) {
-            feedbackSystem.warning('このターンはすでにカードを引いています。');
+            this.view.showMessage('このターンはすでにカードを引いています。', 'warning');
             this.view.showErrorMessage('このターンはすでにカードを引いています。');
             return;
         }
         
-        feedbackSystem.info('カードを引きました');
+        this.view.showMessage('カードを引きました', 'info');
         this.state = await this.turnManager.handlePlayerDraw(this.state);
         
         // ドロー後にメインフェーズに移行
@@ -244,6 +241,14 @@ export class Game {
         
         // アニメーション
         await this._animatePokemonPromotion('player', benchIndex);
+        
+        // 新アクティブ選択完了後の勝敗判定
+        newState = Logic.checkForWinner(newState);
+        if (newState.phase === GAME_PHASES.GAME_OVER) {
+            console.log('🏆 Game ended after new active selection:', newState.winner, newState.gameEndReason);
+            this._updateState(newState);
+            return;
+        }
         
         // 次のフェーズに移行
         if (this.state.turnPlayer === 'player') {
@@ -443,7 +448,7 @@ export class Game {
             // エネルギー付与アニメーション
             await this._animateEnergyAttachment(energyId, pokemonId);
             
-            feedbackSystem.success('エネルギーを付けました');
+            this.view.showMessage('エネルギーを付けました', 'success');
             newState.pendingAction = null;
             newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
         }
@@ -465,7 +470,7 @@ export class Game {
         });
 
         if (newState !== this.state) {
-            feedbackSystem.success('にげました');
+            this.view.showMessage('にげました', 'success');
             newState.pendingAction = null;
             newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
         }
@@ -581,13 +586,13 @@ export class Game {
 
         const activePokemon = this.state.players.player.active;
         if (!activePokemon) {
-            feedbackSystem.warning('バトル場にポケモンがいません。');
+            this.view.showMessage('バトル場にポケモンがいません。', 'warning');
             this.view.showErrorMessage('バトル場にポケモンがいません。');
             return;
         }
 
         if (!this.state.canRetreat) {
-            feedbackSystem.warning('このターンはすでににげました。');
+            this.view.showMessage('このターンはすでににげました。', 'warning');
             this.view.showErrorMessage('このターンはすでににげました。');
             return;
         }
@@ -596,7 +601,7 @@ export class Game {
         const attachedEnergyCount = activePokemon.attached_energy ? activePokemon.attached_energy.length : 0;
 
         if (attachedEnergyCount < retreatCost) {
-            feedbackSystem.warning('にげるためのエネルギーが足りません。');
+            this.view.showMessage('にげるためのエネルギーが足りません。', 'warning');
             this.view.showErrorMessage('にげるためのエネルギーが足りません。');
             return;
         }
@@ -630,19 +635,19 @@ export class Game {
         // 強制的にボタンの無効化状態をチェック
         const confirmButton = document.getElementById('confirm-setup-button');
         if (confirmButton && confirmButton.disabled) {
-            feedbackSystem.warning('バトル場にたねポケモンを配置してください。');
+            this.view.showMessage('バトル場にたねポケモンを配置してください。', 'warning');
             this.view.showErrorMessage('バトル場にたねポケモンを配置してください。');
             return;
         }
         
         const active = this.state.players.player.active;
         if (!active || active.card_type !== 'Pokémon' || active.stage !== 'BASIC') {
-            feedbackSystem.warning('バトル場にたねポケモンを配置してください。');
+            this.view.showMessage('バトル場にたねポケモンを配置してください。', 'warning');
             this.view.showErrorMessage('バトル場にたねポケモンを配置してください。');
             return;
         }
 
-        feedbackSystem.success('セットアップ完了！ゲーム開始です！');
+        this.view.showMessage('セットアップ完了！ゲーム開始です！', 'success');
         
         // 状態を更新して、カードが表面になるようにする
         let newState = await this.setupManager.confirmSetup(this.state);
