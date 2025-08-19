@@ -23,8 +23,11 @@ export class AnimationManager {
         playCard: 500,
         attack: 800,
         damage: 600,
+        hpDamage: 600,
         knockout: 1200,
-        energyAttach: 700
+        energyAttach: 700,
+        slideInBottom: 500,
+        fadeIn: 300
       }
     };
     
@@ -186,14 +189,14 @@ export class AnimationManager {
   async animateAttack(attackerElement, defenderElement) {
     const attackerPromise = new Promise(resolve => {
       this.addAnimationClass(attackerElement, 'animate-attack');
-      this.waitForAnimation(attackerElement, 'attackForward', resolve);
+      this.waitForAnimation(attackerElement, 'attack', resolve);
     });
     
     // 少し遅れてダメージアニメーション
     const defenderPromise = new Promise(resolve => {
       setTimeout(() => {
         this.addAnimationClass(defenderElement, 'animate-damage');
-        this.waitForAnimation(defenderElement, 'damageShake', resolve);
+        this.waitForAnimation(defenderElement, 'damage', resolve);
       }, 300);
     });
     
@@ -207,7 +210,7 @@ export class AnimationManager {
   async animateHPDamage(hpElement) {
     return new Promise(resolve => {
       this.addAnimationClass(hpElement, 'animate-hp-damage');
-      this.waitForAnimation(hpElement, 'hpFlash', resolve);
+      this.waitForAnimation(hpElement, 'hpDamage', resolve);
     });
   }
   
@@ -319,20 +322,25 @@ export class AnimationManager {
    * ゲームメッセージアニメーション
    * @param {Element} messageElement - メッセージ要素
    */
-  animateMessage(messageElement) {
-    this.addAnimationClass(messageElement, 'animate-fade-in');
+  async animateMessage(messageElement) {
+    return new Promise(resolve => {
+      this.addAnimationClass(messageElement, 'animate-fade-in');
+      this.waitForAnimation(messageElement, 'fadeIn', resolve);
+    });
   }
   
   /**
    * エラーメッセージアニメーション
    * @param {Element} messageElement - メッセージ要素
    */
-  animateError(messageElement) {
-    this.addAnimationClass(messageElement, 'error-message');
-    
-    setTimeout(() => {
-      this.removeAnimationClass(messageElement, 'error-message');
-    }, 1000);
+  async animateError(messageElement) {
+    return new Promise(resolve => {
+      this.addAnimationClass(messageElement, 'error-message');
+      this.waitForAnimation(messageElement, 'damage', () => {
+        this.removeAnimationClass(messageElement, 'error-message');
+        resolve();
+      });
+    });
   }
   
   /**

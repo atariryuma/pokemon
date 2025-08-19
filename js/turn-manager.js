@@ -237,15 +237,28 @@ export class TurnManager {
     }
 
     const { attackIndex, attacker } = newState.pendingAction;
-    
+    const defender = attacker === 'player' ? 'cpu' : 'player';
+    const defenderElement = attacker === 'player'
+      ? document.querySelector('.opponent-board .active-top')
+      : document.querySelector('.player-self .active-bottom');
+
     // 攻撃実行
     newState = Logic.performAttack(newState, attacker, attackIndex);
-    
+
     // 攻撃アニメーション
     await this.animateAttack(attacker, newState);
 
-    // きぜつチェック
-    const defender = attacker === 'player' ? 'cpu' : 'player';
+    // HPダメージアニメーション
+    if (defenderElement) {
+      const hpTarget = defenderElement.querySelector('.hp') || defenderElement;
+      await animationManager.animateHPDamage(hpTarget);
+    }
+
+    // きぜつチェックとアニメーション
+    const defenderState = newState.players[defender];
+    if (defenderElement && defenderState.active && defenderState.active.damage >= defenderState.active.hp) {
+      await animationManager.animateKnockout(defenderElement);
+    }
     newState = Logic.checkForKnockout(newState, defender);
 
     // ペンディングアクションクリア
