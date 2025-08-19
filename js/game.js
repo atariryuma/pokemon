@@ -409,7 +409,9 @@ export class Game {
         const { cardId, zone } = dataset;
         
         if (this.state.pendingAction.type === 'attach-energy' && (zone === 'active' || zone === 'bench')) {
-            await this._attachEnergy(this.state.pendingAction.sourceCardId, cardId);
+            if (cardId) {
+                await this._attachEnergy(this.state.pendingAction.sourceCardId, cardId);
+            }
         }
     }
 
