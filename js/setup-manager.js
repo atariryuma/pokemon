@@ -143,7 +143,7 @@ export class SetupManager {
     if (playerHand) {
       const playerCards = Array.from(playerHand.querySelectorAll('.relative'));
       if (playerCards.length > 0) {
-        await animationManager.animateInitialHandDeal(playerCards, 200);
+        await animationManager.animateInitialPlayerHandDeal(playerCards, 200);
       }
     }
 

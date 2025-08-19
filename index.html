@@ -227,6 +227,18 @@
             }
         }
 
+        /* プレイヤー手札専用の初回配布アニメーション */
+        @keyframes dealPlayerHandCard {
+            0% {
+                transform: translateY(30px) scale(0.9);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
         @keyframes drawCard {
             0% {
                 transform: scale(1.5) rotate(15deg);
@@ -340,6 +352,10 @@
 
         .animate-deal-card-nofade {
             animation: dealCardNoFade 0.6s ease-out;
+        }
+
+        .animate-deal-player-hand-card {
+            animation: dealPlayerHandCard 0.6s ease-out;
         }
 
         .animate-draw-card {
@@ -460,7 +476,7 @@
         }
 
         /* 盤面の下に余白を追加して、固定手札と重ならないようにするためのスクロールエリア */
-        .scroll-spacer { height: 16rem; }
+        .scroll-spacer { height: 18rem; } /* 手札位置に合わせて適度な余白 */
 
         #card-info-panel {
             width: 260px;
@@ -484,25 +500,20 @@
             transform: none !important;  /* keep out of 3D stacking issues */
             will-change: auto;
         }
-        #player-hand-inner {            /* interactive sub-container */
+        /* プレイヤー手札のシンプルなスタイル（CPUと同じ） */
+        #player-hand {
+            z-index: 60 !important;
             pointer-events: auto;
-            margin-top: 0px;            /* dynamic positioning handles vertical offset */
-            display: inline-flex;
-            align-items: flex-end;
-            max-width: 100%;
-            overflow-x: visible;        /* revert: no horizontal scrolling */
-            overflow-y: visible;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior-x: contain;
-            scrollbar-gutter: stable both-edges;
-            will-change: transform;     /* for smooth vertical positioning */
+            transform: none !important;
+            will-change: auto;
         }
+        #player-hand .relative { z-index: 61 !important; }
         #player-hand.hand-dock .hand-card {
             transition: transform 140ms ease, filter 140ms ease;
             will-change: transform;
             transform-origin: bottom center;
             filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
-            position: relative;          /* for z-index to apply */
+            position: relative;
             z-index: 61;
         }
 
@@ -522,9 +533,14 @@
         #player-hand.hand-dock .hand-card img {
             pointer-events: auto;
         }
-        /* default: compact size centered */
+        /* default: same size as CPU hand */
         #player-hand.hand-dock .hand-card {
-            transform: translateY(0) scale(0.6);
+            transform: translateY(0) scale(1.0);
+        }
+
+        /* 手札用の下部余白を追加 */
+        body {
+            padding-bottom: 90px !important; /* Mac Dock拡大効果を考慮した余白（調整値の半分） */
         }
 
     </style>
@@ -654,8 +670,8 @@
 <div class="scroll-spacer" aria-hidden="true"></div>
 
 <!-- Player Hand -->
-<div id="player-hand" class="fixed bottom-0 left-0 w-full h-52 flex justify-center items-end p-2 hand-dock" style="z-index: 100;">
-    <div id="player-hand-inner" class="inline-flex items-end gap-0"></div>
+<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: -20px; z-index: 60; overflow: visible;">
+    <!-- プレイヤーの手札はここに動的に追加されます -->
 </div>
 
 <!-- Card Info Panel -->

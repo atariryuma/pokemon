@@ -830,7 +830,7 @@ export class Game {
             });
             
             if (playerCards.length > 0) {
-                promises.push(animationManager.animateInitialHandDeal(playerCards, 200));
+                promises.push(animationManager.animateInitialPlayerHandDeal(playerCards, 200));
             }
         }
 

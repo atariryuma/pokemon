@@ -19,6 +19,7 @@ export class AnimationManager {
         normal: 300,
         slow: 500,
         dealCard: 600,
+        dealPlayerHandCard: 600,
         drawCard: 400,
         playCard: 500,
         attack: 800,
@@ -161,6 +162,48 @@ export class AnimationManager {
   async animateInitialHandDeal(cardElements, staggerDelay = 100) {
     // 初回配布はフェードさせず、移動のみ
     return this.animateDealCardsNoFade(cardElements, staggerDelay);
+  }
+
+  /**
+   * プレイヤー手札専用の初回配布アニメーション
+   */
+  async animateInitialPlayerHandDeal(cardElements, staggerDelay = 100) {
+    console.log(`🎬 Starting player hand deal animation for ${cardElements.length} cards`);
+    
+    const promises = cardElements.map((element, index) => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          if (element) {
+            const target = element.querySelector('img') || element;
+            // 表示状態を保証
+            element.style.opacity = '1';
+            element.style.visibility = 'visible';
+            element.style.display = 'flex';
+            if (target) {
+              target.style.opacity = '1';
+              target.style.visibility = 'visible';
+              target.style.display = 'block';
+            }
+            target.style.transform = 'none';
+
+            // 強制リフロー
+            element.offsetHeight;
+
+            console.log(`🎴 Starting player hand animation for card ${index + 1}/${cardElements.length}`);
+            this.addAnimationClass(target, 'animate-deal-player-hand-card');
+            this.waitForAnimation(target, 'dealPlayerHandCard', () => {
+              target.style.transform = 'none';
+              console.log(`✅ Player hand animation completed for card ${index + 1}`);
+              resolve();
+            });
+          } else {
+            resolve();
+          }
+        }, index * staggerDelay);
+      });
+    });
+
+    return Promise.all(promises);
   }
 
   /**
