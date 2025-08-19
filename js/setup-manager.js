@@ -4,7 +4,6 @@
  * 初期ポケモン選択、マリガン、サイドカード配置などを管理
  */
 
-import { animationManager } from './animations.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 
@@ -22,18 +21,15 @@ export class SetupManager {
    * @param {object} state - ゲーム状態
    * @returns {object} 更新されたゲーム状態
    */
-  async initializeGame(state) {
+  initializeGame(state) {
     console.log('🎮 Starting game initialization...');
     let newState = cloneGameState(state);
 
-    // 1. デッキシャッフルアニメーション
-    await this.animateDeckShuffle();
+    // 1. 初期手札をドロー（7枚）
+    newState = this.drawInitialHands(newState);
 
-    // 2. 初期手札をドロー（7枚）
-    newState = await this.drawInitialHands(newState);
-
-    // 3. マリガンチェックと処理
-    newState = await this.handleMulligans(newState);
+    // 2. マリガンチェックと処理
+    newState = this.handleMulligans(newState);
 
     // 4. 初期ポケモン選択フェーズに移行（サイドカードは後で配布）
     newState.phase = GAME_PHASES.INITIAL_POKEMON_SELECTION;
@@ -49,47 +45,9 @@ export class SetupManager {
   }
 
   /**
-   * デッキシャッフルアニメーション
-   */
-  async animateDeckShuffle() {
-    console.log('🔀 Animating deck shuffle...');
-    
-    const playerDeck = document.querySelector('.player-self .deck-container');
-    const cpuDeck = document.querySelector('.opponent-board .deck-container');
-    
-    if (playerDeck && cpuDeck) {
-      // シャッフルアニメーションを同時実行
-      await Promise.all([
-        this.shuffleDeckAnimation(playerDeck),
-        this.shuffleDeckAnimation(cpuDeck)
-      ]);
-    }
-  }
-
-  /**
-   * 単一デッキのシャッフルアニメーション
-   */
-  async shuffleDeckAnimation(deckElement) {
-    return new Promise(resolve => {
-      // シャッフルエフェクト（3回震わせる）
-      let shakeCount = 0;
-      const shakeInterval = setInterval(() => {
-        deckElement.style.transform = `translateX(${Math.random() * 6 - 3}px) translateY(${Math.random() * 6 - 3}px)`;
-        shakeCount++;
-
-        if (shakeCount >= 6) {
-          clearInterval(shakeInterval);
-          deckElement.style.transform = '';
-          resolve();
-        }
-      }, 100);
-    });
-  }
-
-  /**
    * 初期手札ドロー（7枚ずつ）
    */
-  async drawInitialHands(state) {
+  drawInitialHands(state) {
     console.log('🎴 Drawing initial hands...');
     let newState = cloneGameState(state);
 
@@ -124,38 +82,13 @@ export class SetupManager {
       console.log(`  - ${pokemon.name_ja}`);
     });
     
-    // Note: アニメーションはGame.jsでview.render()の後に呼ばれる
-    // ここでは状態の更新のみを行い、アニメーションは別途実行する
-
     return newState;
-  }
-
-  /**
-   * 初期ドローアニメーション
-   */
-  async animateInitialDraw() {
-    const playerHand = document.getElementById('player-hand');
-    const cpuHand = document.getElementById('cpu-hand');
-
-    if (playerHand) {
-      const playerCards = Array.from(playerHand.querySelectorAll('.relative'));
-      if (playerCards.length > 0) {
-        await animationManager.animateInitialPlayerHandDeal(playerCards, 200);
-      }
-    }
-
-    if (cpuHand) {
-      const cpuCards = Array.from(cpuHand.querySelectorAll('.relative'));
-      if (cpuCards.length > 0) {
-        await animationManager.animateInitialHandDeal(cpuCards, 200);
-      }
-    }
   }
 
   /**
    * マリガンチェックと処理
    */
-  async handleMulligans(state) {
+  handleMulligans(state) {
     console.log('🔄 Checking for mulligans...');
     let newState = cloneGameState(state);
 
@@ -192,15 +125,15 @@ export class SetupManager {
         // マリガン処理
         if (playerNeedsMultigan) {
           console.log('🔄 Performing player mulligan...');
-          newState = await this.performMulligan(newState, 'player');
+          newState = this.performMulligan(newState, 'player');
         }
         if (cpuNeedsMultigan) {
           console.log('🔄 Performing CPU mulligan...');
-          newState = await this.performMulligan(newState, 'cpu');
+          newState = this.performMulligan(newState, 'cpu');
         }
 
         // 再帰的にマリガンチェック
-        return await this.handleMulligans(newState);
+        return this.handleMulligans(newState);
       } else {
         console.warn('⚠️ Maximum mulligans exceeded, proceeding with current hands');
         newState = addLogEntry(newState, {
@@ -227,7 +160,7 @@ export class SetupManager {
   /**
    * マリガン処理
    */
-  async performMulligan(state, playerId) {
+  performMulligan(state, playerId) {
     console.log(`🔄 Performing mulligan for ${playerId}`);
     let newState = cloneGameState(state);
     const playerState = newState.players[playerId];
@@ -235,7 +168,7 @@ export class SetupManager {
     // 手札をデッキに戻してシャッフル
     playerState.deck.push(...playerState.hand);
     playerState.hand = [];
-    
+
     // デッキをシャッフル
     this.shuffleArray(playerState.deck);
 
@@ -247,34 +180,13 @@ export class SetupManager {
       }
     }
 
-    // マリガンアニメーション
-    await this.animateMulligan(playerId);
-
     return newState;
-  }
-
-  /**
-   * マリガンアニメーション
-   */
-  async animateMulligan(playerId) {
-    const handElement = playerId === 'player' 
-      ? document.getElementById('player-hand')
-      : document.getElementById('cpu-hand');
-
-    if (handElement) {
-      // コンテナの不透明度は触らない（バグ原因のため）
-      // 新しい手札の入場のみをアニメーション
-      const cards = Array.from(handElement.querySelectorAll('.relative'));
-      if (cards.length > 0) {
-        await animationManager.animateHandEntry(cards);
-      }
-    }
   }
 
   /**
    * サイドカード配置
    */
-  async setupPrizeCards(state) {
+  setupPrizeCards(state) {
     console.log('🏆 Setting up prize cards...');
     let newState = cloneGameState(state);
 
@@ -301,23 +213,9 @@ export class SetupManager {
   }
 
   /**
-   * サイドカード配置アニメーション
-   */
-  async animatePrizeCardSetup() {
-    const playerPrizes = document.querySelectorAll('.player-self .side-left .card-slot');
-    const cpuPrizes = document.querySelectorAll('.opponent-board .side-right .card-slot');
-
-    const allPrizes = [...Array.from(playerPrizes), ...Array.from(cpuPrizes)];
-    
-    if (allPrizes.length > 0) {
-      await animationManager.animatePrizeDeal(allPrizes, 150);
-    }
-  }
-
-  /**
    * 初期ポケモン選択の処理
    */
-  async handlePokemonSelection(state, playerId, cardId, targetZone, targetIndex = 0) {
+  handlePokemonSelection(state, playerId, cardId, targetZone, targetIndex = 0) {
     console.log(`🎯 Pokemon selection: ${playerId} places ${cardId} in ${targetZone}`);
     console.log(`📋 Before selection - ${playerId} hand:`, state.players[playerId].hand.length, 'cards');
     
@@ -399,7 +297,7 @@ export class SetupManager {
     // プレイヤーが最初のポケモンを配置した時、CPUも同期して配置
     if (playerId === 'player' && !newState.players.cpu.active) {
       console.log('🔄 Triggering CPU pokemon setup...');
-      newState = await this.setupCpuInitialPokemon(newState);
+      newState = this.setupCpuInitialPokemon(newState);
     }
     
     return newState;
@@ -408,7 +306,7 @@ export class SetupManager {
   /**
    * CPU用の自動初期ポケモン配置
    */
-  async setupCpuInitialPokemon(state) {
+  setupCpuInitialPokemon(state) {
     console.log('🤖 Setting up CPU initial Pokemon...');
     let newState = cloneGameState(state);
     const cpuState = newState.players.cpu;
@@ -451,30 +349,7 @@ export class SetupManager {
       message: `CPUが初期ポケモンを配置しました（バトル場: ${cpuState.active.name_ja}, ベンチ: ${benchCount}体）`
     });
 
-    // CPU配置アニメーション
-    await this.animateCpuPokemonPlacement();
-
     return newState;
-  }
-
-  /**
-   * CPU配置アニメーション
-   */
-  async animateCpuPokemonPlacement() {
-    const cpuActive = document.querySelector('.opponent-board .active-top');
-    const cpuBench = document.querySelectorAll('.opponent-board .top-bench-1, .opponent-board .top-bench-2, .opponent-board .top-bench-3, .opponent-board .top-bench-4, .opponent-board .top-bench-5');
-
-    const elements = [cpuActive, ...Array.from(cpuBench)];
-    
-    for (const element of elements) {
-      if (element && element.children.length > 0) {
-        await animationManager.animatePlayCard(
-          element.children[0],
-          { x: element.offsetLeft, y: element.offsetTop - 100 },
-          { x: element.offsetLeft, y: element.offsetTop }
-        );
-      }
-    }
   }
 
   /**
@@ -490,7 +365,7 @@ export class SetupManager {
   /**
    * セットアップ確定処理
    */
-  async confirmSetup(state) {
+  confirmSetup(state) {
     console.log('✅ Confirming setup...');
     let newState = cloneGameState(state);
 
@@ -515,7 +390,7 @@ export class SetupManager {
     // CPUの初期ポケモンが未配置の場合は自動配置
     if (!newState.players.cpu.active) {
       console.log('🤖 Setting up CPU Pokemon automatically...');
-      newState = await this.setupCpuInitialPokemon(newState);
+    newState = this.setupCpuInitialPokemon(newState);
     }
 
     // 両プレイヤーがたねポケモンを持っているか最終確認
@@ -562,31 +437,31 @@ export class SetupManager {
   /**
    * ポケモン配置確定後のサイドカード配布処理
    */
-  async confirmPokemonSetupAndProceedToPrizes(state) {
+  confirmPokemonSetupAndProceedToPrizes(state) {
     console.log('✅ Pokemon setup confirmed, proceeding to prize cards...');
     let newState = cloneGameState(state);
-    
+
     // フェーズをサイドカード配布に変更
     newState.phase = GAME_PHASES.PRIZE_CARD_SETUP;
-    
+
     // サイドカード配布
-    newState = await this.setupPrizeCards(newState);
-    
+    newState = this.setupPrizeCards(newState);
+
     // ゲーム開始準備完了フェーズに移行
     newState.phase = GAME_PHASES.GAME_START_READY;
-    
+
     newState = addLogEntry(newState, {
       type: 'prize_setup_complete',
       message: 'サイドカードが配布されました。ゲーム開始の準備が整いました！'
     });
-    
+
     return newState;
   }
 
   /**
    * ゲーム開始時の表向き公開処理
    */
-  async startGameRevealCards(state) {
+  startGameRevealCards(state) {
     console.log('🎬 Starting game with card reveal...');
     let newState = cloneGameState(state);
     

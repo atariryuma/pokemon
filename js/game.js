@@ -22,8 +22,6 @@ export class Game {
         // Selected card for setup
         this.selectedCardForSetup = null;
         
-        // Animation control flags
-        this.setupAnimationsExecuted = false;
     } // End of constructor
 
     _delay(ms) {
@@ -154,14 +152,11 @@ export class Game {
      */
     async _startGameSetup() {
         console.log('🎮 Starting game setup...');
-        this.state = await this.setupManager.initializeGame(this.state);
+        this.state = this.setupManager.initializeGame(this.state);
         
         // 単一のレンダリングサイクルで処理（二重レンダリング防止）
         console.log('🔄 Updating game state and rendering...');
         this._updateState(this.state);
-        
-        // DOM要素の完全な準備を確実に待つ
-        this._scheduleSetupAnimations();
         
         // デバッグ: 手札の内容を確認
         console.log('👤 Player hand after setup:', this.state.players.player.hand.length, 'cards');
@@ -189,7 +184,7 @@ export class Game {
                     this.view._renderHand(playerHandElement, this.state.players.player.hand, 'player');
                 }
             }
-        }, 500); // アニメーション完了を待つ
+        }, 500);
     }
 
     /**
@@ -719,7 +714,7 @@ export class Game {
         this.view.showMessage('セットアップ完了！ゲーム開始です！', 'success');
         
         // 状態を更新して、カードが表面になるようにする
-        let newState = await this.setupManager.confirmSetup(this.state);
+        let newState = this.setupManager.confirmSetup(this.state);
         this._updateState(newState);
 
         // カードをフリップするアニメーション
@@ -755,158 +750,6 @@ export class Game {
         }
         
         console.log('✅ Setup confirmed, game starting!');
-    }
-
-    /**
-     * セットアップアニメーション スケジューリング
-     */
-    _scheduleSetupAnimations() {
-        // 重複実行防止
-        if (this.setupAnimationsExecuted) {
-            console.log('⏭️ Setup animations already executed, skipping');
-            return;
-        }
-        
-        console.log('🎬 Scheduling setup animations...');
-        this.setupAnimationsExecuted = true;
-        
-        // requestAnimationFrame を使って確実にDOM準備完了を待つ
-        requestAnimationFrame(() => {
-            requestAnimationFrame(async () => {
-                // さらに少し待ってから実行
-                setTimeout(async () => {
-                    await this._executeSetupAnimations();
-                }, 100);
-            });
-        });
-    }
-
-    /**
-     * セットアップアニメーション実行
-     */
-    async _executeSetupAnimations() {
-        console.log('🎬 Executing setup animations...');
-        
-        try {
-            // DOM要素の存在確認を強化
-            await this._verifyDOMElements();
-            
-            // 手札のアニメーション
-            await this._animateInitialHandDraw();
-            
-            // サイドカードのアニメーション
-            await this._animatePrizeCardSetup();
-            
-            console.log('✅ Setup animations completed');
-        } catch (error) {
-            console.error('❌ Setup animation error:', error);
-        }
-    }
-
-    /**
-     * DOM要素存在確認
-     */
-    async _verifyDOMElements() {
-        const playerHand = document.getElementById('player-hand');
-        const cpuHand = document.getElementById('cpu-hand');
-        
-        if (!playerHand || !cpuHand) {
-            throw new Error('Hand elements not found');
-        }
-        
-        console.log('🔍 DOM verification:');
-        console.log(`  Player hand children: ${playerHand.children.length}`);
-        console.log(`  CPU hand children: ${cpuHand.children.length}`);
-        
-        // 要素が空の場合は少し待ってから再確認
-        if (playerHand.children.length === 0 || cpuHand.children.length === 0) {
-            console.log('⏳ Waiting for DOM elements to populate...');
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            console.log('🔍 DOM re-verification:');
-            console.log(`  Player hand children: ${playerHand.children.length}`);
-            console.log(`  CPU hand children: ${cpuHand.children.length}`);
-        }
-    }
-
-    /**
-     * 初期手札ドローアニメーション
-     */
-    async _animateInitialHandDraw() {
-        const playerHand = document.getElementById('player-hand');
-        const cpuHand = document.getElementById('cpu-hand');
-
-        const promises = [];
-
-        if (playerHand) {
-            // Select actual card elements inside the hand (skip inner wrapper)
-            const playerCards = Array.from(playerHand.querySelectorAll('.relative'));
-            console.log(`🎴 Player hand has ${playerCards.length} card elements`);
-            
-            // 各カード要素の詳細を確認
-            playerCards.forEach((card, index) => {
-                const img = card.querySelector('img');
-                console.log(`  Player card ${index + 1}: img src = ${img ? img.src : 'no img'}, opacity = ${card.style.opacity}`);
-            });
-            
-            if (playerCards.length > 0) {
-                promises.push(animationManager.animateInitialPlayerHandDeal(playerCards, 200));
-            }
-        }
-
-        if (cpuHand) {
-            const cpuCards = Array.from(cpuHand.querySelectorAll('.relative'));
-            console.log(`🎴 CPU hand has ${cpuCards.length} card elements`);
-            
-            // 各カード要素の詳細を確認
-            cpuCards.forEach((card, index) => {
-                const img = card.querySelector('img');
-                console.log(`  CPU card ${index + 1}: img src = ${img ? img.src : 'no img'}, opacity = ${card.style.opacity}`);
-            });
-            
-            if (cpuCards.length > 0) {
-                promises.push(animationManager.animateInitialHandDeal(cpuCards, 200));
-            }
-        }
-
-        await Promise.all(promises);
-    }
-
-    /**
-     * サイドカード配置アニメーション
-     */
-    async _animatePrizeCardSetup() {
-        // 実際にカード要素が入っているスロットの子要素を取得
-        const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
-        const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
-
-        const prizeCards = [];
-        
-        // プレイヤーのサイドカード要素を収集
-        playerPrizeSlots.forEach((slot, index) => {
-            const cardElement = slot.querySelector('.relative'); // カード要素
-            if (cardElement) {
-                prizeCards.push(cardElement);
-                console.log(`📋 Found player prize card ${index + 1}`);
-            }
-        });
-        
-        // CPUのサイドカード要素を収集
-        cpuPrizeSlots.forEach((slot, index) => {
-            const cardElement = slot.querySelector('.relative'); // カード要素
-            if (cardElement) {
-                prizeCards.push(cardElement);
-                console.log(`📋 Found CPU prize card ${index + 1}`);
-            }
-        });
-
-        console.log(`🏆 Animating ${prizeCards.length} prize card elements`);
-        
-        if (prizeCards.length > 0) {
-            await animationManager.animatePrizeDeal(prizeCards, 150);
-        } else {
-            console.warn('⚠️ No prize card elements found for animation');
-        }
     }
 
     // ==================== アニメーション関連メソッド ====================
