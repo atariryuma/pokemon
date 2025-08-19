@@ -230,6 +230,7 @@ export class View {
     _createCardElement(card, playerType, zone, index, isFaceDown = false) {
         const container = document.createElement('div');
         container.className = 'relative w-full h-full';
+        container.style.transformStyle = 'preserve-3d'; // Add this for 3D transforms
 
         if (!card) {
             container.classList.add('card-placeholder');
@@ -242,10 +243,17 @@ export class View {
 
         const img = document.createElement('img');
         // Ensure proper CSS classes for visibility and sizing
-        img.className = 'card-image w-full h-full object-cover rounded-lg';
+        img.className = 'card-image w-full h-full object-contain rounded-lg'; // Change object-cover to object-contain
+        img.style.aspectRatio = '74 / 103'; // Enforce aspect ratio
         img.dataset.dynamic = true;
         img.src = isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = isFaceDown ? 'Card Back' : card.name_ja;
+        
+        // CPUカードの向きを反転（手札とモーダル表示時以外）
+        if (playerType === 'cpu' && zone !== 'hand' && zone !== 'modal') {
+            img.style.transform = 'rotateX(180deg)';
+            img.style.pointerEvents = 'auto'; // Explicitly ensure pointer events are enabled
+        }
         
         // Add error handling for image loading failures
         img.onerror = function() {
