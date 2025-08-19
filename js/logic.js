@@ -194,6 +194,49 @@ export function attachEnergy(state, player, energyId, pokemonId) {
 }
 
 /**
+ * Swaps the active pokemon with a bench pokemon after paying retreat cost.
+ * @param {object} state - The current game state.
+ * @param {string} player - 'player' or 'cpu'.
+ * @param {string} fromActiveId - ID of the current active pokemon.
+ * @param {number} toBenchIndex - Bench index to promote to active.
+ * @returns {object} Updated game state after retreat.
+ */
+export function retreat(state, player, fromActiveId, toBenchIndex) {
+    const playerState = state.players[player];
+    const active = playerState.active;
+    const benchPokemon = playerState.bench[toBenchIndex];
+
+    if (!active || active.id !== fromActiveId || !benchPokemon) {
+        return state;
+    }
+
+    const retreatCost = active.retreat_cost || 0;
+    const attached = [...(active.attached_energy || [])];
+    if (attached.length < retreatCost) {
+        return state;
+    }
+
+    const energyToDiscard = attached.slice(0, retreatCost);
+    const remainingEnergy = attached.slice(retreatCost);
+
+    const newBench = [...playerState.bench];
+    newBench[toBenchIndex] = { ...active, attached_energy: remainingEnergy };
+
+    return {
+        ...state,
+        players: {
+            ...state.players,
+            [player]: {
+                ...playerState,
+                active: benchPokemon,
+                bench: newBench,
+                discard: [...playerState.discard, ...energyToDiscard]
+            }
+        }
+    };
+}
+
+/**
  * Checks if a pokemon has enough energy for a given attack.
  * @param {object} pokemon - The pokemon object.
  * @param {object} attack - The attack object.
