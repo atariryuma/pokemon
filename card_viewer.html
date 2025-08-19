@@ -1,25 +1,448 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Card Viewer</title>
+    <title>ポケモンカード データベース ビューワー</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-wrap: wrap; gap: 20px; padding: 20px; }
-        .card-display { border: 1px solid #ccc; padding: 10px; border-radius: 8px; width: 180px; text-align: center; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
-        .card-display img { max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 10px; }
-        .card-display p { margin: 5px 0; font-size: 0.9em; }
-        .card-display .name-en { font-weight: bold; }
-        .card-display .name-ja { color: #555; }
-        .card-display .card-type { font-style: italic; color: #777; }
-        .card-display .hp { color: #d9534f; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .data-source {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid transparent;
+            padding: 8px 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: #4facfe;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .card-display {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-display:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .card-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 3px solid #f0f0f0;
+            background: #f8f8f8;
+        }
+
+        .card-info {
+            flex: 1;
+        }
+
+        .card-names {
+            margin-bottom: 8px;
+        }
+
+        .name-en {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .name-ja {
+            font-size: 1em;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+
+        .card-type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .type-pokemon {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .type-energy {
+            background: linear-gradient(135deg, #feca57, #ff9ff3);
+            color: white;
+        }
+
+        .card-details {
+            margin-top: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #34495e;
+            font-size: 0.9em;
+        }
+
+        .detail-value {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .hp-value {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .attacks-list {
+            margin-top: 10px;
+        }
+
+        .attack-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .attack-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .attack-cost {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-bottom: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+            margin-top: 50px;
+        }
+
+        .no-results {
+            text-align: center;
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 50px;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .cards-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>Pokémon Card Viewer</h1>
-    <div id="card-container"></div>
+    <div class="header">
+        <h1>🎴 ポケモンカード データベース</h1>
+        <p>システム内蔵カードデータの詳細表示</p>
+    </div>
 
-    <script type="module" src="js/cards.js"></script>
-    <script type="module" src="js/card_viewer.js"></script>
+    <div class="data-source">
+        <h3>📊 データソース情報</h3>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-cards">0</div>
+                <div>総カード数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pokemon-count">0</div>
+                <div>ポケモン</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="energy-count">0</div>
+                <div>エネルギー</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">JSON</div>
+                <div>データ形式</div>
+            </div>
+        </div>
+        <p><strong>ファイルパス:</strong> <code>data/cards-master.json</code> → <code>cardMasterList</code></p>
+        <p><strong>画像パス:</strong> <code>assets/cards/{pokemon,energy}/*.webp</code> (動的生成: <code>getCardImagePath()</code>)</p>
+    </div>
+
+    <div class="controls">
+        <button class="filter-btn active" data-filter="all">全て</button>
+        <button class="filter-btn" data-filter="Pokémon">ポケモン</button>
+        <button class="filter-btn" data-filter="Basic Energy">エネルギー</button>
+        <input type="text" class="search-box" placeholder="カード名で検索..." id="search-input">
+    </div>
+
+    <div class="cards-container" id="cards-container">
+        <div class="loading">データを読み込んでいます...</div>
+    </div>
+
+    <script type="module">
+        import { loadCardsFromJSON, getCardMasterList, getCardImagePath } from './js/data-manager.js';
+        
+        // カードデータを読み込み
+        await loadCardsFromJSON();
+        const cardMasterList = getCardMasterList();
+
+        let currentFilter = 'all';
+        let currentSearch = '';
+
+        function updateStats() {
+            const totalCards = cardMasterList.length;
+            const pokemonCount = cardMasterList.filter(card => card.card_type === 'Pokémon').length;
+            const energyCount = cardMasterList.filter(card => card.card_type === 'Basic Energy').length;
+
+            document.getElementById('total-cards').textContent = totalCards;
+            document.getElementById('pokemon-count').textContent = pokemonCount;
+            document.getElementById('energy-count').textContent = energyCount;
+        }
+
+        function formatEnergyCost(cost) {
+            if (!cost || !Array.isArray(cost)) return '無し';
+            return cost.join(', ');
+        }
+
+        function createCardElement(card) {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card-display';
+            cardDiv.setAttribute('data-type', card.card_type);
+
+            const typeClass = card.card_type === 'Pokémon' ? 'type-pokemon' : 'type-energy';
+
+            cardDiv.innerHTML = `
+                <div class="card-header">
+                    <img class="card-image" src="${getCardImagePath(card.name_en)}" alt="${card.name_ja}" 
+                         onerror="this.src='assets/ui/card_back.webp'">
+                    <div class="card-info">
+                        <div class="card-names">
+                            <div class="name-en">${card.name_en}</div>
+                            <div class="name-ja">${card.name_ja}</div>
+                        </div>
+                        <span class="card-type-badge ${typeClass}">${card.card_type}</span>
+                    </div>
+                </div>
+
+                <div class="card-details">
+                    ${card.card_type === 'Pokémon' ? `
+                        <div class="detail-row">
+                            <span class="detail-label">ステージ</span>
+                            <span class="detail-value">${card.stage || '不明'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">HP</span>
+                            <span class="detail-value hp-value">${card.hp || '不明'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">タイプ</span>
+                            <span class="detail-value">${card.type || '不明'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">弱点</span>
+                            <span class="detail-value">${card.weakness ? `${card.weakness.type} ${card.weakness.value}` : '無し'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">抵抗力</span>
+                            <span class="detail-value">${card.resistance && card.resistance.type !== 'None' ? `${card.resistance.type} ${card.resistance.value}` : '無し'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">逃げるコスト</span>
+                            <span class="detail-value">${formatEnergyCost(card.retreat_cost)}</span>
+                        </div>
+                        ${card.attacks && card.attacks.length > 0 ? `
+                            <div class="attacks-list">
+                                <div class="detail-label" style="margin-bottom: 10px;">ワザ</div>
+                                ${card.attacks.map(attack => `
+                                    <div class="attack-item">
+                                        <div class="attack-name">${attack.name_ja || attack.name_en}</div>
+                                        <div class="attack-cost">コスト: ${formatEnergyCost(attack.cost)}</div>
+                                        <div style="font-weight: bold; color: #e74c3c;">ダメージ: ${attack.damage || 0}</div>
+                                        ${attack.effect_ja ? `<div style="font-size: 0.85em; margin-top: 5px; color: #666;">${attack.effect_ja}</div>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    ` : `
+                        <div class="detail-row">
+                            <span class="detail-label">エネルギータイプ</span>
+                            <span class="detail-value">${card.name_en.split(' ')[0]}</span>
+                        </div>
+                    `}
+                </div>
+            `;
+
+            return cardDiv;
+        }
+
+        function filterCards() {
+            const filteredCards = cardMasterList.filter(card => {
+                const matchesFilter = currentFilter === 'all' || card.card_type === currentFilter;
+                const matchesSearch = currentSearch === '' || 
+                    card.name_en.toLowerCase().includes(currentSearch.toLowerCase()) ||
+                    card.name_ja.includes(currentSearch);
+                return matchesFilter && matchesSearch;
+            });
+
+            return filteredCards;
+        }
+
+        function renderCards() {
+            const container = document.getElementById('cards-container');
+            const filteredCards = filterCards();
+
+            if (filteredCards.length === 0) {
+                container.innerHTML = '<div class="no-results">該当するカードが見つかりませんでした</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            filteredCards.forEach(card => {
+                container.appendChild(createCardElement(card));
+            });
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStats();
+            renderCards();
+
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentFilter = btn.getAttribute('data-filter');
+                    renderCards();
+                });
+            });
+
+            // Search
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                currentSearch = e.target.value;
+                renderCards();
+            });
+        });
+    </script>
 </body>
 </html>

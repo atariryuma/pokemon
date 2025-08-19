@@ -1,4 +1,4 @@
-import { cardMasterList } from './cards.js';
+import { getCardMasterList } from './data-manager.js';
 import { GAME_PHASES } from './phase-manager.js';
 
 // Fisher-Yates shuffle algorithm
@@ -13,6 +13,8 @@ function shuffle(array) {
 function createDeck() {
     const deck = [];
     let cardId = 0;
+    
+    const cardMasterList = getCardMasterList();
 
     // Add Pokémon
     const pokemon = cardMasterList.filter(c => c.card_type === 'Pokémon');

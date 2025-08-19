@@ -1,4 +1,4 @@
-import { getCardImagePath } from './cards.js';
+import { getCardImagePath } from './data-manager.js';
 import { animationManager } from './animations.js';
 import { GAME_PHASES } from './phase-manager.js';
 
@@ -313,7 +313,7 @@ export class View {
 
         // Enhanced debug logging for card creation
         console.log(`🎨 Creating card element: ${card.name_ja} (${card.name_en}) for ${playerType} ${zone}${index !== undefined ? `[${index}]` : ''}`);
-        console.log(`🖼️ Image path: ${isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en)}`);
+        console.log(`🖼️ Image path: ${isFaceDown ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en)}`);
         console.log(`🔍 Card damage state:`, {
             damage: card.damage,
             damageType: typeof card.damage,
@@ -328,7 +328,7 @@ export class View {
         img.className = 'card-image w-full h-full object-contain rounded-lg'; // Change object-cover to object-contain
         img.style.aspectRatio = '74 / 103'; // Enforce aspect ratio
         img.dataset.dynamic = true;
-        img.src = isFaceDown ? 'assets/card_back.webp' : getCardImagePath(card.name_en);
+        img.src = isFaceDown ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = isFaceDown ? 'Card Back' : card.name_ja;
         
         // CPUカードの向きを反転（手札とモーダル表示時以外）
@@ -341,7 +341,7 @@ export class View {
         img.onerror = function() {
             console.error(`❌ Failed to load image: ${this.src}`);
             // Fallback to card back if image fails to load
-            this.src = 'assets/card_back.webp';
+            this.src = 'assets/ui/card_back.webp';
         };
         
         // 確実にカードが表示されるよう初期状態を設定

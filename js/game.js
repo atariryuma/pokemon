@@ -5,7 +5,7 @@ import { animationManager } from './animations.js';
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
-import { getCardImagePath } from './cards.js';
+import { getCardImagePath, loadCardsFromJSON } from './data-manager.js';
 
 export class Game {
     constructor(rootEl, playmatSlotsData) {
@@ -32,6 +32,15 @@ export class Game {
 
     async init() {
         console.log('Game.init() started.');
+        
+        // 📦 Load card data first
+        try {
+            await loadCardsFromJSON();
+            console.log('✅ Card data loaded successfully');
+        } catch (error) {
+            console.error('❌ Failed to load card data:', error);
+        }
+        
         this.state = createInitialState();
         
         // Initialize view

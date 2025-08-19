@@ -8,7 +8,16 @@
       "Bash(rm:*)",
       "Bash(timeout 3 curl -s http://localhost:8000)",
       "Bash(node:*)",
-      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\card_viewer.js\")"
+      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\card_viewer.js\")",
+      "Bash(grep:*)",
+      "Bash(timeout 3 curl -s \"http://localhost:8000\")",
+      "Bash(timeout:*)",
+      "Bash(mkdir:*)",
+      "Bash(copy:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\cards.js\")"
     ],
     "deny": [],
     "ask": [],

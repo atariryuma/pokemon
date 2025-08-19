@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://pokemon-tcg.local/card-schema",
+  "title": "Pokemon Card Data Schema",
+  "description": "Schema for Pokemon Trading Card Game data validation",
+  "type": "array",
+  "items": {
+    "oneOf": [
+      {
+        "$ref": "#/$defs/pokemonCard"
+      },
+      {
+        "$ref": "#/$defs/energyCard"
+      },
+      {
+        "$ref": "#/$defs/trainerCard"
+      }
+    ]
+  },
+  "$defs": {
+    "pokemonCard": {
+      "type": "object",
+      "required": ["card_type", "name_en", "name_ja", "stage", "hp", "type"],
+      "properties": {
+        "card_type": {
+          "const": "Pokémon"
+        },
+        "name_en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "enum": ["BASIC", "STAGE1", "STAGE2"]
+        },
+        "hp": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 500
+        },
+        "type": {
+          "enum": ["Colorless", "Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Fairy", "Dragon"]
+        },
+        "attacks": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["name_en", "name_ja", "cost"],
+            "properties": {
+              "name_en": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name_ja": {
+                "type": "string",
+                "minLength": 1
+              },
+              "cost": {
+                "type": "array",
+                "items": {
+                  "enum": ["Colorless", "Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Fairy", "Dragon"]
+                }
+              },
+              "damage": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect_en": {
+                "type": "string"
+              },
+              "effect_ja": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "ability": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": ["name_en", "name_ja"],
+              "properties": {
+                "name_en": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name_ja": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "effect_en": {
+                  "type": "string"
+                },
+                "effect_ja": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "weakness": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": ["type", "value"],
+              "properties": {
+                "type": {
+                  "enum": ["Colorless", "Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Fairy", "Dragon", "None"]
+                },
+                "value": {
+                  "enum": ["×2", "+10", "+20", "+30", ""]
+                }
+              }
+            }
+          ]
+        },
+        "resistance": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": ["type", "value"],
+              "properties": {
+                "type": {
+                  "enum": ["Colorless", "Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Fairy", "Dragon", "None"]
+                },
+                "value": {
+                  "enum": ["-10", "-20", "-30", ""]
+                }
+              }
+            }
+          ]
+        },
+        "retreat_cost": {
+          "type": "array",
+          "items": {
+            "enum": ["Colorless", "Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Fairy", "Dragon"]
+          }
+        },
+        "image": {
+          "type": "string"
+        }
+      }
+    },
+    "energyCard": {
+      "type": "object",
+      "required": ["card_type", "name_en", "name_ja", "energy_type"],
+      "properties": {
+        "card_type": {
+          "const": "Basic Energy"
+        },
+        "name_en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "energy_type": {
+          "enum": ["Colorless", "Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Fairy", "Dragon"]
+        },
+        "effect_en": {
+          "type": "string"
+        },
+        "effect_ja": {
+          "type": "string"
+        },
+        "rules_en": {
+          "type": "string"
+        },
+        "rules_ja": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        }
+      }
+    },
+    "trainerCard": {
+      "type": "object",
+      "required": ["card_type", "name_en", "name_ja", "trainer_type"],
+      "properties": {
+        "card_type": {
+          "const": "Trainer"
+        },
+        "name_en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trainer_type": {
+          "enum": ["Item", "Supporter", "Stadium"]
+        },
+        "effect_en": {
+          "type": "string"
+        },
+        "effect_ja": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

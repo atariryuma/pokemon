@@ -460,7 +460,7 @@ export class AnimationManager {
         // カード画像を更新（簡略化）
         const cardImage = pokemonElement.querySelector('.card-image');
         if (cardImage && evolutionCard.name_en) {
-          import('./cards.js').then(({getCardImagePath}) => {
+          import('./data-manager.js').then(({getCardImagePath}) => {
             cardImage.src = getCardImagePath(evolutionCard.name_en);
           });
         }
