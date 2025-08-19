@@ -11,6 +11,8 @@ export const GAME_PHASES = {
   // セットアップフェーズ
   SETUP: 'setup',
   INITIAL_POKEMON_SELECTION: 'initialPokemonSelection',
+  PRIZE_CARD_SETUP: 'prizeCardSetup',
+  GAME_START_READY: 'gameStartReady',
   
   // プレイヤーターンフェーズ
   PLAYER_TURN: 'playerTurn',
@@ -208,6 +210,12 @@ export class PhaseManager {
       
       case GAME_PHASES.INITIAL_POKEMON_SELECTION:
         return '初期ポケモンの配置を確認して「確定」を押してください。';
+      
+      case GAME_PHASES.PRIZE_CARD_SETUP:
+        return 'サイドカードを配布中です...';
+      
+      case GAME_PHASES.GAME_START_READY:
+        return '準備完了！「ゲームスタート」を押してバトルを開始してください。';
       
       case GAME_PHASES.PLAYER_DRAW:
         return '山札をクリックしてカードを引いてください。';

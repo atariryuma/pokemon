@@ -175,7 +175,9 @@ export class View {
             }
             
             activeSlot.innerHTML = '';
-            const cardEl = this._createCardElement(safePlayer.active || null, playerType, 'active', 0);
+            const activePokemon = safePlayer.active;
+            const isFaceDown = activePokemon && activePokemon.setupFaceDown;
+            const cardEl = this._createCardElement(activePokemon, playerType, 'active', 0, isFaceDown);
             activeSlot.appendChild(cardEl);
             
             // Verify the card element was added correctly
@@ -195,7 +197,9 @@ export class View {
             const benchSlot = boardElement.querySelector(`.${benchPrefix}-${i + 1}`);
             if (!benchSlot) continue;
             benchSlot.innerHTML = '';
-            const cardEl = this._createCardElement(bench[i] || null, playerType, 'bench', i);
+            const benchPokemon = bench[i];
+            const isFaceDown = benchPokemon && benchPokemon.setupFaceDown;
+            const cardEl = this._createCardElement(benchPokemon, playerType, 'bench', i, isFaceDown);
             benchSlot.appendChild(cardEl);
             
             // セットアップ中はベンチスロットをクリック可能にする

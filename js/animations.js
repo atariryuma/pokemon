@@ -20,6 +20,8 @@ export class AnimationManager {
         slow: 500,
         dealCard: 600,
         dealPlayerHandCard: 600,
+        prizeDealLeft: 500,
+        prizeDealRight: 500,
         drawCard: 400,
         playCard: 500,
         attack: 800,
@@ -211,6 +213,99 @@ export class AnimationManager {
    */
   async animatePrizeDeal(elements, staggerDelay = 100) {
     return this.animateDealCards(elements, staggerDelay);
+  }
+
+  /**
+   * サイドカード横配布アニメーション（山札から横向きに配布）
+   * @param {Array<Element>} cardElements - カード要素の配列
+   * @param {string} direction - 配布方向 ('left' | 'right')
+   * @param {number} staggerDelay - 遅延時間（ミリ秒）
+   */
+  async animatePrizeDealFromSide(cardElements, direction = 'left', staggerDelay = 150) {
+    console.log(`🎬 Starting prize deal from ${direction} for ${cardElements.length} cards`);
+    
+    const promises = cardElements.map((element, index) => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          if (element) {
+            const target = element.querySelector('img') || element;
+            // 表示状態を保証（裏向きカードとして）
+            element.style.opacity = '1';
+            element.style.visibility = 'visible';
+            element.style.display = 'flex';
+            if (target) {
+              target.style.opacity = '1';
+              target.style.visibility = 'visible';
+              target.style.display = 'block';
+            }
+
+            // 強制リフロー
+            element.offsetHeight;
+
+            console.log(`🎴 Starting prize animation for card ${index + 1}/${cardElements.length} from ${direction}`);
+            this.addAnimationClass(target, `animate-prize-deal-${direction}`);
+            this.waitForAnimation(target, `prizeDeal${direction === 'left' ? 'Left' : 'Right'}`, () => {
+              target.style.transform = 'none';
+              console.log(`✅ Prize animation completed for card ${index + 1}`);
+              resolve();
+            });
+          } else {
+            resolve();
+          }
+        }, index * staggerDelay);
+      });
+    });
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * カード公開用光エフェクトアニメーション
+   * @param {Array<Element>} cardElements - カード要素の配列
+   * @param {number} staggerDelay - 遅延時間（ミリ秒）
+   */
+  async animateCardRevealFlash(cardElements, staggerDelay = 100) {
+    console.log(`🎬 Starting card reveal flash for ${cardElements.length} cards`);
+    
+    const promises = cardElements.map((element, index) => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          if (element) {
+            console.log(`✨ Adding flash effect to card ${index + 1}/${cardElements.length}`);
+            
+            // 光エフェクト要素を作成
+            const flashEffect = document.createElement('div');
+            flashEffect.className = 'card-reveal-flash';
+            flashEffect.style.cssText = `
+              position: absolute;
+              inset: -10px;
+              background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 200, 0.6) 30%, transparent 70%);
+              border-radius: 12px;
+              pointer-events: none;
+              z-index: 100;
+              animation: revealFlash 0.8s ease-out;
+            `;
+            
+            // 親要素を相対位置に
+            element.style.position = 'relative';
+            element.appendChild(flashEffect);
+            
+            // アニメーション終了後にエフェクトを削除
+            setTimeout(() => {
+              if (flashEffect.parentNode) {
+                flashEffect.parentNode.removeChild(flashEffect);
+              }
+              console.log(`✅ Flash effect completed for card ${index + 1}`);
+              resolve();
+            }, 800);
+          } else {
+            resolve();
+          }
+        }, index * staggerDelay);
+      });
+    });
+
+    return Promise.all(promises);
   }
   
   /**

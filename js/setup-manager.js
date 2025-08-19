@@ -35,10 +35,7 @@ export class SetupManager {
     // 3. マリガンチェックと処理
     newState = await this.handleMulligans(newState);
 
-    // 4. サイドカード配置（6枚ずつ）
-    newState = await this.setupPrizeCards(newState);
-
-    // 5. 初期ポケモン選択フェーズに移行
+    // 4. 初期ポケモン選択フェーズに移行（サイドカードは後で配布）
     newState.phase = GAME_PHASES.INITIAL_POKEMON_SELECTION;
     newState.prompt.message = 'まず手札のたねポケモンをクリックして選択し、次にバトル場またはベンチをクリックして配置してください。';
 
@@ -320,7 +317,7 @@ export class SetupManager {
   /**
    * 初期ポケモン選択の処理
    */
-  handlePokemonSelection(state, playerId, cardId, targetZone, targetIndex = 0) {
+  async handlePokemonSelection(state, playerId, cardId, targetZone, targetIndex = 0) {
     console.log(`🎯 Pokemon selection: ${playerId} places ${cardId} in ${targetZone}`);
     console.log(`📋 Before selection - ${playerId} hand:`, state.players[playerId].hand.length, 'cards');
     
@@ -377,25 +374,33 @@ export class SetupManager {
     playerState.hand = handCopy.filter(c => c.id !== cardId);
     console.log(`✂️ Removed card from hand. New hand size: ${playerState.hand.length}`);
 
-    // 配置処理
+    // 配置処理（セットアップ中は裏向き）
+    const cardWithSetupFlag = { ...card, setupFaceDown: true };
+    
     if (targetZone === 'active') {
-      playerState.active = card;
+      playerState.active = cardWithSetupFlag;
       newState = addLogEntry(newState, {
         type: 'pokemon_placement',
-        message: `${card.name_ja}をバトル場に配置しました`
+        message: `${card.name_ja}をバトル場に配置しました（裏向き）`
       });
-      console.log(`✅ Placed ${card.name_ja} in active position`);
+      console.log(`✅ Placed ${card.name_ja} in active position (face down)`);
     } else if (targetZone === 'bench') {
-      playerState.bench[targetIndex] = card;
+      playerState.bench[targetIndex] = cardWithSetupFlag;
       newState = addLogEntry(newState, {
         type: 'pokemon_placement',
-        message: `${card.name_ja}をベンチに配置しました`
+        message: `${card.name_ja}をベンチに配置しました（裏向き）`
       });
-      console.log(`✅ Placed ${card.name_ja} in bench slot ${targetIndex}`);
+      console.log(`✅ Placed ${card.name_ja} in bench slot ${targetIndex} (face down)`);
     }
 
     console.log(`📋 After selection - ${playerId} hand:`, playerState.hand.length, 'cards');
     console.log(`🎯 Placement successful: ${card.name_ja} -> ${targetZone}${targetZone === 'bench' ? `[${targetIndex}]` : ''}`);
+    
+    // プレイヤーが最初のポケモンを配置した時、CPUも同期して配置
+    if (playerId === 'player' && !newState.players.cpu.active) {
+      console.log('🔄 Triggering CPU pokemon setup...');
+      newState = await this.setupCpuInitialPokemon(newState);
+    }
     
     return newState;
   }
@@ -418,12 +423,13 @@ export class SetupManager {
       return newState;
     }
 
-    // 最初のたねポケモンをバトル場に配置
+    // 最初のたねポケモンをバトル場に配置（裏向き）
     const activeCandidate = basicPokemon[0];
     const activeIndex = cpuState.hand.findIndex(card => card.id === activeCandidate.id);
-    cpuState.active = cpuState.hand.splice(activeIndex, 1)[0];
+    const activePokemon = cpuState.hand.splice(activeIndex, 1)[0];
+    cpuState.active = { ...activePokemon, setupFaceDown: true };
 
-    // 残りのたねポケモンをベンチに配置（最大5体）
+    // 残りのたねポケモンをベンチに配置（最大5体、裏向き）
     const remainingBasic = cpuState.hand.filter(card => 
       card.card_type === 'Pokémon' && card.stage === 'BASIC'
     );
@@ -434,7 +440,8 @@ export class SetupManager {
       
       const benchIndex = cpuState.hand.findIndex(card => card.id === pokemon.id);
       if (benchIndex !== -1) {
-        cpuState.bench[benchCount] = cpuState.hand.splice(benchIndex, 1)[0];
+        const benchPokemon = cpuState.hand.splice(benchIndex, 1)[0];
+        cpuState.bench[benchCount] = { ...benchPokemon, setupFaceDown: true };
         benchCount++;
       }
     }
@@ -550,6 +557,130 @@ export class SetupManager {
       [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+  }
+
+  /**
+   * ポケモン配置確定後のサイドカード配布処理
+   */
+  async confirmPokemonSetupAndProceedToPrizes(state) {
+    console.log('✅ Pokemon setup confirmed, proceeding to prize cards...');
+    let newState = cloneGameState(state);
+    
+    // フェーズをサイドカード配布に変更
+    newState.phase = GAME_PHASES.PRIZE_CARD_SETUP;
+    
+    // サイドカード配布
+    newState = await this.setupPrizeCards(newState);
+    
+    // ゲーム開始準備完了フェーズに移行
+    newState.phase = GAME_PHASES.GAME_START_READY;
+    
+    newState = addLogEntry(newState, {
+      type: 'prize_setup_complete',
+      message: 'サイドカードが配布されました。ゲーム開始の準備が整いました！'
+    });
+    
+    return newState;
+  }
+
+  /**
+   * ゲーム開始時の表向き公開処理
+   */
+  async startGameRevealCards(state) {
+    console.log('🎬 Starting game with card reveal...');
+    let newState = cloneGameState(state);
+    
+    // 全てのセットアップ用裏向きフラグを削除
+    if (newState.players.player.active) {
+      delete newState.players.player.active.setupFaceDown;
+    }
+    if (newState.players.cpu.active) {
+      delete newState.players.cpu.active.setupFaceDown;
+    }
+    
+    // ベンチのフラグも削除
+    for (let i = 0; i < 5; i++) {
+      if (newState.players.player.bench[i]) {
+        delete newState.players.player.bench[i].setupFaceDown;
+      }
+      if (newState.players.cpu.bench[i]) {
+        delete newState.players.cpu.bench[i].setupFaceDown;
+      }
+    }
+    
+    // フェーズをプレイヤーターンに移行
+    newState.phase = GAME_PHASES.PLAYER_TURN;
+    newState.turn = 1;
+    newState.turnPlayer = 'player';
+    
+    newState = addLogEntry(newState, {
+      type: 'game_start',
+      message: 'バトル開始！全てのポケモンが公開されました！'
+    });
+    
+    return newState;
+  }
+
+  /**
+   * ゲーム開始モーダルを表示
+   */
+  showGameStartModal() {
+    console.log('🎮 Showing game start modal...');
+    const modal = document.getElementById('action-modal');
+    const title = document.getElementById('modal-title');
+    const body = document.getElementById('modal-body');
+    const actions = document.getElementById('modal-actions');
+
+    if (!modal || !title || !body || !actions) {
+      console.error('❌ Modal elements not found');
+      return;
+    }
+
+    title.textContent = 'ポケモンカードゲーム';
+    body.innerHTML = `
+      <div class="text-center">
+        <p class="text-lg mb-4">バトルの準備をしましょう！</p>
+        <p class="text-sm text-gray-300">山札をシャッフルして手札を配ります</p>
+      </div>
+    `;
+
+    actions.innerHTML = `
+      <button id="start-deal-cards" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg">
+        手札を配る
+      </button>
+    `;
+
+    // ボタンイベント
+    document.getElementById('start-deal-cards').addEventListener('click', () => {
+      this.handleStartDealCards();
+    });
+
+    // モーダル表示
+    modal.classList.remove('hidden');
+  }
+
+  /**
+   * 手札配布開始の処理
+   */
+  async handleStartDealCards() {
+    console.log('🎴 Starting card deal...');
+    const modal = document.getElementById('action-modal');
+    const title = document.getElementById('modal-title');
+    const body = document.getElementById('modal-body');
+    const actions = document.getElementById('modal-actions');
+
+    // モーダル内容を更新
+    title.textContent = '手札配布中...';
+    body.innerHTML = `
+      <div class="text-center">
+        <p class="text-lg mb-4">山札から7枚ずつ配布しています</p>
+        <div class="animate-pulse text-blue-400">●●●</div>
+      </div>
+    `;
+    actions.innerHTML = '';
+
+    // 実際の手札配布処理をトリガー
+    window.gameInstance?.triggerInitialSetup();
   }
 
   /**

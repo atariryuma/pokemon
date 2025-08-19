@@ -53,10 +53,30 @@ export class Game {
         this.view.attackButton.onclick = this._handleAttack.bind(this);
         this.view.endTurnButton.onclick = this._handleEndTurn.bind(this); // Bind end turn button
 
-        // Start game setup with animations
-        await this._startGameSetup();
+        // Show game start modal instead of auto-starting
+        this.setupManager.showGameStartModal();
+        
+        // Make game instance globally accessible for modal callbacks
+        window.gameInstance = this;
+        
         console.log('Game.init() finished.');
     } // End of init
+
+    /**
+     * モーダルからトリガーされるセットアップ開始
+     */
+    async triggerInitialSetup() {
+        console.log('🎮 Triggering initial setup from modal...');
+        
+        // モーダルを隠す
+        setTimeout(async () => {
+            const modal = document.getElementById('action-modal');
+            modal?.classList.add('hidden');
+            
+            // 実際のセットアップ開始
+            await this._startGameSetup();
+        }, 500);
+    }
 
     _updateState(newState) {
         console.log('_updateState() started. newState.phase:', newState.phase);

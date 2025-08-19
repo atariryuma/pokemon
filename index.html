@@ -239,6 +239,30 @@
             }
         }
 
+        /* サイドカード横配布アニメーション（左から） */
+        @keyframes prizeDealLeft {
+            0% {
+                transform: translateX(-100px) rotate(-5deg) scale(0.8);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(0) rotate(0deg) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* サイドカード横配布アニメーション（右から） */
+        @keyframes prizeDealRight {
+            0% {
+                transform: translateX(100px) rotate(5deg) scale(0.8);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(0) rotate(0deg) scale(1);
+                opacity: 1;
+            }
+        }
+
         @keyframes drawCard {
             0% {
                 transform: scale(1.5) rotate(15deg);
@@ -345,6 +369,13 @@
             100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
         }
 
+        @keyframes revealFlash {
+            0% { opacity: 0; transform: scale(0.8); }
+            30% { opacity: 1; transform: scale(1.2); }
+            60% { opacity: 0.8; transform: scale(1.1); }
+            100% { opacity: 0; transform: scale(1); }
+        }
+
         /* アニメーションクラス */
         .animate-deal-card {
             animation: dealCard 0.6s ease-out;
@@ -356,6 +387,14 @@
 
         .animate-deal-player-hand-card {
             animation: dealPlayerHandCard 0.6s ease-out;
+        }
+
+        .animate-prize-deal-left {
+            animation: prizeDealLeft 0.5s ease-out;
+        }
+
+        .animate-prize-deal-right {
+            animation: prizeDealRight 0.5s ease-out;
         }
 
         .animate-draw-card {
@@ -543,6 +582,32 @@
             padding-bottom: 90px !important; /* Mac Dock拡大効果を考慮した余白（調整値の半分） */
         }
 
+        /* サイドカード6枚重ね配置スタイル（プレイマット座標を保持） */
+        .prize-stack {
+            position: relative;
+            /* プレイマット座標を完全保持 - width/heightを強制しない */
+        }
+        
+        .prize-stack .card-slot:first-child {
+            position: relative;
+            z-index: 2;
+            /* プレイマットの元座標を保持 */
+        }
+        
+        .prize-stack .card-slot:last-child {
+            position: absolute;
+            top: 3px;
+            left: -4px;
+            z-index: 1;
+            /* プレイマット座標に基づくサイズを保持 */
+        }
+        
+        /* CPU側（opponent-board）は右下はみ出し */
+        .opponent-board .prize-stack .card-slot:last-child {
+            top: 3px;
+            left: 4px;
+        }
+
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center text-white p-4">
@@ -567,11 +632,20 @@
             <div class="card-slot top-bench-4" data-zone="Bench"></div>
             <div class="card-slot top-bench-5" data-zone="Bench"></div>
             
-            <!-- Side Cards (3 stacked) -->
+            <!-- Side Cards (6 cards in 3 stacks) -->
             <div class="side-cards-container side-right">
-                <div class="card-slot side-right-1" data-zone="Prize"></div>
-                <div class="card-slot side-right-2" data-zone="Prize"></div>
-                <div class="card-slot side-right-3" data-zone="Prize"></div>
+                <div class="prize-stack prize-stack-1">
+                    <div class="card-slot side-right-1" data-zone="Prize" data-prize-index="0"></div>
+                    <div class="card-slot side-right-1-back" data-zone="Prize" data-prize-index="1"></div>
+                </div>
+                <div class="prize-stack prize-stack-2">
+                    <div class="card-slot side-right-2" data-zone="Prize" data-prize-index="2"></div>
+                    <div class="card-slot side-right-2-back" data-zone="Prize" data-prize-index="3"></div>
+                </div>
+                <div class="prize-stack prize-stack-3">
+                    <div class="card-slot side-right-3" data-zone="Prize" data-prize-index="4"></div>
+                    <div class="card-slot side-right-3-back" data-zone="Prize" data-prize-index="5"></div>
+                </div>
             </div>
             
             <!-- Deck and Discard -->
@@ -596,11 +670,20 @@
             <div class="card-slot bottom-bench-4" data-zone="Bench"></div>
             <div class="card-slot bottom-bench-5" data-zone="Bench"></div>
             
-            <!-- Side Cards (3 stacked) -->
+            <!-- Side Cards (6 cards in 3 stacks) -->
             <div class="side-cards-container side-left">
-                <div class="card-slot side-left-1" data-zone="Prize"></div>
-                <div class="card-slot side-left-2" data-zone="Prize"></div>
-                <div class="card-slot side-left-3" data-zone="Prize"></div>
+                <div class="prize-stack prize-stack-1">
+                    <div class="card-slot side-left-1" data-zone="Prize" data-prize-index="0"></div>
+                    <div class="card-slot side-left-1-back" data-zone="Prize" data-prize-index="1"></div>
+                </div>
+                <div class="prize-stack prize-stack-2">
+                    <div class="card-slot side-left-2" data-zone="Prize" data-prize-index="2"></div>
+                    <div class="card-slot side-left-2-back" data-zone="Prize" data-prize-index="3"></div>
+                </div>
+                <div class="prize-stack prize-stack-3">
+                    <div class="card-slot side-left-3" data-zone="Prize" data-prize-index="4"></div>
+                    <div class="card-slot side-left-3-back" data-zone="Prize" data-prize-index="5"></div>
+                </div>
             </div>
             
             <!-- Deck and Discard -->
