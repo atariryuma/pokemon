@@ -57,7 +57,7 @@ export class AnimationManager {
             // 子要素のimg要素も確実に見えるようにする
             const img = element.querySelector('img');
             if (img) {
-              img.classList.add('is-animating', 'is-hidden'); // start hidden via CSS
+              img.classList.add('is-animating'); // make hidden via CSS
               img.style.visibility = 'visible';
               img.style.display = 'block';
             }
@@ -73,7 +73,7 @@ export class AnimationManager {
             // CSSアニメーションを開始（opacity: 0 → 1 のアニメーションを実行）
             // Ensure starting opacity 0 via class if img
             if (target.tagName && target.tagName.toLowerCase() === 'img') {
-              target.classList.add('is-animating', 'is-hidden');
+              target.classList.add('is-animating');
             }
             this.addAnimationClass(target, 'animate-deal-card');
             this.waitForAnimation(target, 'dealCard', () => {
@@ -82,7 +82,7 @@ export class AnimationManager {
               element.style.visibility = 'visible';
               target.style.transform = 'none';
               if (target.tagName && target.tagName.toLowerCase() === 'img') {
-                target.classList.remove('is-animating', 'is-hidden');
+                target.classList.remove('is-animating');
               }
               console.log(`✅ Animation completed for card ${index + 1}, final opacity: ${element.style.opacity}`);
               resolve();
@@ -107,12 +107,12 @@ export class AnimationManager {
       const target = cardElement?.querySelector('img') || cardElement;
       if (!target) return resolve();
       if (target.tagName && target.tagName.toLowerCase() === 'img') {
-        target.classList.add('is-animating', 'is-hidden');
+        target.classList.add('is-animating');
       }
       this.addAnimationClass(target, 'animate-draw-card');
       this.waitForAnimation(target, 'drawCard', () => {
         if (target.tagName && target.tagName.toLowerCase() === 'img') {
-          target.classList.remove('is-animating', 'is-hidden');
+          target.classList.remove('is-animating');
         }
         resolve();
       });
