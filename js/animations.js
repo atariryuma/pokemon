@@ -57,7 +57,7 @@ export class AnimationManager {
             // 子要素のimg要素も確実に見えるようにする
             const img = element.querySelector('img');
             if (img) {
-              img.classList.add('is-animating'); // make hidden via CSS
+              img.classList.add('is-animating');
               img.style.visibility = 'visible';
               img.style.display = 'block';
             }
@@ -71,7 +71,6 @@ export class AnimationManager {
             console.log(`  Before animation - opacity: ${element.style.opacity}, visibility: ${element.style.visibility}`);
             
             // CSSアニメーションを開始（opacity: 0 → 1 のアニメーションを実行）
-            // Ensure starting opacity 0 via class if img
             if (target.tagName && target.tagName.toLowerCase() === 'img') {
               target.classList.add('is-animating');
             }
