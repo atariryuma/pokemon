@@ -312,7 +312,7 @@ export class Game {
                         confirmButton.classList.remove('opacity-50', 'cursor-not-allowed');
                     } else {
                         confirmButton.disabled = true;
-                        confirmButton.textContent = 'バトル場にたねポケモンを配置してください';
+                        confirmButton.textContent = 'たねポケモンをバトル場へ配置';
                         confirmButton.classList.add('opacity-50', 'cursor-not-allowed');
                     }
                 }
