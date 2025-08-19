@@ -99,7 +99,22 @@ export function createInitialState() {
  * ゲーム状態のディープクローン
  */
 export function cloneGameState(state) {
-    return JSON.parse(JSON.stringify(state));
+    // 基本プロパティが欠けていてもゲームが進行できるように補完
+    const cloned = JSON.parse(JSON.stringify(state || {}));
+
+    if (!Array.isArray(cloned.log)) {
+        cloned.log = [];
+    }
+
+    // players が消失した場合に備えて最低限の構造を補完
+    if (!cloned.players) {
+        cloned.players = {
+            player: createPlayerState(),
+            cpu: createPlayerState(),
+        };
+    }
+
+    return cloned;
 }
 
 /**
@@ -119,8 +134,12 @@ export function getPlayerState(state, playerId) {
  */
 export function addLogEntry(state, entry) {
     const newState = cloneGameState(state);
+    // cloneGameState で補完しているが念のため防御的にチェック
+    if (!Array.isArray(newState.log)) {
+        newState.log = [];
+    }
     newState.log.push({
-        turn: state.turn,
+        turn: state?.turn ?? 0,
         timestamp: Date.now(),
         ...entry
     });
