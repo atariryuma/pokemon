@@ -50,7 +50,7 @@ export class View {
         this.createMessageContainer();
 
         // Initialize Mac Dock–style magnification for player's hand
-        this._initHandDock();
+        
     }
 
     bindCardClick(handler) {
@@ -286,84 +286,9 @@ export class View {
         }
     }
 
-    /**
-     * Initialize Mac Dock–style proximity magnification for the player's hand.
-     */
-    _initHandDock() {
-        const container = document.getElementById('player-hand-inner') || document.getElementById('player-hand');
-        if (!container) return;
-
-        const RADIUS = 180;        // influence radius in px
-        const BASE_SCALE = 1.0;    // baseline equals CPU hand size
-        const MAX_SCALE = 1.3;     // expand larger than normal for clarity
-        const MAX_LIFT = 34;       // px translateY upwards at center
-        const BASE_GAP = 2;        // px default spacing per side (~CPU gap-x-1)
-        const MAX_GAP = 6;         // px spacing per side near cursor
-
-        let rafId = null;
-        let pendingX = null;
-
-        const resetAll = () => {
-            const cards = container.querySelectorAll('.hand-card');
-            cards.forEach(el => {
-                el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
-                el.style.marginLeft = `${BASE_GAP}px`;
-                el.style.marginRight = `${BASE_GAP}px`;
-                el.style.zIndex = '101';
-            });
-        };
-
-        const applyAt = (x) => {
-            const cards = container.querySelectorAll('.hand-card');
-            let maxScale = 0;
-            let maxEl = null;
-            cards.forEach(el => {
-                const rect = el.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const d = Math.abs(centerX - x);
-                const t = Math.max(0, 1 - d / RADIUS); // 0..1
-                const scale = BASE_SCALE + (MAX_SCALE - BASE_SCALE) * (t * t);
-                const lift = -MAX_LIFT * (t * t);
-                const gap = BASE_GAP + (MAX_GAP - BASE_GAP) * (t * t);
-                if (scale > 0) {
-                    el.style.transform = `translateY(${lift}px) scale(${scale.toFixed(3)})`;
-                }
-                el.style.marginLeft = `${gap}px`;
-                el.style.marginRight = `${gap}px`;
-                if (scale > maxScale) {
-                    maxScale = scale;
-                    maxEl = el;
-                }
-            });
-            // Raise stacking for the card closest to the cursor
-            cards.forEach(el => { el.style.zIndex = '61'; });
-            if (maxEl) maxEl.style.zIndex = '62';
-        };
-
-        const onMove = (e) => {
-            pendingX = e.clientX;
-            if (rafId) return;
-            rafId = requestAnimationFrame(() => {
-                applyAt(pendingX);
-                rafId = null;
-            });
-        };
-
-        container.addEventListener('mousemove', onMove);
-        container.addEventListener('mouseleave', resetAll);
-        // Allow normal vertical page scroll while hovering hand (no interception)
-        // Touch support: tap to center magnify under finger, then reset on end
-        container.addEventListener('touchmove', (e) => {
-            if (!e.touches || e.touches.length === 0) return;
-            applyAt(e.touches[0].clientX);
-        }, { passive: true });
-        container.addEventListener('touchend', resetAll);
-
-        // Reposition on load and resize
-        window.addEventListener('load', () => this._positionHandAgainstBoard(this._getDesiredHandGap()));
-        window.addEventListener('resize', () => { 
-            this._positionHandAgainstBoard(this._getDesiredHandGap());
-        });
+    _updateHandContainerHeight() {
+        // This function is no longer needed as hand height is fixed in CSS.
+        // Keeping it as a placeholder comment for now.
     }
 
     /**

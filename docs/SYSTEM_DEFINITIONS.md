@@ -15,6 +15,7 @@ export const GAME_PHASES = {
   INITIAL_POKEMON_SELECTION: 'initialPokemonSelection',
   
   // プレイヤーターン
+  PLAYER_TURN: 'playerTurn',
   PLAYER_DRAW: 'playerDraw',
   PLAYER_MAIN: 'playerMain',
   PLAYER_ATTACK: 'playerAttack',
@@ -122,7 +123,7 @@ PlayerState = {
 
 ### 共通要素
 ```css
-.stadium-slot      /* スタジアムカード */
+.stadium-zone      /* スタジアムカード（実装クラス名） */
 .deck-container    /* デッキスタッキング効果用 */
 .side-cards-container  /* サイドカードスタッキング効果用 */
 ```
@@ -180,7 +181,7 @@ Card = {
   id: string,                        // 一意ID
   name_en: string,                   // 英語名
   name_ja: string,                   // 日本語名
-  card_type: "Pokemon"|"Energy"|"Trainer"
+  card_type: "Pokémon"|"Basic Energy"|"Trainer"
 }
 ```
 
@@ -188,16 +189,16 @@ Card = {
 ```javascript
 PokemonCard = {
   ...Card,
-  card_type: "Pokemon",
-  stage: "Basic"|"Stage1"|"Stage2",
+  card_type: "Pokémon",
+  stage: "BASIC"|"STAGE1"|"STAGE2",
   evolves_from?: string,             // 進化元名
   evolves_to?: string[],             // 進化先名一覧
   hp: number,                        // HP
-  types: string[],                   // タイプ
+  type: string,                      // タイプ（単数: 例 "Grass"）
   rule_box?: "ex"|"V"|"VMAX"|null,   // ルールボックス
   weakness?: {type:string, value:string}[],
   resistance?: {type:string, value:string}[],
-  retreat_cost: number,              // 無色エネルギー個数
+  retreat_cost: number,              // 無色エネルギー個数（実装は数値を使用）
   ability?: {name_en, text_en, name_ja, text_ja},
   attacks: [{
     name_en: string,
@@ -219,10 +220,10 @@ PokemonCard = {
 ```javascript
 EnergyCard = {
   ...Card,
-  card_type: "Energy",
+  card_type: "Basic Energy",
   energy_type: "Grass"|"Fire"|"Water"|"Lightning"|"Psychic"|"Fighting"|"Darkness"|"Metal"|"Fairy"|"Dragon"|"Colorless",
-  is_basic: boolean,
-  text_en?: string,                  // 特殊エネルギー用
+  // is_basic は使用しません（card_typeで区別）
+  text_en?: string,                  // 特殊エネルギー用（将来拡張）
   text_ja?: string
 }
 ```
@@ -302,8 +303,10 @@ export function checkForKnockout(state, defendingPlayerId)
 export function checkForWinner(state)
 
 // ユーティリティ
-export function findCardInHand(playerState, cardId)
-export function findPokemonById(playerState, pokemonId)
+// 内部関数（モジュール内で使用）
+findCardInHand(playerState, cardId)
+findPokemonById(playerState, pokemonId)
+// 公開関数
 export function hasEnoughEnergy(pokemon, attack)
 export function drawCard(state, playerId)
 ```

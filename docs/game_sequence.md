@@ -23,7 +23,7 @@
 2.  **初期手札ドロー (7枚) & マリガン (`setup-manager.js` `drawInitialHands`, `handleMulligans`)**
     *   **アニメーション**:
         *   デッキからカードが手札に移動するアニメーション (`animationManager.animateInitialHandDeal`)。
-        *   マリガン時: 手札がデッキに戻り、デッキが再度シャッフルされ、新しい手札がドローされるアニメーション (`setupManager.performMulligan`, `animationManager.animateMulligan`)。
+        *   マリガン時: 手札がデッキに戻り、デッキが再度シャッフルされ、新しい手札がドローされるアニメーション (`setupManager.performMulligan`, `setupManager.animateMulligan`)。
     *   **UI**: マリガンが発生した場合、メッセージ表示 (`view.showMessage`)。
 3.  **`initialPokemonSelection` フェーズへの移行 (`game.js` `_startGameSetup`)**
     *   **UI**: セットアップオーバーレイが表示され、プレイヤーの手札からたねポケモンがハイライト表示される。
