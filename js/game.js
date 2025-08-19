@@ -412,12 +412,14 @@ export class Game {
      * ペンディングアクション処理
      */
     async _handlePendingAction(dataset) {
-        const { cardId, zone } = dataset;
-        
+        const { cardId, zone, index } = dataset;
+
         if (this.state.pendingAction.type === 'attach-energy' && (zone === 'active' || zone === 'bench')) {
             if (cardId) {
                 await this._attachEnergy(this.state.pendingAction.sourceCardId, cardId);
             }
+        } else if (this.state.pendingAction.type === 'retreat-promote' && zone === 'bench') {
+            await this._performRetreat(parseInt(index, 10));
         }
     }
 
@@ -439,6 +441,28 @@ export class Game {
             newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
         }
         
+        this._clearAllHighlights();
+        this._updateState(newState);
+    }
+
+    /**
+     * にげる実行
+     */
+    async _performRetreat(benchIndex) {
+        const active = this.state.players.player.active;
+        if (!active) return;
+
+        let newState = this.turnManager.handlePlayerMainPhase(this.state, 'retreat_pokemon', {
+            fromActiveId: active.id,
+            toBenchIndex: benchIndex
+        });
+
+        if (newState !== this.state) {
+            feedbackSystem.success('にげました');
+            newState.pendingAction = null;
+            newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+        }
+
         this._clearAllHighlights();
         this._updateState(newState);
     }
@@ -488,6 +512,12 @@ export class Game {
         // 攻撃実行
         newState = await this.turnManager.executeAttack(newState);
         this._updateState(newState);
+
+        if (newState.turnPlayer === 'cpu') {
+            setTimeout(async () => {
+                await this._executeCpuTurn();
+            }, 1000);
+        }
     }
 
     /**
