@@ -322,53 +322,81 @@ export class SetupManager {
    */
   handlePokemonSelection(state, playerId, cardId, targetZone, targetIndex = 0) {
     console.log(`🎯 Pokemon selection: ${playerId} places ${cardId} in ${targetZone}`);
+    console.log(`📋 Before selection - ${playerId} hand:`, state.players[playerId].hand.length, 'cards');
+    
     let newState = cloneGameState(state);
     const playerState = newState.players[playerId];
+    
+    // 安全な手札コピーを作成
+    const handCopy = [...playerState.hand];
+    console.log(`📏 Hand copy created with ${handCopy.length} cards`);
 
-    // 手札からカードを見つけて削除
-    const cardIndex = playerState.hand.findIndex(card => card.id === cardId);
+    // 手札からカードを見つける
+    const cardIndex = handCopy.findIndex(card => card.id === cardId);
     if (cardIndex === -1) {
-      console.warn('Card not found in hand');
+      console.warn(`⚠️ Card ${cardId} not found in ${playerId} hand`);
+      console.log('Available cards in hand:', handCopy.map(c => c.id));
       return state;
     }
 
-    const card = playerState.hand.splice(cardIndex, 1)[0];
+    const card = handCopy[cardIndex];
+    console.log(`🃏 Found card: ${card.name_ja} at index ${cardIndex}`);
 
     // たねポケモンかチェック
     if (card.card_type !== 'Pokémon' || card.stage !== 'BASIC') {
-      console.warn('Only Basic Pokemon can be placed during setup');
-      // カードを手札に戻す
-      playerState.hand.splice(cardIndex, 0, card);
-      return state;
+      console.warn(`⚠️ Invalid card type: ${card.card_type}, stage: ${card.stage}. Only Basic Pokemon allowed.`);
+      return state; // 状態を変更せずに戻す
     }
 
-    // 配置先に応じて処理
+    // 配置先の有効性をチェック
+    let canPlace = false;
+    
     if (targetZone === 'active') {
       if (playerState.active === null) {
-        playerState.active = card;
-        newState = addLogEntry(newState, {
-          type: 'pokemon_placement',
-          message: `${card.name_ja}をバトル場に配置しました`
-        });
+        canPlace = true;
+        console.log(`✅ Active slot is empty, can place ${card.name_ja}`);
       } else {
-        // バトル場が既に埋まっている場合は手札に戻す
-        playerState.hand.splice(cardIndex, 0, card);
-        return state;
+        console.warn(`⚠️ Active slot already occupied by ${playerState.active.name_ja}`);
       }
     } else if (targetZone === 'bench') {
       if (targetIndex >= 0 && targetIndex < 5 && playerState.bench[targetIndex] === null) {
-        playerState.bench[targetIndex] = card;
-        newState = addLogEntry(newState, {
-          type: 'pokemon_placement',
-          message: `${card.name_ja}をベンチに配置しました`
-        });
+        canPlace = true;
+        console.log(`✅ Bench slot ${targetIndex} is empty, can place ${card.name_ja}`);
       } else {
-        // ベンチが埋まっているか無効なインデックスの場合は手札に戻す
-        playerState.hand.splice(cardIndex, 0, card);
-        return state;
+        const occupiedBy = playerState.bench[targetIndex]?.name_ja || 'Invalid index';
+        console.warn(`⚠️ Bench slot ${targetIndex} is occupied by ${occupiedBy} or invalid`);
       }
     }
 
+    if (!canPlace) {
+      console.log(`❌ Cannot place ${card.name_ja} in ${targetZone}${targetZone === 'bench' ? `[${targetIndex}]` : ''}`);
+      return state; // 状態を変更せずに戻す
+    }
+
+    // ここで初めて手札からカードを削除
+    playerState.hand = handCopy.filter(c => c.id !== cardId);
+    console.log(`✂️ Removed card from hand. New hand size: ${playerState.hand.length}`);
+
+    // 配置処理
+    if (targetZone === 'active') {
+      playerState.active = card;
+      newState = addLogEntry(newState, {
+        type: 'pokemon_placement',
+        message: `${card.name_ja}をバトル場に配置しました`
+      });
+      console.log(`✅ Placed ${card.name_ja} in active position`);
+    } else if (targetZone === 'bench') {
+      playerState.bench[targetIndex] = card;
+      newState = addLogEntry(newState, {
+        type: 'pokemon_placement',
+        message: `${card.name_ja}をベンチに配置しました`
+      });
+      console.log(`✅ Placed ${card.name_ja} in bench slot ${targetIndex}`);
+    }
+
+    console.log(`📋 After selection - ${playerId} hand:`, playerState.hand.length, 'cards');
+    console.log(`🎯 Placement successful: ${card.name_ja} -> ${targetZone}${targetZone === 'bench' ? `[${targetIndex}]` : ''}`);
+    
     return newState;
   }
 

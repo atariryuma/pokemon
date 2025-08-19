@@ -145,9 +145,31 @@ export class Game {
         
         // デバッグ: 手札の内容を確認
         console.log('👤 Player hand after setup:', this.state.players.player.hand.length, 'cards');
+        this.state.players.player.hand.forEach((card, i) => {
+            console.log(`  ${i + 1}. ${card.name_ja} (${card.id})`);
+        });
         console.log('🤖 CPU hand after setup:', this.state.players.cpu.hand.length, 'cards');
         console.log('🏆 Player prizes after setup:', this.state.players.player.prize.length, 'cards');
         console.log('🏆 CPU prizes after setup:', this.state.players.cpu.prize.length, 'cards');
+        
+        // 初期状態のレンダリング完了後の手札確認
+        setTimeout(() => {
+            console.log('🗺️ Post-render hand verification:');
+            const handElements = document.querySelectorAll('#player-hand .hand-card, #player-hand-inner .hand-card');
+            console.log('  Player hand elements:', handElements.length);
+            console.log('  Player hand data:', this.state.players.player.hand.length);
+            
+            if (handElements.length !== this.state.players.player.hand.length) {
+                console.warn('⚠️ Hand element count mismatch detected!');
+                console.log('  Expected:', this.state.players.player.hand.length);
+                console.log('  Found:', handElements.length);
+                console.log('  Re-rendering hand...');
+                const playerHandElement = this.view.playerHandInner || this.view.playerHand;
+                if (playerHandElement) {
+                    this.view._renderHand(playerHandElement, this.state.players.player.hand, 'player');
+                }
+            }
+        }, 500); // アニメーション完了を待つ
     }
 
     /**
@@ -172,16 +194,20 @@ export class Game {
                 console.log('❌ Invalid card selection:', card?.name_ja || 'Unknown card');
             }
         } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
-            console.log(`DEBUG: Attempting to place card. selectedCardForSetup: ${this.selectedCardForSetup.name_ja}`);
+            console.log(`🃏 Attempting to place card: ${this.selectedCardForSetup.name_ja}`);
+            
             // 配置先を選択
             const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
-
             console.log(`🎯 Placing ${this.selectedCardForSetup.name_ja} in ${zone}${zone === 'bench' ? `[${targetIndex}]` : ''}`);
 
             // DOM上のカード要素を取得（手札のカード）
             const cardElement = document.querySelector(`[data-card-id="${this.selectedCardForSetup.id}"]`);
+            if (!cardElement) {
+                console.warn(`⚠️ Card element not found for ${this.selectedCardForSetup.id}`);
+            }
 
-            // 先に状態を更新（手札から除外し、配置）
+            // 状態更新実行（手札から除外し、配置）
+            const previousState = this.state;
             this.state = this.setupManager.handlePokemonSelection(
                 this.state,
                 'player',
@@ -189,14 +215,28 @@ export class Game {
                 zone,
                 targetIndex
             );
+            
+            // 状態変更が成功したか確認
+            if (this.state === previousState) {
+                console.warn('⚠️ Pokemon placement failed, state unchanged');
+                return;
+            }
+            
+            console.log('📋 State updated - new hand size:', this.state.players.player.hand.length);
 
-            // カード移動アニメーション
-            await this._animateCardPlacement(cardElement, zone, targetIndex);
+            // カード移動アニメーションを状態更新の前に実行
+            if (cardElement) {
+                await this._animateCardPlacement(cardElement, zone, targetIndex);
+            }
 
+            // 状態更新を一度だけ実行するためにフラグで管理
             this.selectedCardForSetup = null;
             this._clearCardHighlights();
             this.state.prompt.message = '次のたねポケモンを選択するか、確定してください。';
             this.view.updateStatusMessage(this.state.prompt.message);
+            
+            // 一度だけレンダリングし、重複を防止
+            console.log('📋 Final state update after card placement');
             this._updateState(this.state);
         } else if ((zone === 'active' || zone === 'bench') && !this.selectedCardForSetup) {
             // カードが選択されていない状態でスロットをクリックした場合

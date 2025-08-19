@@ -49,8 +49,10 @@ export class View {
         // Message system
         this.createMessageContainer();
 
-        // Initialize Mac Dock–style magnification for player's hand
-        
+        // Initialize Mac Dock–style magnification for player's hand (delayed)
+        setTimeout(() => {
+            this._initHandDock();
+        }, 1000);
     }
 
     bindCardClick(handler) {
@@ -123,9 +125,18 @@ export class View {
         this._clearBoard();
         this._renderBoard(this.playerBoard, state.players.player, 'player', state);
         this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu', state);
-        this._renderHand(this.playerHandInner || this.playerHand, state.players.player.hand, 'player');
+        // Player hand rendering with improved element selection
+        const playerHandElement = this.playerHandInner || this.playerHand;
+        if (playerHandElement) {
+            console.log(`🎯 Using hand element: ${playerHandElement.id || 'unnamed'} for player hand rendering`);
+            this._renderHand(playerHandElement, state.players.player.hand, 'player');
+        } else {
+            console.error('🚨 CRITICAL: No valid player hand element found!');
+        }
         this._renderHand(this.cpuHand, state.players.cpu.hand, 'cpu');
         this._renderStadium(state);
+
+        this.playerHand.style.bottom = '10px';
 
         console.log('✅ View.render() completed');
 
@@ -147,13 +158,42 @@ export class View {
             slot.innerHTML = '';
         });
         
-        // Clear hand areas
-        if (this.playerHandInner) {
-            this.playerHandInner.innerHTML = '';
-        } else if (this.playerHand) {
-            this.playerHand.innerHTML = '';
+        // Clear hand areas with improved safety
+        console.log('🧹 Clearing hand areas...');
+        
+        // Player hand clearing with better fallback
+        const playerHandElement = this.playerHandInner || this.playerHand;
+        if (playerHandElement) {
+            const playerCardCount = playerHandElement.children.length;
+            console.log(`🧹 About to clear ${playerCardCount} cards from player hand (${playerHandElement.id})`);
+            
+            // Clear children one by one to avoid issues
+            while (playerHandElement.firstChild) {
+                playerHandElement.removeChild(playerHandElement.firstChild);
+            }
+            
+            // Double-check clearing worked
+            const remainingChildren = playerHandElement.children.length;
+            console.log(`  🧹 Cleared player hand: ${playerCardCount} -> ${remainingChildren} cards`);
+            
+            if (remainingChildren > 0) {
+                console.warn('⚠️ Some player hand children could not be removed, using innerHTML fallback');
+                playerHandElement.innerHTML = '';
+            }
+        } else {
+            console.warn('⚠️ No player hand element found to clear!');
         }
-        if (this.cpuHand) this.cpuHand.innerHTML = '';
+        
+        // CPU hand clearing
+        if (this.cpuHand) {
+            const cpuCardCount = this.cpuHand.children.length;
+            while (this.cpuHand.firstChild) {
+                this.cpuHand.removeChild(this.cpuHand.firstChild);
+            }
+            console.log(`  🧹 Cleared ${cpuCardCount} cards from CPU hand`);
+        } else {
+            console.warn('⚠️ No CPU hand element found to clear!');
+        }
         
         console.log('✅ Board cleared');
     }
@@ -239,56 +279,241 @@ export class View {
     }
 
     _renderHand(handElement, hand, playerType) {
-        if (!handElement) return;
+        console.log(`🎨 _renderHand called: ${playerType}, handElement exists: ${!!handElement}, hand length: ${Array.isArray(hand) ? hand.length : 'not array'}`);
+        
+        // Improved safety checks
+        if (!handElement) {
+            console.warn(`❌ Hand element not found for ${playerType}`);
+            return;
+        }
+        
+        // Safe array conversion with detailed logging
         const arr = Array.isArray(hand) ? hand : [];
-
-        // Clear existing cards before rendering new ones
-        handElement.innerHTML = '';
+        if (!Array.isArray(hand)) {
+            console.warn(`⚠️ Hand is not an array for ${playerType}:`, typeof hand, hand);
+        }
         
         console.log(`🃏 Rendering ${arr.length} cards for ${playerType} hand`);
-        
-        arr.forEach((card, index) => {
-            const isFaceDown = playerType === 'cpu';
-            const cardEl = this._createCardElement(card, playerType, 'hand', index, isFaceDown);
-            if (playerType === 'cpu') {
-                // CPU hand baseline size
-                cardEl.classList.add('w-20', 'h-28', 'flex-shrink-0');
-            } else {
-                // Match player's initial hand sizing to CPU hand
-                cardEl.classList.add('w-20', 'h-28', 'flex-shrink-0');
-            }
-            if (playerType === 'player') {
-                cardEl.classList.add('hand-card');
-                // default scale matches CPU hand (no shrink)
-                cardEl.style.transform = 'translateY(0) scale(1)';
-                // match CPU-like spacing (~4px gap between cards)
-                cardEl.style.marginLeft = '2px';
-                cardEl.style.marginRight = '2px';
-            }
-            
-            // 確実にカード要素が表示されるよう設定
-            cardEl.style.opacity = '1';
-            cardEl.style.visibility = 'visible';
-            cardEl.style.display = 'flex';
-            cardEl.style.zIndex = '61'; // Ensure hand cards stack above board but below UI
-            cardEl.style.position = 'relative';
-            
-            handElement.appendChild(cardEl);
-            
-            console.log(`  📋 Added card ${index + 1}/${arr.length} to ${playerType} hand`);
+        console.log(`🔍 Hand element info:`, {
+            id: handElement.id,
+            className: handElement.className,
+            currentChildren: handElement.children.length,
+            parentElement: handElement.parentElement?.tagName
         });
         
-        // DOM挿入後の強制再描画
-        if (handElement.children.length > 0) {
-            // Force reflow
-            handElement.offsetHeight;
-            console.log(`✅ ${playerType} hand rendering completed: ${handElement.children.length} elements`);
+        // Store current cards before clearing (for debugging)
+        const previousCardCount = handElement.children.length;
+        
+        // Clear existing cards with safety check
+        try {
+            // Use the same clearing method as _clearBoard for consistency
+            while (handElement.firstChild) {
+                handElement.removeChild(handElement.firstChild);
+            }
+            
+            const remainingAfterClear = handElement.children.length;
+            console.log(`🧹 Cleared ${previousCardCount} -> ${remainingAfterClear} cards from ${playerType} hand`);
+            
+            if (remainingAfterClear > 0) {
+                console.warn(`⚠️ ${remainingAfterClear} cards remained after clearing, using innerHTML`);
+                handElement.innerHTML = '';
+            }
+        } catch (error) {
+            console.error(`❌ Error clearing hand element for ${playerType}:`, error);
+            return;
+        }
+        
+        // Early return if no cards to render
+        if (arr.length === 0) {
+            console.log(`📭 No cards to render for ${playerType} hand`);
+            return;
+        }
+        
+        // Track successful card additions
+        let successfulCards = 0;
+        
+        arr.forEach((card, index) => {
+            try {
+                const isFaceDown = playerType === 'cpu';
+                console.log(`🃏 Creating card element ${index + 1}/${arr.length}: ${card?.name_ja || 'Unknown'} (${card?.id || 'No ID'})`);
+                
+                const cardEl = this._createCardElement(card, playerType, 'hand', index, isFaceDown);
+                
+                if (!cardEl) {
+                    console.error(`❌ Failed to create card element for ${card?.name_ja || 'Unknown'}`);
+                    return;
+                }
+                
+                // Apply consistent sizing for both players
+                cardEl.classList.add('w-20', 'h-28', 'flex-shrink-0');
+                
+                if (playerType === 'player') {
+                    cardEl.classList.add('hand-card');
+                    // Default scale matches CPU hand (no shrink)
+                    cardEl.style.transform = 'translateY(0) scale(1)';
+                    // Match CPU-like spacing (~4px gap between cards)
+                    cardEl.style.marginLeft = '2px';
+                    cardEl.style.marginRight = '2px';
+                }
+                
+                // Ensure card visibility with explicit styles
+                cardEl.style.opacity = '1';
+                cardEl.style.visibility = 'visible';
+                cardEl.style.display = 'flex';
+                cardEl.style.zIndex = '61';
+                cardEl.style.position = 'relative';
+                cardEl.style.pointerEvents = 'auto';
+                
+                // Append to hand element
+                handElement.appendChild(cardEl);
+                successfulCards++;
+                
+                // 即座にDOM挿入を確認
+                const wasActuallyAdded = handElement.contains(cardEl);
+                console.log(`  ✅ Added card ${index + 1}/${arr.length} to ${playerType} hand: ${card?.name_ja || 'Unknown'}, DOM confirmed: ${wasActuallyAdded}`);
+                
+            } catch (error) {
+                console.error(`❌ Error rendering card ${index + 1} for ${playerType}:`, error, card);
+            }
+        });
+        
+        // Reset hand element transform carefully
+        if (handElement.style.transform && handElement.style.transform !== 'none') {
+            console.log(`🔄 Resetting hand transform from: ${handElement.style.transform}`);
+            handElement.style.transform = 'none';
+        }
+        
+        // Force reflow and verify final state
+        try {
+            handElement.offsetHeight; // Force reflow
+            const finalChildCount = handElement.children.length;
+            
+            console.log(`🎯 ${playerType} hand rendering summary:`);
+            console.log(`  📊 Expected cards: ${arr.length}`);
+            console.log(`  ✅ Successfully rendered: ${successfulCards}`);
+            console.log(`  🔢 Final DOM children: ${finalChildCount}`);
+            console.log(`  📋 Hand element visible: ${getComputedStyle(handElement).display !== 'none'}`);
+            
+            if (finalChildCount !== arr.length) {
+                console.warn(`⚠️ Card count mismatch for ${playerType}: expected ${arr.length}, got ${finalChildCount}`);
+            }
+            
+            if (finalChildCount === 0 && arr.length > 0) {
+                console.error(`🚨 CRITICAL: ${playerType} hand is empty despite having ${arr.length} cards in data!`);
+                console.error(`🔍 Hand element debug:`, {
+                    id: handElement.id,
+                    className: handElement.className,
+                    parentElement: handElement.parentElement?.tagName,
+                    computedDisplay: getComputedStyle(handElement).display,
+                    computedVisibility: getComputedStyle(handElement).visibility,
+                    computedOpacity: getComputedStyle(handElement).opacity
+                });
+                
+                // Emergency fallback: try to re-render once
+                setTimeout(() => {
+                    console.log(`🔄 Attempting emergency re-render for ${playerType} hand...`);
+                    this._renderHand(handElement, hand, playerType);
+                }, 100);
+            }
+            
+            // カード配置後の最終確認
+            if (playerType === 'player') {
+                setTimeout(() => {
+                    const actualCards = document.querySelectorAll('#player-hand-inner .hand-card');
+                    console.log(`🔍 Final verification: Found ${actualCards.length} .hand-card elements in DOM`);
+                    actualCards.forEach((cardEl, i) => {
+                        const rect = cardEl.getBoundingClientRect();
+                        console.log(`  Card ${i + 1}: visible=${rect.width > 0 && rect.height > 0}, opacity=${getComputedStyle(cardEl).opacity}`);
+                    });
+                }, 50);
+            }
+            
+        } catch (error) {
+            console.error(`❌ Error in final verification for ${playerType} hand:`, error);
         }
     }
 
-    _updateHandContainerHeight() {
-        // This function is no longer needed as hand height is fixed in CSS.
-        // Keeping it as a placeholder comment for now.
+
+    
+    /**
+     * Initialize Mac Dock–style proximity magnification for the player's hand.
+     */
+    _initHandDock() {
+        const container = document.getElementById('player-hand-inner') || document.getElementById('player-hand');
+        if (!container) return;
+
+        const RADIUS = 180;        // influence radius in px
+        const BASE_SCALE = 1.0;    // baseline equals CPU hand size
+        const MAX_SCALE = 1.3;     // expand larger than normal for clarity
+        const MAX_LIFT = 34;       // px translateY upwards at center
+        const BASE_GAP = 2;        // px default spacing per side (~CPU gap-x-1)
+        const MAX_GAP = 6;         // px spacing per side near cursor
+
+        let rafId = null;
+        let pendingX = null;
+
+        const resetAll = () => {
+            const cards = container.querySelectorAll('.hand-card');
+            console.log(`🔄 Mac Dock resetAll called for ${cards.length} cards`);
+            cards.forEach(el => {
+                el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
+                el.style.marginLeft = `${BASE_GAP}px`;
+                el.style.marginRight = `${BASE_GAP}px`;
+                el.style.zIndex = '61'; // 一貫した z-index 値を使用
+            });
+        };
+
+        const applyAt = (x) => {
+            const cards = container.querySelectorAll('.hand-card');
+            let maxScale = 0;
+            let maxEl = null;
+            cards.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const d = Math.abs(centerX - x);
+                const t = Math.max(0, 1 - d / RADIUS); // 0..1
+                const scale = BASE_SCALE + (MAX_SCALE - BASE_SCALE) * (t * t);
+                const lift = -MAX_LIFT * (t * t);
+                const gap = BASE_GAP + (MAX_GAP - BASE_GAP) * (t * t);
+                if (scale > 0) {
+                    el.style.transform = `translateY(${lift}px) scale(${scale.toFixed(3)})`;
+                }
+                el.style.marginLeft = `${gap}px`;
+                el.style.marginRight = `${gap}px`;
+                if (scale > maxScale) {
+                    maxScale = scale;
+                    maxEl = el;
+                }
+            });
+            // Raise stacking for the card closest to the cursor  
+            cards.forEach(el => { el.style.zIndex = '61'; });
+            if (maxEl) maxEl.style.zIndex = '62';
+        };
+
+        const onMove = (e) => {
+            pendingX = e.clientX;
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                applyAt(pendingX);
+                rafId = null;
+            });
+        };
+
+        container.addEventListener('mousemove', onMove);
+        container.addEventListener('mouseleave', resetAll);
+        // Allow normal vertical page scroll while hovering hand (no interception)
+        // Touch support: tap to center magnify under finger, then reset on end
+        container.addEventListener('touchmove', (e) => {
+            if (!e.touches || e.touches.length === 0) return;
+            applyAt(e.touches[0].clientX);
+        }, { passive: true });
+        container.addEventListener('touchend', resetAll);
+
+        // Reposition on load and resize
+        window.addEventListener('load', () => this._positionHandAgainstBoard(this._getDesiredHandGap()));
+        window.addEventListener('resize', () => { 
+            this._positionHandAgainstBoard(this._getDesiredHandGap());
+        });
     }
 
     /**
@@ -362,28 +587,9 @@ export class View {
     /**
      * Dynamically set #player-hand height to fit the tallest card at max magnification.
      */
-    _updateHandContainerHeight() {
-        try {
-            const hand = document.getElementById('player-hand');
-            const handInner = this.playerHandInner || document.getElementById('player-hand-inner');
-            if (!hand || !handInner) return;
-
-            const sample = handInner.querySelector('.hand-card');
-            if (!sample) return;
-
-            // Use same dock constants
-            const BASE_SCALE = 1.0;
-            const MAX_SCALE = 1.3;
-            const MAX_LIFT = 34; // px
-
-            const rect = sample.getBoundingClientRect(); // current (base scale)
-            const scaleRatio = (MAX_SCALE / BASE_SCALE);
-            const maxHeight = rect.height * scaleRatio + MAX_LIFT + 12; // +12px breathing room
-
-            hand.style.height = `${Math.ceil(maxHeight)}px`;
-        } catch (e) {
-            console.warn('Failed to update hand container height:', e);
-        }
+        _updateHandContainerHeight() {
+        // This function is no longer needed as hand height is fixed in CSS.
+        // Keeping it as a placeholder comment for now.
     }
 
     /**
@@ -518,6 +724,10 @@ export class View {
         img.style.opacity = '1';
         img.style.visibility = 'visible';
         img.style.display = 'block';
+        img.style.pointerEvents = 'auto';
+        
+        // アニメーション関連のクラスをクリア（表示を妨げる可能性）
+        img.classList.remove('is-animating', 'is-hidden', 'opacity-0');
         
         // 画像読み込み完了の確認
         img.onload = function() {

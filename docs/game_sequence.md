@@ -1,144 +1,96 @@
-# ゲームシーケンス計画 (詳細版)
+# ゲームシーケンス
 
-## 1. ゲームフェーズの定義
+このドキュメントは、ゲームの開始から終了までの処理の流れを、具体的な関数名と共に定義します。
 
-ゲームは以下の主要なフェーズで進行する。
+## 1. 初期化 (Initialization)
 
-*   **`setup`**: ゲーム開始前の準備フェーズ。
-    *   `initialPokemonSelection`: プレイヤーが初期ポケモン（バトル場とベンチ）を選択する。
-*   **`playerTurn`**: プレイヤーの番。
-*   **`cpuTurn`**: CPUの番。
-*   **`gameOver`**: ゲーム終了フェーズ。
+ユーザーがゲームを開始したときの最初の処理フローです。
 
-## 2. 詳細なターンシーケンスとアニメーション
+1.  **`game.init()`**
+    *   アプリケーションのエントリーポイント。
+    *   `state.createInitialState()` を呼び出し、空のゲーム状態オブジェクトを生成します。
+    *   `view.render(initialState)` を呼び出し、空のプレイマットを画面に描画します。
 
-### 2.1. `setup` フェーズ
+## 2. ゲーム準備 (Setup Phase)
 
-**目的**: プレイヤーとCPUが対戦準備を完了する。
+`logic.setupGame(state)` 関数が呼び出され、以下の手順で対戦準備を進行します。
 
-**シーケンス**:
+1.  **デッキの準備**:
+    *   `createDeck()` を使用して、プレイヤーとCPU双方のデッキ（カード60枚の配列）を生成し、シャッフルします。
 
-1.  **デッキ作成 & シャッフル (`state.js` `createDeck` / `setup-manager.js` `initializeGame`)**
-    *   **アニメーション**: デッキがシャッフルされる視覚効果（例: カードが高速で入れ替わる、デッキが揺れる）。
-2.  **初期手札ドロー (7枚) & マリガン (`setup-manager.js` `drawInitialHands`, `handleMulligans`)**
-    *   **アニメーション**:
-        *   デッキからカードが手札に移動するアニメーション (`animationManager.animateInitialHandDeal`)。
-        *   マリガン時: 手札がデッキに戻り、デッキが再度シャッフルされ、新しい手札がドローされるアニメーション (`setupManager.performMulligan`, `setupManager.animateMulligan`)。
-    *   **UI**: マリガンが発生した場合、メッセージ表示 (`view.showMessage`)。
-3.  **`initialPokemonSelection` フェーズへの移行 (`game.js` `_startGameSetup`)**
-    *   **UI**: セットアップオーバーレイが表示され、プレイヤーの手札からたねポケモンがハイライト表示される。
-    *   **アニメーション**: オーバーレイがフェードインする。
+2.  **手札を引く**:
+    *   `draw(state, player, 7)` を実行し、各プレイヤーが山札から7枚のカードを手札に加えます。
 
-#### 2.1.1. `initialPokemonSelection` サブフェーズ (プレイヤー操作)
+3.  **バトル場のポケモン配置**:
+    *   各プレイヤーは手札から「たねポケモン」を1枚選び、バトル場に裏向きで配置します。
+    *   （UI操作）→ `setActivePokemon(state, player, cardId)` のような関数でstateを更新。
+    *   手札に「たねポケモン」がいない場合は、手札を山札に戻して引き直すマリガン処理を行います。
 
-**目的**: プレイヤーがバトル場とベンチの初期ポケモンを選択する。
+4.  **ベンチのポケモン配置（任意）**:
+    *   各プレイヤーは手札から「たねポケモン」を最大5枚まで選び、ベンチに裏向きで配置します。
+    *   （UI操作）→ `playBasicToBench(state, player, cardId)` でstateを更新。
 
-**シーケンス**:
+5.  **サイドカードの配置**:
+    *   **`setPrizeCards(state, player)`** を実行します。
+    *   各プレイヤーの**山札の上から6枚のカード**を、それぞれのサイドゾーンに裏向きで配置します。
+    *   これにより `player.prize` 配列（長さ6）が設定されます。
 
-1.  **プレイヤーが手札のたねポケモンをクリック (`game.js` `_handleSetupCardClick`)**
-    *   **UI**: クリックされたカードがハイライト表示される (`.selected` クラス)。
-    *   **アニメーション**: カードが少し浮き上がる、または枠が光る (`animationManager.highlightCard`)。
-2.  **プレイヤーがバトル場スロットをクリック (`game.js` `_handleSetupCardClick`)**
-    *   **条件**: `selectedCardForSetup`が設定されていること。
-    *   **アクション**: `setupManager.handlePokemonSelection` を呼び出し、選択されたカードがバトル場スロットに移動し、`active`に設定される。手札からカードが削除される。
-    *   **UI**: バトル場スロットに選択されたポケモンが表示される。手札からカードが消える。
-    *   **アニメーション**: カードが手札からバトル場スロットへ移動するアニメーション (`game.js` `_animateCardPlacement`)。
-3.  **プレイヤーがベンチスロットをクリック (`game.js` `_handleSetupCardClick`)**
-    *   **条件**: `selectedCardForSetup`が設定されていること。ベンチが5体未満であること。
-    *   **アクション**: `setupManager.handlePokemonSelection` を呼び出し、選択されたカードがベンチスロットに移動し、`bench`に追加される。手札からカードが削除される。
-    *   **UI**: ベンチスロットに選択されたポケモンが表示される。手札からカードが消える。
-    *   **アニメーション**: カードが手札からベンチスロットへ移動するアニメーション (`game.js` `_animateCardPlacement`)。
-4.  **プレイヤーが「確定」ボタンをクリック (`game.js` `_handleConfirmSetup`)**
-    *   **条件**: バトルポケモンが選択されていること (`state.players.player.active`が`null`でないこと)。
-    *   **アクション**:
-        *   CPUの初期ポケモン（バトル場とベンチ）が自動で選択・配置される (`setupManager.setupCpuInitialPokemon`)。
-        *   **各プレイヤーの山札の上から6枚がサイドカードとして裏向きで配置される (`setupManager.setupPrizeCards`)**。
-        *   `gamePhase`が `playerTurn` に移行する。
-    *   **UI**: セットアップオーバーレイが非表示になる。メインゲームボードが表示される。
-    *   **アニメーション**: オーバーレイがフェードアウトする。バトル場とベンチのポケモンが表向きになるアニメーション (`animationManager.flipCardFaceUp`)。サイドカードがデッキから配置されるアニメーション (`animationManager.animatePrizeDeal`)。
+6.  **対戦開始**:
+    *   先攻・後攻を決定します。
+    *   場のポケモンをすべて表向きにします。
+    *   ゲームの状態を更新します: `state.phase = "playing"`, `state.turn = 1`, `state.turnPlayer = (先攻プレイヤー)`。
+    *   `view.render(state)` で最終的な盤面を描画します。
 
-### 2.2. `playerTurn` フェーズ
+## 3. メインゲームループ (Main Game Loop)
 
-**目的**: プレイヤーが自分の番にできるアクションを実行する。
+`checkWinCondition(state)` で勝者が決まるまで、以下のターン進行を繰り返します。
 
-**シーケンス**:
+### 3.1. ターンの開始 (Start of Turn)
 
-1.  **ターン開始時のドロー (`turn-manager.js` `handlePlayerDraw` -> `Logic.drawCard`)**
-    *   **UI**: メッセージ表示 (`view.showGameMessage`)。
-    *   **アニメーション**: デッキからカードが手札に移動するアニメーション (`animationManager.animateDrawCard`)。
-2.  **プレイヤーアクション (任意の順序、回数制限あり)**
-    *   **手札からたねポケモンをベンチに出す (`game.js` `_handleHandCardClick` -> `turnManager.handlePlayerMainPhase` -> `Logic.placeCardOnBench`)**
-        *   **UI**: 手札のたねポケモンがクリック可能に。ベンチスロットがハイライトされる。
-        *   **アニメーション**: カードが手札からベンチへ移動するアニメーション (`game.js` `_animateCardPlacement`)。
-    *   **手札からエネルギーをポケモンにつける (`game.js` `_handleHandCardClick` -> `turnManager.handlePlayerMainPhase` -> `Logic.attachEnergy`)**
-        *   **UI**: 手札のエネルギーカードがクリック可能に。バトル場/ベンチのポケモンがハイライトされる。
-        *   **アニメーション**: エネルギーカードが手札からポケモンへ移動し、ポケモンにアタッチされるアニメーション (`game.js` `_animateEnergyAttachment`)。
-    *   **トレーナーズカードを使用 (未実装)**
-    *   **特性を使用 (未実装)**
-    *   **ポケモンを進化させる (未実装)**
-    *   **バトルポケモンをにがす (`game.js` `_handleRetreat` -> `turnManager.handlePlayerMainPhase` -> `Logic.retreat`)**
-        *   **UI**: 「にげる」ボタンがクリック可能に。ベンチポケモンが選択可能に。
-        *   **アニメーション**: バトルポケモンがベンチへ、ベンチポケモンがバトル場へ移動するアニメーション (`game.js` `_animatePokemonPromotion`)。にげるコストのエネルギーがトラッシュへ移動するアニメーション。
-3.  **攻撃 (`game.js` `_handleAttack` -> `turnManager.handleAttackDeclaration` -> `turnManager.executeAttack` -> `Logic.performAttack`)**
-    *   **条件**: ターンに1回のみ。必要なエネルギーがアタッチされていること。
-    *   **UI**: 「攻撃」ボタンがクリック可能に。
-    *   **アニメーション**:
-        *   攻撃エフェクト (`animationManager.animateAttack`)。
-        *   ダメージ表示（ダメカンが乗るアニメーション） (`animationManager.animateHPDamage`)。
-        *   きぜつ時: きぜつしたポケモンがトラッシュへ移動するアニメーション (`animationManager.animateKnockout`)。
-    *   **アクション**: 攻撃後、ターン終了へ自動移行。
-    *   **サイドカードの取得**: 相手のポケモンがきぜつした場合、**攻撃したプレイヤーはサイドカードを取得する**。
-        *   取得枚数は、きぜつしたポケモンの種類によって異なる（例: 通常1枚、ポケモンV/exは2枚、ポケモンVMAXは3枚）。
-        *   サイドカードは、**攻撃したプレイヤーのサイドの山から1枚ずつ手札に加える**。この際、カードは表向きにされる。
-        *   **アニメーション**: サイドカードがサイドエリアから手札に移動するアニメーション (`game.js` `_animatePrizeTake`)。
-4.  **ターン終了 (`game.js` `_handleEndTurn` -> `turnManager.endPlayerTurn`)**
-    *   **UI**: 「ターン終了」ボタンがクリック可能に。
-    *   **アクション**: `turnPlayer`が切り替わり、`turn`が増加する。
+*   **`logic.startTurn(state)`**
+    1.  **カードを引く**: `draw(state, currentPlayer, 1)` を実行し、ターンプレイヤーが山札から1枚カードを引きます。
+        *   この時、山札が0枚で引けない場合は、そのプレイヤーの敗北となります (`checkWinCondition` で判定)。
+    2.  **ターン状態リセット**: `canRetreat = true` など、ターンごとにリセットされるフラグを更新します。
 
-### 2.3. `cpuTurn` フェーズ
+### 3.2. メインフェイズ (Main Phase)
 
-**目的**: CPUが自分の番にできるアクションを実行する。
+ターンプレイヤーは、以下の行動を任意の順序・回数（各カードやルールの制限に従う）で実行できます。
 
-**シーケンス**:
+*   `playBasicToBench(state, player, cardId)`: ベンチにポケモンを出す。
+*   `evolvePokemon(state, player, baseId, evolveId)`: ポケモンを進化させる。
+*   `attachEnergy(state, player, energyId, pokemonId)`: エネルギーをつける（1ターンに1回）。
+*   `playItem(state, player, cardId)`: グッズカードを使う。
+*   `playSupporter(state, player, cardId)`: サポートカードを使う（1ターンに1回）。
+*   `playStadium(state, player, cardId)`: スタジアムを出す。
+*   `useAbility(state, player, pokemonId, abilityIndex)`: ポケモンの特性を使う。
+*   `retreat(state, player, fromActiveId, toBenchIndex)`: ポケモンをにがす（1ターンに1回）。
 
-1.  **ターン開始時のドロー (`turn-manager.js` `executeCpuTurn` -> `Logic.drawCard`)**
-    *   **UI**: メッセージ表示 (`view.showGameMessage`)。
-    *   **アニメーション**: デッキからカードがCPUの手札に移動するアニメーション（裏向き） (`animationManager.animateDrawCard`)。
-2.  **CPUアクション (`turn-manager.js` `executeCpuTurn`)**
-    *   **たねポケモンをベンチに出す**: CPUの手札からたねポケモンをベンチに出す (`turnManager.cpuPlayBasicPokemon` -> `Logic.placeCardOnBench`)。
-        *   **アニメーション**: カードがCPUの手札からベンチへ移動するアニメーション。
-    *   **エネルギーをポケモンにつける**: CPUのアクティブポケモンにエネルギーをつける (`turnManager.cpuAttachEnergy` -> `Logic.attachEnergy`)。
-        *   **アニメーション**: エネルギーカードがCPUの手札からポケモンへ移動し、ポケモンにアタッチされるアニメーション。
-    *   **攻撃**: 攻撃可能な場合、攻撃する (`turnManager.cpuPerformAttack` -> `turnManager.executeAttack` -> `Logic.performAttack`)。
-        *   **アニメーション**: 攻撃エフェクト、ダメージ表示、きぜつ時アニメーション。
-3.  **ターン終了 (`turn-manager.js` `endCpuTurn`)**
-    *   **アクション**: `turnPlayer`が切り替わり、`turn`が増加する。
+### 3.3. バトルフェイズ (Battle Phase)
 
-### 2.4. `gameOver` フェーズ
+技を宣言するとメインフェイズは終了し、バトルフェイズに移行します。
 
-**目的**: どちらかのプレイヤーが勝利条件を満たしたときにゲームを終了する。
+1.  **`logic.declareAttack(state, player, attackIndex)`**: プレイヤーが使用する技を選択。
+2.  **`logic.resolveAttack(state)`**: ダメージ計算（弱点・抵抗力・効果）と効果の適用。
+3.  **`logic.checkKO(state)`**: ポケモンのHPが0以下になったか（きぜつしたか）を判定。
+    *   **きぜつした場合**:
+        1.  きぜつしたポケモンと、ついているすべてのカードをトラッシュに送る。
+        2.  **`logic.prizeGain(state, winningPlayer)`**: 相手をきぜつさせたプレイヤーが、**自分のサイドカードから指定された枚数（通常1枚、V/exなら2枚など）を手札に加える**。
+        3.  `checkWinCondition(state)` を呼び出し、サイドを取り切ったか判定。
+        4.  きぜつされた側は、ベンチから新しいバトルポケモンを選ぶ。
+        5.  `checkWinCondition(state)` を再度呼び出し、場にポケモンがいなくなったか判定。
 
-**シーケンス**:
+### 3.4. ターンの終了 (End of Turn)
 
-1.  **勝利条件チェック (`Logic.checkForWinner`)**
-    *   **条件**: サイドカードが0枚、バトルポケモンが出せない、山札切れなど。
-2.  **ゲーム終了 (`game.js` `_handleGameOver`)**
-    *   **UI**: 勝利メッセージが表示される。ゲームボード上の操作が無効になる。
-    *   **アニメーション**: 勝利演出（例: 画面が光る、勝利プレイヤーのポケモンが強調される）。
+*   **`logic.endTurn(state)`**
+    1.  どく・やけどなどのポケモンチェックアップ処理を実行。
+    2.  `checkWinCondition(state)` を呼び出し、状態異常による決着を判定。
+    3.  ターンプレイヤーを相手に交代 (`state.turnPlayer`)。
+    4.  ターン数を加算 (`state.turn++`)。
 
-## 3. UI/UXの考慮事項
+## 4. 勝敗判定 (Win Condition)
 
-*   **フィードバック**: プレイヤーのアクション（カードを引く、ダメージを与えるなど）に対して、常に視覚的・テキスト的なフィードバックを提供する。
-*   **選択状態の明示**: クリック可能なカードやスロットはハイライト表示する。選択中のカードは明確に区別する。
-*   **エラーメッセージ**: 不正な操作やルール違反があった場合、明確なメッセージでプレイヤーに通知する。
-*   **アニメーションの速度**: アニメーションはゲームのテンポを損なわない適切な速度に設定する。
+`logic.checkWinCondition(state)` は、以下の条件を常に監視し、いずれかが満たされた場合に勝者を決定し、`state.phase = "gameOver"` に設定します。
 
-## 4. コードへのマッピング
-
-*   **`state.js`**: ゲームのあらゆる状態を保持する。
-*   **`logic.js`**: 各アクションのルール処理と状態遷移を担当する純粋関数群。
-*   **`view.js`**: `state`オブジェクトをDOMにマッピングし、UIの描画とアニメーションを担当する。
-*   **`game.js`**: コントローラーとして、ユーザー入力やCPUの行動に応じて`Logic`を呼び出し、`state`を更新し、`View`に描画を指示する。フェーズ管理もここで行う。
-*   **`setup-manager.js`**: ゲーム開始時のセットアップフェーズ（初期手札、マリガン、初期ポケモン配置、サイドカード配置）を管理する。
-*   **`turn-manager.js`**: プレイヤーとCPUのターン進行、ターン制約、自動処理を統括する。
-*   **`animations.js`**: 各種アニメーションの実行と管理を行う。
+1.  **サイドを取り切る**: どちらかのプレイヤーの `prizeRemaining` が0になる。
+2.  **場のポケモンが全滅**: 相手の場にバトルポケモンもベンチポケモンもいなくなる。
+3.  **山札が尽きる**: 自分のターンの開始時に、山札からカードを1枚も引けない。

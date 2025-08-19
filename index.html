@@ -64,8 +64,30 @@
             z-index: 15;
         }
 
+        /* 手札コンテナのZ-index強化 */
+        #player-hand {
+            z-index: 60 !important;
+            position: fixed !important;
+        }
+
+        #player-hand-inner {
+            z-index: 61 !important;
+            position: relative !important;
+        }
+
         /* 手札の個別カード要素 */
-        #player-hand .relative { z-index: 61 !important; }
+        #player-hand .relative,
+        #player-hand-inner .relative {
+            z-index: 61 !important;
+            position: relative !important;
+        }
+
+        /* 手札カードの表示を強制 */
+        .hand-card {
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: flex !important;
+        }
 
 
         /* Side cards stacking effects */
