@@ -469,7 +469,12 @@ export class View {
 
     // Game Message Display
     showGameMessage(message) {
-        if (this.gameMessageDisplay) {
+        if (this.gameMessageDisplay && message) {
+            // 重複チェック - 同じメッセージは再表示しない
+            if (this.gameMessageDisplay.textContent === message) {
+                return;
+            }
+            
             this.gameMessageDisplay.textContent = message;
             this.gameMessageDisplay.classList.remove('hidden');
             
@@ -576,9 +581,9 @@ export class View {
             this.currentPlayer.textContent = playerNames[state.turnPlayer] || 'プレイヤー';
         }
 
-        // メッセージ更新
-        if (this.statusMessage && state.prompt?.message) {
-            this.statusMessage.textContent = state.prompt.message;
+        // メッセージ更新 - showGameMessage() に統合して重複を回避
+        if (state.prompt?.message) {
+            this.showGameMessage(state.prompt.message);
         }
     }
 

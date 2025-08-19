@@ -497,37 +497,9 @@
         </div>
     </div>
 
-    <!-- Game Controls Panel -->
-    <div id="game-controls" class="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col items-center p-4 z-20">
-        <!-- Game Message Display -->
-        <div id="game-message-display" class="bg-gray-800/70 text-white text-lg font-bold p-3 rounded-lg mb-4 min-w-[300px] max-w-md text-center hidden">
-            <!-- Messages will be displayed here -->
-        </div>
 
-        <!-- Initial Pokemon Selection UI -->
-        <div id="initial-pokemon-selection" class="flex flex-col items-center gap-4 mb-4 hidden">
-            <p class="text-white text-lg font-bold text-center max-w-[200px]">最初のポケモンを選んでください</p>
-            <button id="confirm-initial-pokemon-button" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg">
-                確定
-            </button>
-        </div>
-
-        <!-- Player Action Buttons -->
-        <div id="player-action-buttons" class="flex gap-4">
-            <button id="retreat-button" class="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-lg shadow-lg hidden">
-                にげる
-            </button>
-            <button id="attack-button" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg hidden">
-                攻撃
-            </button>
-            <button id="end-turn-button" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg hidden">
-                ターン終了
-            </button>
-        </div>
-    </div>
-
-    <!-- Game Status Panel (右上固定) -->
-    <div id="game-status-panel" class="fixed top-4 right-4 z-50 min-w-80 max-w-96">
+    <!-- Game Status Panel (右端中央固定) -->
+    <div id="game-status-panel" class="fixed right-4 top-1/2 -translate-y-1/2 z-50 min-w-80 max-w-96">
         <div class="bg-gray-900 bg-opacity-95 rounded-lg shadow-2xl border border-gray-600 p-4">
             <!-- Phase & Turn Info -->
             <div class="flex justify-between items-center mb-3">
@@ -550,6 +522,32 @@
                         <span class="text-gray-300">ベンチ (<span id="bench-count">0</span>/5)</span>
                     </div>
                 </div>
+            </div>
+
+            <!-- Game Message Display -->
+            <div id="game-message-display" class="bg-gray-800/70 text-white text-sm font-bold p-3 rounded-lg mb-4 text-center hidden">
+                <!-- Messages will be displayed here -->
+            </div>
+
+
+            <!-- Initial Pokemon Selection UI -->
+            <div id="initial-pokemon-selection" class="flex flex-col items-center gap-3 mb-4 hidden">
+                <button id="confirm-initial-pokemon-button" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg text-sm">
+                    <!-- Button text will be set dynamically by JavaScript -->
+                </button>
+            </div>
+
+            <!-- Player Action Buttons -->
+            <div id="player-action-buttons" class="flex flex-col gap-2">
+                <button id="retreat-button" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-lg shadow-lg text-sm hidden">
+                    にげる
+                </button>
+                <button id="attack-button" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg text-sm hidden">
+                    攻撃
+                </button>
+                <button id="end-turn-button" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg text-sm hidden">
+                    ターン終了
+                </button>
             </div>
         </div>
     </div>
