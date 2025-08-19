@@ -569,8 +569,8 @@ export class View {
         const img = document.createElement('img');
         // Ensure proper CSS classes for visibility and sizing
         img.className = 'card-image w-full h-full object-contain rounded-lg'; // Change object-cover to object-contain
-        // Remove any stale animation-hidden class to avoid invisible cards
-        img.classList.remove('is-animating');
+        // Remove any stale animation-hidden classes to avoid invisible cards
+        img.classList.remove('is-animating', 'is-hidden');
         img.style.aspectRatio = '74 / 103'; // Enforce aspect ratio
         img.dataset.dynamic = true;
         img.src = isFaceDown ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
@@ -826,10 +826,29 @@ export class View {
         if (this.gameMessageDisplay) {
             this.gameMessageDisplay.textContent = message;
             this.gameMessageDisplay.classList.remove('hidden');
-            
+
             // エラーメッセージアニメーション
             animationManager.animateError(this.gameMessageDisplay);
         }
+    }
+
+    // Generic visibility helpers
+    showElement(el) {
+        if (el) el.classList.remove('is-hidden');
+    }
+
+    hideElement(el) {
+        if (el) el.classList.add('is-hidden');
+    }
+
+    showHand(owner) {
+        const hand = owner === 'player' ? (this.playerHandInner || this.playerHand) : this.cpuHand;
+        this.showElement(hand);
+    }
+
+    hideHand(owner) {
+        const hand = owner === 'player' ? (this.playerHandInner || this.playerHand) : this.cpuHand;
+        this.hideElement(hand);
     }
 
     // Action Buttons
