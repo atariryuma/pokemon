@@ -29,6 +29,7 @@
       background: radial-gradient(1200px 600px at 10% -10%, #2945b5 0%, transparent 60%),
                   radial-gradient(1200px 600px at 110% 10%, #4026a7 0%, transparent 60%),
                   var(--bg);
+      overflow: hidden; /* 画面全体の上下スクロールを抑止 */
     }
 
     header {
@@ -68,16 +69,19 @@
     .spacer { flex: 1; }
     .kbd { background: var(--chip); padding: 2px 6px; border-radius: 6px; border:1px solid var(--border); font-size: 12px; }
 
-    .container { display: grid; grid-template-columns: minmax(420px, 44vw) 1fr; gap: 16px; padding: 16px; }
+    .container { display: grid; grid-template-columns: minmax(360px, 40vw) 1fr; gap: 12px; padding: 10px 14px; height: calc(100vh - 60px); }
     .panel {
       background: linear-gradient(180deg, rgba(21,25,58,.85) 0%, rgba(28,34,82,.85) 100%);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
       box-shadow: var(--shadow);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0; /* 子のoverflow:autoに高さ配分 */
     }
-    .panel h2 { font-size: 14px; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.15); }
-    .panel .content { padding: 12px; }
+    .panel h2 { font-size: 14px; margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.15); }
+    .panel .content { padding: 10px 12px; flex: 1; overflow: auto; min-height: 0; }
 
     .row { display: flex; gap: 8px; align-items: center; }
     .row > * { flex: 1; }
@@ -99,7 +103,7 @@
     .search { flex: 1; }
     .search input { width: 100%; padding: 8px 10px; border-radius: 10px; border:1px solid var(--border); background: rgba(0,0,0,.2); color: var(--text); }
 
-    .list { max-height: calc(100vh - 220px); overflow: auto; }
+    .list { flex: 1; overflow: auto; outline: none; }
     .card-item { display:grid; grid-template-columns: auto 1fr auto; gap:10px; align-items:center; padding: 8px 10px; border-bottom:1px solid var(--border); cursor:pointer; }
     .card-item:hover { background: rgba(255,255,255,.04); }
     .card-item.active { background: rgba(110,168,255,.15); }
@@ -129,14 +133,15 @@
     .invisible { display:none; }
 
     /* Preview styles */
-    #preview-stage { position: relative; height: calc(100vh - 260px); background: repeating-conic-gradient(#1a1f4a 0 25%, #10143a 0 50%) 50% / 18px 18px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display:flex; align-items:center; justify-content:center; }
+    #preview-wrap { display:flex; flex-direction: column; min-height: 0; }
+    #preview-stage { position: relative; flex: 1; min-height: 260px; background: repeating-conic-gradient(#1a1f4a 0 25%, #10143a 0 50%) 50% / 18px 18px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display:flex; align-items:center; justify-content:center; }
     #preview-img { max-width: 100%; max-height: 100%; transform-origin: center center; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
     #preview-empty { position: absolute; color: var(--muted); font-size: 12px; }
 
     /* Drawer */
     #drawer { position: fixed; inset: 0; pointer-events: none; }
-    .drawer-panel { position: absolute; top: 0; left: -420px; width: 400px; height: 100%; background: linear-gradient(180deg, rgba(21,25,58,.98) 0%, rgba(28,34,82,.98) 100%); border-right: 1px solid var(--border); box-shadow: var(--shadow); transition: left .25s ease; display:flex; flex-direction:column; pointer-events: auto; }
-    .drawer-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.3); opacity: 0; transition: opacity .25s ease; }
+    .drawer-panel { position: absolute; top: 0; left: -420px; width: 380px; height: 100%; background: linear-gradient(180deg, rgba(21,25,58,.98) 0%, rgba(28,34,82,.98) 100%); border-right: 1px solid var(--border); box-shadow: var(--shadow); transition: left .25s ease; display:flex; flex-direction:column; pointer-events: auto; z-index: 1001; }
+    .drawer-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.35); opacity: 0; transition: opacity .25s ease; z-index: 1000; }
     #drawer.open .drawer-panel { left: 0; }
     #drawer.open .drawer-backdrop { opacity: 1; pointer-events: auto; }
     #btn-open-drawer { white-space: nowrap; }
@@ -145,8 +150,8 @@
     header h1::after { content: var(--unsaved-dot, ""); margin-left: 8px; color: var(--warn); }
   
     @media (max-width: 1024px) {
-      .container { grid-template-columns: 1fr; }
-      #preview-stage { height: 52vh; }
+      .container { grid-template-columns: 1fr; height: calc(100vh - 60px); }
+      #preview-stage { min-height: 200px; }
     }
   </style>
 </head>
@@ -923,6 +928,8 @@
 
     async function boot(){
       bind();
+      adjustLayout();
+      window.addEventListener('resize', adjustLayout);
       // 既存の data/cards-master.json を fetch し、可能なら最初に表示
       try {
         const res = await fetch('data/cards-master.json', { cache: 'no-cache' });
@@ -954,6 +961,15 @@
     function openDrawer(){ byId('drawer').classList.add('open'); }
     function closeDrawer(){ byId('drawer').classList.remove('open'); }
     function isDrawerOpen(){ return byId('drawer').classList.contains('open'); }
+
+    // ---------- Layout helper
+    function adjustLayout(){
+      const header = document.querySelector('header');
+      const container = document.querySelector('.container');
+      if (!header || !container) return;
+      const h = header.getBoundingClientRect().height;
+      container.style.height = `${Math.max(320, window.innerHeight - h)}px`;
+    }
 
     // ---------- Preview helpers
     function currentPreviewUrl(){
@@ -994,10 +1010,119 @@
       };
       img.onload = () => { empty.style.display = 'none'; };
       applyTransform();
+      // Reflect current filename into the input (if using assets path)
+      try {
+        const used = (new URL(url, location.href)).pathname;
+        if (used.includes('/assets/cards/')){
+          const name = used.split('/').pop();
+          if (name && name !== 'card_back.webp'){
+            const input = byId('image_file');
+            if (input && input.value.trim() !== name) input.value = name;
+          }
+        }
+      } catch {}
     }
     function applyTransform(){
       const img = byId('preview-img');
       img.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`;
+    }
+    // ---------- Image helpers
+    function guessImageFile(){
+      const t = (byId('card_type').value || 'Pokemon').toLowerCase();
+      if (t === 'energy'){
+        const et = (byId('energy_type').value || '').trim();
+        return et ? `Energy_${et}.webp` : '';
+      }
+      if (t === 'pokemon'){
+        const en = (byId('name_en').value || '').trim();
+        return en ? en.replace(/[^A-Za-z0-9]+/g,'_') + '.webp' : '';
+      }
+      return '';
+    }
+    async function openImagePicker(){
+      if (!supportsFS() || !assetsDirHandle){ alert('画像を選ぶには assets フォルダへの接続が必要です'); return; }
+      const t = (byId('card_type').value || 'Pokemon').toLowerCase();
+      const list = await listImagesInAssets(t);
+      if (!list.length){ alert('対象フォルダに画像が見つかりません'); return; }
+      const html = [`<div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;\"><h3>画像を選択 (${t})</h3><button class=\"btn ghost\" id=\"modal-close\">✕</button></div>`,
+        `<div class=\"hint\">${list.length} 件</div>`,
+        '<div style=\"margin-top:8px; border:1px solid var(--border); border-radius:10px; overflow:auto; max-height:60vh;\">',
+        ...list.map(name => `<div class=\"card-item\" data-name=\"${name}\">${name}</div>`),
+        '</div>'].join('');
+      openModal(html);
+      const panel = byId('modal-panel');
+      const closer = panel.querySelector('#modal-close');
+      if (closer) closer.addEventListener('click', closeModal);
+      panel.querySelectorAll('.card-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const name = el.getAttribute('data-name');
+          byId('image_file').value = name;
+          updatePreview();
+          markUnsaved(true);
+          closeModal();
+        });
+      });
+    }
+    async function listImagesInAssets(type){
+      const out = [];
+      try {
+        const cardsRoot = await assetsDirHandle.getDirectoryHandle('cards', { create: true });
+        const dir = await cardsRoot.getDirectoryHandle(type, { create: true });
+        for await (const entry of dir.values()){
+          if (entry.kind === 'file' && /\.webp$/i.test(entry.name)) out.push(entry.name);
+        }
+      } catch {}
+      return out.sort((a,b)=>a.localeCompare(b));
+    }
+    // ---------- Modal
+    function openModal(html){ const panel = byId('modal-panel'); const modal = byId('modal'); if (!panel||!modal) return; panel.innerHTML = html; modal.classList.remove('invisible'); const mb = byId('modal-backdrop'); if (mb) mb.onclick = closeModal; }
+    function closeModal(){ const modal = byId('modal'); if (modal) modal.classList.add('invisible'); }
+    // ---------- Validate
+    function validateAllCards(){
+      const gf = cards.map(toGameFormatCard);
+      const issues = [];
+      let basicCount = 0;
+      gf.forEach((c, idx) => {
+        if (c.card_type === 'Pokémon' && c.stage === 'BASIC') basicCount++;
+        if (!c.id) issues.push({ idx, sev:'error', msg:'id が未設定' });
+        if (!c.name_en) issues.push({ idx, sev:'error', msg:'name_en が未設定' });
+        if (!c.card_type) issues.push({ idx, sev:'error', msg:'card_type が未設定' });
+        if (c.card_type === 'Pokémon'){
+          if (!['BASIC','STAGE1','STAGE2'].includes(c.stage||'')) issues.push({ idx, sev:'error', msg:'stage が不正' });
+          if (typeof c.hp !== 'number') issues.push({ idx, sev:'warn', msg:'hp が未設定/数値でない' });
+        }
+        if (c.card_type === 'Basic Energy' && !c.energy_type) issues.push({ idx, sev:'error', msg:'energy_type が未設定' });
+        // Image hint
+        const card = cards[idx];
+        const t = (card.card_type||'Pokemon').toLowerCase();
+        const current = (card.image_file||'').trim();
+        if (!current){
+          const guess = guessNameFromCard(card);
+          if (guess) issues.push({ idx, sev:'hint', msg:`画像ファイル名の候補: ${guess}` });
+          else issues.push({ idx, sev:'warn', msg:'画像ファイル名が未設定' });
+        }
+      });
+      if (basicCount === 0) issues.unshift({ idx:-1, sev:'error', msg:'BASIC ポケモンが1枚もありません' });
+      const summary = `${issues.filter(i=>i.sev==='error').length}件のエラー、${issues.filter(i=>i.sev==='warn').length}件の警告、${issues.filter(i=>i.sev==='hint').length}件のヒント`;
+      const listHtml = issues.map(i => {
+        const title = i.idx>=0 ? `${cards[i.idx].name_ja||cards[i.idx].name_en||cards[i.idx].id}` : '全体';
+        const btn = i.idx>=0 ? `<button class=\"btn small\" data-idx=\"${i.idx}\">選択</button>` : '';
+        return `<div class=\"detail-row\"><span class=\"detail-label\">${i.sev.toUpperCase()}</span><span class=\"detail-value\">${title}: ${i.msg}</span>${btn}</div>`;
+      }).join('');
+      openModal(`<div style=\"display:flex;justify-content:space-between;align-items:center;\"><h3>互換チェック</h3><button class=\"btn ghost\" id=\"modal-close\">✕</button></div><div class=\"hint\">${summary}</div><div class=\"section\">${listHtml||'<div class=\"hint\">問題は見つかりませんでした。</div>'}</div>`);
+      const panel = byId('modal-panel');
+      if (panel){
+        const closer = panel.querySelector('#modal-close'); if (closer) closer.addEventListener('click', closeModal);
+        panel.querySelectorAll('button[data-idx]').forEach(b => {
+          b.addEventListener('click', () => { const i = Number(b.getAttribute('data-idx')); if (!isNaN(i)){ activeIndex = i; writeForm(cards[i]); updatePreview(); closeModal(); openDrawer(); } });
+        });
+      }
+    }
+    function guessNameFromCard(card){
+      const t = (card.card_type||'Pokemon').toLowerCase();
+      if (t==='energy' && card.energy_type) return `Energy_${card.energy_type}.webp`;
+      if (t==='pokemon' && card.name_en) return card.name_en.replace(/[^A-Za-z0-9]+/g,'_')+'.webp';
+      return '';
     }
     function goNext(){
       if (cards.length === 0) return;
