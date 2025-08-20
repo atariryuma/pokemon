@@ -808,9 +808,10 @@ export class Game {
         newState.canRetreat = true;
         newState.canPlaySupporter = true;
 
-        // 4. ドローフェーズに移行
-        newState.phase = GAME_PHASES.PLAYER_DRAW;
-        newState.prompt.message = '山札をクリックしてカードを引いてください。';
+        // 4. プレイヤーの初手ドローを自動で実行しメインフェーズへ
+        newState = await this.turnManager.handlePlayerDraw(newState);
+        newState.phase = GAME_PHASES.PLAYER_MAIN;
+        newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
 
         this._updateState(newState);
 
