@@ -5,6 +5,7 @@
  */
 
 import { animationManager } from './animations.js';
+import { unifiedAnimationManager } from './unified-animations.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
@@ -448,7 +449,14 @@ export class TurnManager {
     if (basicPokemon.length > 0) {
       const emptyBenchIndex = cpuState.bench.findIndex(slot => slot === null);
       if (emptyBenchIndex !== -1) {
-        newState = Logic.placeCardOnBench(newState, 'cpu', basicPokemon[0].id, emptyBenchIndex);
+        const selectedPokemon = basicPokemon[0];
+        newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
+        
+        // 統一アニメーション実行
+        await unifiedAnimationManager.createUnifiedCardAnimation(
+          'cpu', selectedPokemon.id, 'hand', 'bench', emptyBenchIndex, 
+          { isSetupPhase: false, card: selectedPokemon }
+        );
         
         newState = addLogEntry(newState, {
           type: 'pokemon_played',
@@ -478,7 +486,7 @@ export class TurnManager {
       newState = Logic.attachEnergy(newState, 'cpu', energyCards[0].id, cpuState.active.id);
       
       if (newState !== state) {
-        await this.animateEnergyAttachment('cpu');
+        await unifiedAnimationManager.createUnifiedEnergyAnimation('cpu', energyCards[0].id, cpuState.active.id);
         
         newState = addLogEntry(newState, {
           type: 'energy_attached',
@@ -626,13 +634,6 @@ export class TurnManager {
     }
   }
 
-  /**
-   * エネルギー付与アニメーション
-   */
-  async animateEnergyAttachment(playerId) {
-    // エネルギー付与のアニメーション実装
-    console.log(`🔋 Animating energy attachment for ${playerId}`);
-  }
 
   /**
    * CPU思考時間シミュレーション

@@ -56,6 +56,9 @@ export function createInitialState() {
         phase: GAME_PHASES.SETUP,
         turnPlayer: 'player',
         
+        // 処理中フラグ
+        isProcessing: false,
+        
         // Turn constraints
         hasDrawnThisTurn: false,
         hasAttachedEnergyThisTurn: false,

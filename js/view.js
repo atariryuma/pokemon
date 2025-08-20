@@ -15,6 +15,14 @@ export class View {
         this.playerHand = document.getElementById('player-hand');
         this.cpuHand = document.getElementById('cpu-hand');
 
+        // ★追加: 手札コンテナにイベントデリゲーション用のリスナーを付与
+        if (this.playerHand) {
+            this.playerHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
+        }
+        if (this.cpuHand) {
+            this.cpuHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
+        }
+
         // Modal elements
         this.modal = document.getElementById('action-modal');
         this.modalTitle = document.getElementById('modal-title');
@@ -52,6 +60,14 @@ export class View {
         setTimeout(() => {
             this._initHandDock();
         }, 1000);
+    }
+
+    // ★ここに移動
+    _handleHandClickDelegation(e) {
+        const cardElement = e.target.closest('[data-card-id]');
+        if (cardElement && this.cardClickHandler) {
+            this.cardClickHandler(cardElement.dataset);
+        }
     }
 
     bindCardClick(handler) {
@@ -638,7 +654,8 @@ export class View {
         // CPUカードの向きを反転（手札とモーダル表示時以外）
         if (playerType === 'cpu' && zone !== 'hand' && zone !== 'modal') {
             img.style.transform = 'rotateX(180deg)';
-            img.style.pointerEvents = 'auto'; // Explicitly ensure pointer events are enabled
+            img.style.pointerEvents = 'none'; // ホバーイベントを親要素(スロット)に透過させる
+            img.style.backfaceVisibility = 'visible'; // 裏返っても表示を保証
         }
         
         // Add error handling for image loading failures
@@ -666,11 +683,13 @@ export class View {
             this.style.display = 'block';
         };
 
-        img.dataset.cardId = card.id;
-        img.dataset.owner = playerType;
-        img.dataset.zone = zone;
-        img.dataset.index = index;
+        // ★変更: data-card-id属性をimg要素ではなく、その親のcontainer要素に付与
+        container.dataset.cardId = card.id;
+        container.dataset.owner = playerType;
+        container.dataset.zone = zone;
+        container.dataset.index = index;
 
+        // クリック可能であればカーソルスタイルを追加
         const clickable = (
             // Face-up cards
             !isFaceDown
@@ -679,11 +698,8 @@ export class View {
             // Player can click prizes to take
             || (zone === 'prize' && playerType === 'player')
         );
-        if (this.cardClickHandler && clickable) {
-            img.classList.add('cursor-pointer');
-            img.addEventListener('click', (e) => {
-                this.cardClickHandler(e.currentTarget.dataset);
-            });
+        if (clickable) { // cardClickHandler のチェックは不要になる
+            container.classList.add('cursor-pointer');
         }
 
         // Show card details on right-click for face-up cards

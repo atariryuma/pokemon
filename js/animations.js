@@ -48,49 +48,20 @@ export class AnimationManager {
     const promises = cardElements.map((element, index) => {
       return new Promise(resolve => {
         setTimeout(() => {
-          // カード要素が確実に見えるようにする
           if (element) {
-            // 対象は可能なら内側の画像要素に限定（親のscale等と干渉しないため）
             const target = element.querySelector('img') || element;
-            // アニメーション前に要素を完全に表示状態にする
+            
+            // JSで表示状態にしてからアニメーション開始
             element.style.opacity = '1';
-            element.style.visibility = 'visible';
-            element.style.display = 'flex';
 
-            // 子要素のimg要素も確実に見えるようにする
-            const img = element.querySelector('img');
-            if (img) {
-              img.classList.add('is-animating');
-              img.style.visibility = 'visible';
-              img.style.display = 'block';
-            }
-            // 親のtransform（ドックのscale等）は維持し、アニメは内側に適用
-            target.style.transform = 'none';
-            
-            // 強制的に再描画をトリガー
-            element.offsetHeight;
-            
-            console.log(`🎴 Starting animation for card ${index + 1}/${cardElements.length}`);
-            console.log(`  Before animation - opacity: ${element.style.opacity}, visibility: ${element.style.visibility}`);
-            
-            // CSSアニメーションを開始（opacity: 0 → 1 のアニメーションを実行）
-            if (target.tagName && target.tagName.toLowerCase() === 'img') {
-              target.classList.add('is-animating', 'is-hidden');
-            }
             this.addAnimationClass(target, 'animate-deal-card');
+
             this.waitForAnimation(target, 'dealCard', () => {
-              // アニメーション完了後に確実に表示状態を保証
-              element.style.opacity = '1';
-              element.style.visibility = 'visible';
-              target.style.transform = 'none';
-              if (target.tagName && target.tagName.toLowerCase() === 'img') {
-                target.classList.remove('is-animating', 'is-hidden');
-              }
-              console.log(`✅ Animation completed for card ${index + 1}, final opacity: ${element.style.opacity}`);
+              const isCpuCard = element.closest('.opponent-board');
+              target.style.transform = isCpuCard ? 'rotateX(180deg)' : 'none';
               resolve();
             });
           } else {
-            console.warn(`⚠️ Card element ${index} is null`);
             resolve();
           }
         }, index * staggerDelay);
@@ -130,23 +101,22 @@ export class AnimationManager {
         setTimeout(() => {
           if (element) {
             const target = element.querySelector('img') || element;
-            // 表示状態を保証（不透明のまま）
+            
+            // JSで表示状態にしてからアニメーション開始
             element.style.opacity = '1';
-            element.style.visibility = 'visible';
-            element.style.display = 'flex';
-            if (target) {
-              target.style.opacity = '1';
-              target.style.visibility = 'visible';
-              target.style.display = 'block';
-            }
-            target.style.transform = 'none';
 
-            // 強制リフロー
+            const isCpuCard = element.closest('.opponent-board');
+            if (isCpuCard) {
+                target.style.transform = 'rotateX(180deg)';
+            } else {
+                target.style.transform = 'none';
+            }
+
             element.offsetHeight;
 
             this.addAnimationClass(target, 'animate-deal-card-nofade');
             this.waitForAnimation(target, 'dealCardNoFade', () => {
-              target.style.transform = 'none';
+              target.style.transform = isCpuCard ? 'rotateX(180deg)' : 'none';
               resolve();
             });
           } else {
@@ -158,6 +128,7 @@ export class AnimationManager {
 
     return Promise.all(promises);
   }
+
   /**
    * Wrapper: initial hand deal
    */
@@ -177,18 +148,11 @@ export class AnimationManager {
         setTimeout(() => {
           if (element) {
             const target = element.querySelector('img') || element;
-            // 表示状態を保証
+
+            // JSで表示状態にしてからアニメーション開始
             element.style.opacity = '1';
-            element.style.visibility = 'visible';
-            element.style.display = 'flex';
-            if (target) {
-              target.style.opacity = '1';
-              target.style.visibility = 'visible';
-              target.style.display = 'block';
-            }
             target.style.transform = 'none';
 
-            // 強制リフロー
             element.offsetHeight;
 
             console.log(`🎴 Starting player hand animation for card ${index + 1}/${cardElements.length}`);

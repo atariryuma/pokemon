@@ -2,6 +2,7 @@ import { createInitialState } from './state.js';
 import { View } from './view.js';
 import * as Logic from './logic.js';
 import { animationManager } from './animations.js';
+import { unifiedAnimationManager } from './unified-animations.js';
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
@@ -100,23 +101,18 @@ export class Game {
 
         // Then control UI elements based on phase
         this._updateUI();
-        
-        // Check for game end conditions
-        if (newState.phase === GAME_PHASES.GAME_OVER) {
-            this._handleGameOver(newState.winner, newState.gameEndReason);
-            return;
-        }
-
-        const gameEndCheck = this.phaseManager.shouldEndGame(newState);
-        if (gameEndCheck) {
-            this._handleGameOver(gameEndCheck.winner, gameEndCheck.reason);
-        }
     } // End of _updateState
 
     async _handleCardClick(dataset) {
         console.log('_handleCardClick() started. dataset:', dataset);
         const { owner, zone, cardId, index } = dataset;
         if (owner !== 'player') return;
+
+        // 処理中の場合はクリックを無視
+        if (this.state.isProcessing) {
+            console.log('🚫 Game is processing, ignoring click.');
+            return;
+        }
 
         // Handle different phases
         switch (this.state.phase) {
@@ -154,6 +150,11 @@ export class Game {
      */
     async _startGameSetup() {
         console.log('🎮 Starting game setup...');
+
+        // アニメーション準備クラスを追加
+        document.getElementById('player-hand')?.classList.add('is-preparing-animation');
+        document.getElementById('cpu-hand')?.classList.add('is-preparing-animation');
+
         this.state = await this.setupManager.initializeGame(this.state);
         
         // 単一のレンダリングサイクルで処理（二重レンダリング防止）
@@ -163,29 +164,36 @@ export class Game {
         // DOM要素の完全な準備を確実に待つ
         this._scheduleSetupAnimations();
         
-        // デバッグ: 手札の内容を確認
-        console.log('👤 Player hand after setup:', this.state.players.player.hand.length, 'cards');
-        this.state.players.player.hand.forEach((card, i) => {
-            console.log(`  ${i + 1}. ${card.name_ja} (${card.id})`);
-        });
-        console.log('🤖 CPU hand after setup:', this.state.players.cpu.hand.length, 'cards');
-        console.log('🏆 Player prizes after setup:', this.state.players.player.prize.length, 'cards');
-        console.log('🏆 CPU prizes after setup:', this.state.players.cpu.prize.length, 'cards');
+        // デバッグ: 手札の内容を確認（state.players存在チェック付き）
+        if (this.state && this.state.players) {
+            console.log('👤 Player hand after setup:', this.state.players.player?.hand?.length || 0, 'cards');
+            if (this.state.players.player?.hand) {
+                this.state.players.player.hand.forEach((card, i) => {
+                    console.log(`  ${i + 1}. ${card.name_ja} (${card.id})`);
+                });
+            }
+            console.log('🤖 CPU hand after setup:', this.state.players.cpu?.hand?.length || 0, 'cards');
+            console.log('🏆 Player prizes after setup:', this.state.players.player?.prize?.length || 0, 'cards');
+            console.log('🏆 CPU prizes after setup:', this.state.players.cpu?.prize?.length || 0, 'cards');
+        } else {
+            console.warn('⚠️ State.players not initialized for debug logging');
+        }
         
         // 初期状態のレンダリング完了後の手札確認
         setTimeout(() => {
             console.log('🗺️ Post-render hand verification:');
             const handElements = document.querySelectorAll('#player-hand .hand-card, #player-hand-inner .hand-card');
             console.log('  Player hand elements:', handElements.length);
-            console.log('  Player hand data:', this.state.players.player.hand.length);
+            const playerHandLength = this.state?.players?.player?.hand?.length || 0;
+            console.log('  Player hand data:', playerHandLength);
             
-            if (handElements.length !== this.state.players.player.hand.length) {
+            if (handElements.length !== playerHandLength) {
                 console.warn('⚠️ Hand element count mismatch detected!');
-                console.log('  Expected:', this.state.players.player.hand.length);
+                console.log('  Expected:', playerHandLength);
                 console.log('  Found:', handElements.length);
                 console.log('  Re-rendering hand...');
                 const playerHandElement = this.view.playerHandInner || this.view.playerHand;
-                if (playerHandElement) {
+                if (playerHandElement && this.state?.players?.player?.hand) {
                     this.view._renderHand(playerHandElement, this.state.players.player.hand, 'player');
                 }
             }
@@ -200,67 +208,101 @@ export class Game {
         
         console.log('🎯 Setup card click:', { zone, cardId, index });
         
-        if (zone === 'hand' && cardId) {
-            // 手札のカードを選択
-            const card = this.state.players.player.hand.find(c => c.id === cardId);
-            if (card && card.card_type === 'Pokémon' && card.stage === 'BASIC') {
-                this.selectedCardForSetup = card;
-                this._highlightCard(cardId, true);
-                this.state.prompt.message = `「${card.name_ja}」をバトル場かベンチに配置してください。`;
+        // 処理中はStateのisProcessingフラグをtrueに設定
+        this.state.isProcessing = true;
+
+        try {
+            if (zone === 'hand' && cardId) {
+                // 手札のカードを選択（state.players存在チェック付き）
+                if (!this.state?.players?.player?.hand) {
+                    console.warn('⚠️ Player hand not initialized');
+                    return;
+                }
+                
+                const card = this.state.players.player.hand.find(c => c.id === cardId);
+                if (card && card.card_type === 'Pokémon' && card.stage === 'BASIC') {
+                    this.selectedCardForSetup = card;
+                    this._highlightCard(cardId, true);
+                    this.state.prompt.message = `「${card.name_ja}」をバトル場かベンチに配置してください。`;
+                    this.view.updateStatusMessage(this.state.prompt.message);
+                    console.log(`✅ Selected Pokemon for setup: ${card.name_ja}`);
+                } else {
+                    this.view.showMessage('たねポケモンのみ選択できます。', 'warning');
+                    console.log('❌ Invalid card selection:', card?.name_ja || 'Unknown card');
+                }
+            } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
+                console.log(`🃏 Attempting to place card: ${this.selectedCardForSetup.name_ja}`);
+                
+                // 配置先を選択
+                const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
+                console.log(`🎯 Placing ${this.selectedCardForSetup.name_ja} in ${zone}${zone === 'bench' ? `[${targetIndex}]` : ''}`);
+
+                // DOM上のカード要素を取得（手札のカード）
+                const cardElement = document.querySelector(`[data-card-id="${this.selectedCardForSetup.id}"]`);
+                if (!cardElement) {
+                    console.warn(`⚠️ Card element not found for ${this.selectedCardForSetup.id}`);
+                }
+
+                // アニメーションに必要な情報を事前に取得
+                const cardToAnimate = this.selectedCardForSetup; // アニメーション用にカード情報を保持
+
+                // 状態更新実行（手札から除外し、配置）
+                const previousState = this.state;
+                this.state = await this.setupManager.handlePokemonSelection(
+                    this.state,
+                    'player',
+                    cardToAnimate.id, // 事前に取得したIDを使用
+                    zone,
+                    targetIndex
+                );
+                
+                // 状態変更が成功したか確認
+                if (this.state === previousState) {
+                    console.warn('⚠️ Pokemon placement failed, state unchanged');
+                    return;
+                }
+                
+                // state.playersの存在確認
+                if (this.state && this.state.players && this.state.players.player) {
+                    console.log('📋 State updated - new hand size:', this.state.players.player.hand.length);
+                } else {
+                    console.warn('⚠️ State or players not properly initialized');
+                    return;
+                }
+
+                // selectedCardForSetup のリセットとハイライト解除を、
+                // State更新直後、Viewレンダリングの前に移動
+                this.selectedCardForSetup = null;
+                this._clearCardHighlights();
+                this.state.prompt.message = '次のたねポケモンを選択するか、確定してください。';
                 this.view.updateStatusMessage(this.state.prompt.message);
-                console.log(`✅ Selected Pokemon for setup: ${card.name_ja}`);
-            } else {
-                this.view.showMessage('たねポケモンのみ選択できます。', 'warning');
-                console.log('❌ Invalid card selection:', card?.name_ja || 'Unknown card');
-            }
-        } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
-            console.log(`🃏 Attempting to place card: ${this.selectedCardForSetup.name_ja}`);
-            
-            // 配置先を選択
-            const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
-            console.log(`🎯 Placing ${this.selectedCardForSetup.name_ja} in ${zone}${zone === 'bench' ? `[${targetIndex}]` : ''}`);
 
-            // DOM上のカード要素を取得（手札のカード）
-            const cardElement = document.querySelector(`[data-card-id="${this.selectedCardForSetup.id}"]`);
-            if (!cardElement) {
-                console.warn(`⚠️ Card element not found for ${this.selectedCardForSetup.id}`);
-            }
+                // 一度だけレンダリングし、重複を防止
+                console.log('📋 Final state update after card placement');
+                this._updateState(this.state); // まずViewを更新
 
-            // 状態更新実行（手札から除外し、配置）
-            const previousState = this.state;
-            this.state = this.setupManager.handlePokemonSelection(
-                this.state,
-                'player',
-                this.selectedCardForSetup.id,
-                zone,
-                targetIndex
-            );
-            
-            // 状態変更が成功したか確認
-            if (this.state === previousState) {
-                console.warn('⚠️ Pokemon placement failed, state unchanged');
-                return;
-            }
-            
-            console.log('📋 State updated - new hand size:', this.state.players.player.hand.length);
+                // DOM更新を待つ
+                await new Promise(resolve => requestAnimationFrame(resolve));
 
-            // カード移動アニメーションを状態更新の前に実行
-            if (cardElement) {
-                await this._animateCardPlacement(cardElement, zone, targetIndex);
-            }
+                // カード移動アニメーションを実行
+                if (cardElement) {
+                    await unifiedAnimationManager.createUnifiedCardAnimation(
+                        'player', // プレイヤー側
+                        cardToAnimate.id, // 事前に取得したIDを使用
+                        'hand', // 移動元は手札
+                        zone, // 移動先は 'active' または 'bench'
+                        targetIndex, // ベンチの場合のインデックス
+                        { isSetupPhase: true, card: cardToAnimate } // 事前に取得したカード情報を使用
+                    );
+                }
 
-            // 状態更新を一度だけ実行するためにフラグで管理
-            this.selectedCardForSetup = null;
-            this._clearCardHighlights();
-            this.state.prompt.message = '次のたねポケモンを選択するか、確定してください。';
-            this.view.updateStatusMessage(this.state.prompt.message);
-            
-            // 一度だけレンダリングし、重複を防止
-            console.log('📋 Final state update after card placement');
-            this._updateState(this.state);
-        } else if ((zone === 'active' || zone === 'bench') && !this.selectedCardForSetup) {
-            // カードが選択されていない状態でスロットをクリックした場合
-            this.view.showMessage('先に手札からたねポケモンを選択してください。', 'warning');
+            } else if ((zone === 'active' || zone === 'bench') && !this.selectedCardForSetup) {
+                // カードが選択されていない状態でスロットをクリックした場合
+                this.view.showMessage('先に手札からたねポケモンを選択してください。', 'warning');
+            }
+        } finally {
+            // 処理終了後にStateのisProcessingフラグをfalseに設定
+            this.state.isProcessing = false;
         }
     }
 
@@ -396,6 +438,25 @@ export class Game {
                         confirmButton.textContent = 'たねポケモンをバトル場へ配置';
                         confirmButton.classList.add('opacity-50', 'cursor-not-allowed');
                     }
+                }
+                break;
+
+            case GAME_PHASES.PRIZE_CARD_SETUP:
+                this.view.hideInitialPokemonSelectionUI();
+                this.view.showGameMessage(this.state.prompt.message);
+                this.view.hideActionButtons();
+                break;
+
+            case GAME_PHASES.GAME_START_READY:
+                this.view.hideInitialPokemonSelectionUI();
+                this.view.showGameMessage(this.state.prompt.message);
+                this.view.showActionButtons(['confirm-initial-pokemon-button']);
+                // ボタンテキストを変更
+                const gameStartButton = document.getElementById('confirm-initial-pokemon-button');
+                if (gameStartButton) {
+                    gameStartButton.textContent = 'ゲームスタート';
+                    gameStartButton.disabled = false;
+                    gameStartButton.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
                 break;
 
@@ -701,6 +762,15 @@ export class Game {
     async _handleConfirmSetup() {
         console.log('✅ Confirming setup...');
         
+        // フェーズに応じて処理を分岐
+        if (this.state.phase === GAME_PHASES.GAME_START_READY) {
+            // ゲームスタートボタンが押された場合
+            console.log('🎮 Starting game...');
+            await this._startActualGame();
+            return;
+        }
+
+        // 初期ポケモン配置確定の場合
         // 強制的にボタンの無効化状態をチェック
         const confirmButton = document.getElementById('confirm-setup-button');
         if (confirmButton && confirmButton.disabled) {
@@ -709,28 +779,75 @@ export class Game {
             return;
         }
         
-        const active = this.state.players.player.active;
+        const active = this.state?.players?.player?.active;
         if (!active || active.card_type !== 'Pokémon' || active.stage !== 'BASIC') {
             this.view.showMessage('バトル場にたねポケモンを配置してください。', 'warning');
             this.view.showErrorMessage('バトル場にたねポケモンを配置してください。');
             return;
         }
 
-        this.view.showMessage('セットアップ完了！ゲーム開始です！', 'success');
+        this.view.showMessage('ポケモン配置完了！サイドカードを配布します...', 'success');
         
-        // 状態を更新して、カードが表面になるようにする
+        // 状態を更新して、サイドカード配布を含む完全なセットアップを実行
         let newState = await this.setupManager.confirmSetup(this.state);
         this._updateState(newState);
+        
+        // サイドカードが配布された後でアニメーション実行
+        if (newState.phase === GAME_PHASES.GAME_START_READY) {
+            console.log('🎬 Starting prize card animation after distribution...');
+            // DOM更新を待ってからアニメーション実行
+            setTimeout(async () => {
+                await this._animatePrizeCardSetup();
+            }, 200); // DOM更新を待つ
+        }
+        
+        console.log('✅ Setup confirmed, waiting for game start button.');
+    }
 
-        // カードをフリップするアニメーション
+    /**
+     * 実際のゲーム開始処理
+     */
+    async _startActualGame() {
+        console.log('🎮 Starting actual game...');
+
+        // 1. カードをめくるアニメーションを実行
+        await this._animateCardReveal();
+
+        // 2. カードを表向きにする (State更新)
+        let newState = await this.setupManager.startGameRevealCards(this.state);
+        
+        // 3. 先攻プレイヤーが1枚ドローする
+        console.log('✍️ First player draws a card...');
+        newState = await this.turnManager.handlePlayerDraw(newState);
+
+        // 4. ターン制約をリセット (ドロー以外のもの)
+        newState.hasAttachedEnergyThisTurn = false;
+        newState.canRetreat = true;
+        newState.canPlaySupporter = true;
+
+        // 5. メインフェーズに移行
+        newState.phase = GAME_PHASES.PLAYER_MAIN;
+        newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+
+        this._updateState(newState);
+
+        this.view.showMessage('バトル開始！', 'success');
+    }
+
+    /**
+     * カード公開アニメーション
+     */
+    async _animateCardReveal() {
+        console.log('🎬 Starting card reveal animation...');
+        
         const allPokemonElements = [];
 
         // プレイヤーのバトル場とベンチ
-        if (newState.players.player.active) {
+        if (this.state.players.player.active) {
             const activeEl = document.querySelector('.player-self .active-bottom .relative');
-            if (activeEl) allPokemonElements.push({ element: activeEl, card: newState.players.player.active });
+            if (activeEl) allPokemonElements.push({ element: activeEl, card: this.state.players.player.active });
         }
-        newState.players.player.bench.forEach((pokemon, index) => {
+        this.state.players.player.bench.forEach((pokemon, index) => {
             if (pokemon) {
                 const benchEl = document.querySelector(`.player-self .bottom-bench-${index + 1} .relative`);
                 if (benchEl) allPokemonElements.push({ element: benchEl, card: pokemon });
@@ -738,11 +855,11 @@ export class Game {
         });
 
         // CPUのバトル場とベンチ
-        if (newState.players.cpu.active) {
+        if (this.state.players.cpu.active) {
             const activeEl = document.querySelector('.opponent-board .active-top .relative');
-            if (activeEl) allPokemonElements.push({ element: activeEl, card: newState.players.cpu.active });
+            if (activeEl) allPokemonElements.push({ element: activeEl, card: this.state.players.cpu.active });
         }
-        newState.players.cpu.bench.forEach((pokemon, index) => {
+        this.state.players.cpu.bench.forEach((pokemon, index) => {
             if (pokemon) {
                 const benchEl = document.querySelector(`.opponent-board .top-bench-${index + 1} .relative`);
                 if (benchEl) allPokemonElements.push({ element: benchEl, card: pokemon });
@@ -753,8 +870,6 @@ export class Game {
         for (const { element, card } of allPokemonElements) {
             await animationManager.flipCardFaceUp(element, getCardImagePath(card.name_en));
         }
-        
-        console.log('✅ Setup confirmed, game starting!');
     }
 
     /**
@@ -794,8 +909,11 @@ export class Game {
             // 手札のアニメーション
             await this._animateInitialHandDraw();
             
-            // サイドカードのアニメーション
-            await this._animatePrizeCardSetup();
+            // Note: CPUの初期ポケモン配置はプレイヤーの操作後に実行
+            console.log('ℹ️ Hand animations completed. CPU setup will be triggered by player action.');
+            
+            // サイドカードアニメーションは配布後に実行（重複防止）
+            console.log('ℹ️ Skipping prize card animation - will execute after distribution');
             
             console.log('✅ Setup animations completed');
         } catch (error) {
@@ -835,6 +953,13 @@ export class Game {
     async _animateInitialHandDraw() {
         const playerHand = document.getElementById('player-hand');
         const cpuHand = document.getElementById('cpu-hand');
+
+        // アニメーション開始直前に準備クラスを削除
+        playerHand?.classList.remove('is-preparing-animation');
+        cpuHand?.classList.remove('is-preparing-animation');
+
+        // DOMにクラスの削除が反映されるのを待つ
+        await this._delay(20); // 非常に短い遅延
 
         const promises = [];
 
@@ -876,36 +1001,54 @@ export class Game {
      * サイドカード配置アニメーション
      */
     async _animatePrizeCardSetup() {
+        console.log('🏆 Starting prize card setup animation...');
+        
         // 実際にカード要素が入っているスロットの子要素を取得
         const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
         const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
+
+        console.log(`📋 Found ${playerPrizeSlots.length} player prize slots`);
+        console.log(`📋 Found ${cpuPrizeSlots.length} CPU prize slots`);
+
+        if (playerPrizeSlots.length === 0 || cpuPrizeSlots.length === 0) {
+            console.warn('⚠️ Prize slots not found, skipping animation');
+            return;
+        }
 
         const prizeCards = [];
         
         // プレイヤーのサイドカード要素を収集
         playerPrizeSlots.forEach((slot, index) => {
-            const cardElement = slot.querySelector('.relative'); // カード要素
+            // カード要素が描画されているかチェック
+            const cardElement = slot.querySelector('.relative, .card'); // より広範囲にチェック
             if (cardElement) {
                 prizeCards.push(cardElement);
                 console.log(`📋 Found player prize card ${index + 1}`);
+            } else {
+                // カードが未描画の場合、スロット自体をアニメーション対象にする
+                console.log(`📋 Using player prize slot ${index + 1} (no card element)`);
+                prizeCards.push(slot);
             }
         });
         
         // CPUのサイドカード要素を収集
         cpuPrizeSlots.forEach((slot, index) => {
-            const cardElement = slot.querySelector('.relative'); // カード要素
+            const cardElement = slot.querySelector('.relative, .card');
             if (cardElement) {
                 prizeCards.push(cardElement);
                 console.log(`📋 Found CPU prize card ${index + 1}`);
+            } else {
+                console.log(`📋 Using CPU prize slot ${index + 1} (no card element)`);
+                prizeCards.push(slot);
             }
         });
 
-        console.log(`🏆 Animating ${prizeCards.length} prize card elements`);
+        console.log(`🏆 Animating ${prizeCards.length} prize elements`);
         
         if (prizeCards.length > 0) {
             await animationManager.animatePrizeDeal(prizeCards, 150);
         } else {
-            console.warn('⚠️ No prize card elements found for animation');
+            console.warn('⚠️ No prize elements found for animation');
         }
     }
 
@@ -917,19 +1060,44 @@ export class Game {
     async _animateCardPlacement(cardElement, zone, index) {
         if (!cardElement) return;
 
+        console.log(`🎬 Starting player card placement animation: ${zone}[${index}]`);
+
         const targetSelector = zone === 'active'
             ? '.player-self .active-bottom'
             : `.player-self .bottom-bench-${index + 1}`;
         const targetElement = document.querySelector(targetSelector);
 
         if (targetElement) {
+            // カードを一時的にハイライト
+            cardElement.style.transition = 'all 0.3s ease';
+            cardElement.style.transform = 'scale(1.1) rotate(2deg)';
+            cardElement.style.zIndex = '100';
+            cardElement.style.boxShadow = '0 8px 25px rgba(77, 208, 253, 0.6)';
+
+            // 少し待ってから移動アニメーション
+            await new Promise(resolve => setTimeout(resolve, 200));
+
             const fromRect = cardElement.getBoundingClientRect();
             const toRect = targetElement.getBoundingClientRect();
 
             const fromPos = { x: fromRect.left, y: fromRect.top };
             const toPos = { x: toRect.left, y: toRect.top };
 
+            // 移動アニメーション実行
             await animationManager.animatePlayCard(cardElement, fromPos, toPos);
+
+            // 配置完了後の効果
+            if (targetElement.children.length > 0) {
+                const placedCard = targetElement.children[0];
+                placedCard.style.transform = 'scale(1.2)';
+                placedCard.style.transition = 'transform 0.4s ease';
+                
+                setTimeout(() => {
+                    placedCard.style.transform = 'scale(1)';
+                }, 400);
+            }
+
+            console.log(`✅ Player card placement animation completed`);
         }
     }
 
@@ -937,6 +1105,7 @@ export class Game {
      * ポケモン昇格アニメーション
      */
     async _animatePokemonPromotion(playerId, benchIndex) {
+        // 統一システムを使用（既存のアニメーションマネージャーのsmoothCardMoveを活用）
         const playerClass = playerId === 'player' ? '.player-self' : '.opponent-board';
         const benchSelector = playerId === 'player' ? `.bottom-bench-${benchIndex + 1}` : `.top-bench-${benchIndex + 1}`;
         const activeSelector = playerId === 'player' ? '.active-bottom' : '.active-top';
@@ -953,6 +1122,7 @@ export class Game {
      * エネルギー付与アニメーション
      */
     async _animateEnergyAttachment(energyId, pokemonId) {
+        // 統一システムを使用（既存のアニメーションマネージャーのenergyAttachを活用）
         const energyElement = document.querySelector(`[data-card-id="${energyId}"]`);
         const pokemonElement = document.querySelector(`[data-card-id="${pokemonId}"]`);
         

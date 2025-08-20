@@ -61,7 +61,12 @@
 
         /* プレイヤーのボード全体をオーバーレイより上に */
         .player-board.player-self {
-            z-index: 15;
+            z-index: 14; /* Should be lower than the card slots inside it */
+        }
+
+        /* CPU側のボードにもスタッキングコンテキストを生成 */
+        .player-board.opponent-board {
+            z-index: 14; /* Should be lower than the card slots inside it */
         }
 
         /* 手札コンテナのZ-index強化 */
@@ -84,15 +89,21 @@
 
         /* 手札カードの表示を強制 */
         .hand-card {
-            opacity: 1 !important;
-            visibility: visible !important;
-            display: flex !important;
+            opacity: 1;
+            visibility: visible;
+            display: flex;
+        }
+
+        /* アニメーション準備中のカードを初期状態で非表示にする */
+        .is-preparing-animation .relative {
+            opacity: 0 !important;
+            transition: none !important; /* 意図しないトランジションを防止 */
         }
 
 
         /* Side cards stacking effects */
         .side-cards-container {
-            position: relative;
+            position: static;
         }
 
         .side-cards-container .card-slot {
@@ -607,6 +618,100 @@
             top: 3px;
             left: 4px;
         }
+
+        /* プレイマット座標定義 - プレイヤー側 (side-left) - JavaScriptの動的設定を上書き */
+        .player-board.player-self .side-cards-container .card-slot.side-left-1 {
+            left: 43px;
+            top: 332px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        .player-board.player-self .side-cards-container .card-slot.side-left-1-back {
+            left: 47px;
+            top: 335px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        
+        .player-board.player-self .side-cards-container .card-slot.side-left-2 {
+            left: 43px;
+            top: 435px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        .player-board.player-self .side-cards-container .card-slot.side-left-2-back {
+            left: 47px;
+            top: 438px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        
+        .player-board.player-self .side-cards-container .card-slot.side-left-3 {
+            left: 43px;
+            top: 538px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        .player-board.player-self .side-cards-container .card-slot.side-left-3-back {
+            left: 47px;
+            top: 541px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+
+        /* プレイマット座標定義 - CPU側 (side-right) - JavaScriptの動的設定を上書き */
+        .player-board.opponent-board .side-cards-container .card-slot.side-right-1 {
+            left: 564px;
+            top: 38px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        .player-board.opponent-board .side-cards-container .card-slot.side-right-1-back {
+            left: 568px;
+            top: 41px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        
+        .player-board.opponent-board .side-cards-container .card-slot.side-right-2 {
+            left: 564px;
+            top: 143px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        .player-board.opponent-board .side-cards-container .card-slot.side-right-2-back {
+            left: 568px;
+            top: 146px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+        
+        .player-board.opponent-board .side-cards-container .card-slot.side-right-3 {
+            left: 564px;
+            top: 248px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+                /* プレイマット座標定義 - CPU側 (side-right) - JavaScriptの動的設定を上書き */
+        .player-board.opponent-board .side-cards-container .card-slot.side-right-3-back {
+            left: 568px;
+            top: 251px;
+            width: 73px;
+            height: 104px;
+            position: absolute;
+        }
+
 
     </style>
 </head>

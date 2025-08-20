@@ -5,8 +5,10 @@
  */
 
 import { animationManager } from './animations.js';
+import { unifiedAnimationManager } from './unified-animations.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
+import * as Logic from './logic.js';
 
 /**
  * セットアップ管理クラス
@@ -124,11 +126,22 @@ export class SetupManager {
       console.log(`  - ${pokemon.name_ja}`);
     });
     
+    // 手札配布完了後、1.5秒待機してCPUの初期ポケモン配置を自動実行（非ブロッキング）
+    console.log('⏰ Scheduling automatic CPU pokemon setup...');
+    setTimeout(() => {
+      console.log('🤖 Starting automatic CPU initial pokemon setup...');
+      if (window.gameInstance) {
+        // プレイヤー操作をブロックしない非同期実行
+        this.startNonBlockingCpuSetup();
+      }
+    }, 1500);
+    
     // Note: アニメーションはGame.jsでview.render()の後に呼ばれる
     // ここでは状態の更新のみを行い、アニメーションは別途実行する
 
     return newState;
   }
+
 
   /**
    * 初期ドローアニメーション
@@ -321,12 +334,25 @@ export class SetupManager {
     console.log(`🎯 Pokemon selection: ${playerId} places ${cardId} in ${targetZone}`);
     console.log(`📋 Before selection - ${playerId} hand:`, state.players[playerId].hand.length, 'cards');
     
+    // 状態の有効性チェック
+    if (!state.players || !state.players[playerId]) {
+      console.error(`❌ Invalid state: player ${playerId} not found`);
+      return state;
+    }
+    
     let newState = cloneGameState(state);
     const playerState = newState.players[playerId];
+    
+    // 手札が空でないことを確認
+    if (!playerState.hand || playerState.hand.length === 0) {
+      console.warn(`⚠️ Player ${playerId} has no cards in hand`);
+      return state;
+    }
     
     // 安全な手札コピーを作成
     const handCopy = [...playerState.hand];
     console.log(`📏 Hand copy created with ${handCopy.length} cards`);
+    console.log(`🔍 Looking for card ${cardId} in hand:`, handCopy.map(c => `${c.id}:${c.name_ja}`));
 
     // 手札からカードを見つける
     const cardIndex = handCopy.findIndex(card => card.id === cardId);
@@ -396,85 +422,240 @@ export class SetupManager {
     console.log(`📋 After selection - ${playerId} hand:`, playerState.hand.length, 'cards');
     console.log(`🎯 Placement successful: ${card.name_ja} -> ${targetZone}${targetZone === 'bench' ? `[${targetIndex}]` : ''}`);
     
-    // プレイヤーが最初のポケモンを配置した時、CPUも同期して配置
-    if (playerId === 'player' && !newState.players.cpu.active) {
-      console.log('🔄 Triggering CPU pokemon setup...');
-      newState = await this.setupCpuInitialPokemon(newState);
-    }
+    // Note: CPU初期配置は手札配布後に自動実行されるため、ここでのトリガーは不要
     
     return newState;
   }
 
   /**
-   * CPU用の自動初期ポケモン配置
+   * 統一CPU ポケモン配置関数（初期・ゲーム中両対応）
    */
-  async setupCpuInitialPokemon(state) {
-    console.log('🤖 Setting up CPU initial Pokemon...');
-    let newState = cloneGameState(state);
-    const cpuState = newState.players.cpu;
+  async unifiedCpuPokemonSetup(state, isInitialSetup = false) {
+    console.log(`🤖 Starting unified CPU pokemon setup (initial: ${isInitialSetup})...`);
+    
+    try {
+      let newState = cloneGameState(state);
+      const cpuState = newState.players.cpu;
+      
+      // 基本ポケモンをフィルタリング
+      const basicPokemon = cpuState.hand.filter(card => 
+        card.card_type === 'Pokémon' && card.stage === 'BASIC'
+      );
+      
+      if (basicPokemon.length === 0) {
+        console.warn('⚠️ CPU has no Basic Pokemon for setup');
+        return newState;
+      }
+      
+      console.log(`🔍 CPU Basic Pokemon available: ${basicPokemon.length}`);
+      
+      // 初期セットアップの場合: アクティブ + ベンチ
+      if (isInitialSetup) {
+        // CPUがすでにアクティブポケモンを持っている場合はスキップ
+        if (newState.players.cpu.active) {
+          console.log('ℹ️ CPU already has active Pokemon, skipping initial setup');
+          return newState;
+        }
+        
+        // 1. アクティブポケモン配置
+        const activeCandidate = basicPokemon[0];
+        console.log(`🤖 CPU placing active: ${activeCandidate.name_ja}`);
+        
+        newState = Logic.placeCardInActive(newState, 'cpu', activeCandidate.id);
+        
+        if (newState.players.cpu.active) {
+          newState.players.cpu.active.setupFaceDown = true;
+          
+          // 統一アニメーション実行
+          await unifiedAnimationManager.createUnifiedCardAnimation(
+            'cpu', activeCandidate.id, 'hand', 'active', 0, 
+            { isSetupPhase: true, card: activeCandidate }
+          );
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+        
+        // 2. ベンチポケモン配置（残りの基本ポケモン、最大5体）
+        const remainingBasic = newState.players.cpu.hand.filter(card => 
+          card.card_type === 'Pokémon' && card.stage === 'BASIC'
+        );
+        
+        let benchCount = 0;
+        for (const pokemon of remainingBasic) {
+          if (benchCount >= 5) break;
+          
+          console.log(`🤖 CPU placing bench[${benchCount}]: ${pokemon.name_ja}`);
+          
+          newState = Logic.placeCardOnBench(newState, 'cpu', pokemon.id, benchCount);
+          
+          if (newState.players.cpu.bench[benchCount]) {
+            newState.players.cpu.bench[benchCount].setupFaceDown = true;
+            
+            // 統一アニメーション実行
+            await unifiedAnimationManager.createUnifiedCardAnimation(
+              'cpu', pokemon.id, 'hand', 'bench', benchCount, 
+              { isSetupPhase: true, card: pokemon }
+            );
+            benchCount++;
+            
+            if (benchCount < remainingBasic.length && benchCount < 5) {
+              await new Promise(resolve => setTimeout(resolve, 600));
+            }
+          }
+        }
+        
+        newState = addLogEntry(newState, {
+          type: 'cpu_setup',
+          message: `CPUが初期ポケモンを配置しました（バトル場: ${newState.players.cpu.active.name_ja}, ベンチ: ${benchCount}体）`
+        });
+        
+      } else {
+        // ゲーム中: ベンチのみ（1体ずつ）
+        const emptyBenchIndex = cpuState.bench.findIndex(slot => slot === null);
+        if (emptyBenchIndex !== -1) {
+          const selectedPokemon = basicPokemon[0];
+          console.log(`🤖 CPU placing game bench[${emptyBenchIndex}]: ${selectedPokemon.name_ja}`);
+          
+          newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
+          
+          // 統一アニメーション実行
+          await unifiedAnimationManager.createUnifiedCardAnimation(
+            'cpu', selectedPokemon.id, 'hand', 'bench', emptyBenchIndex, 
+            { isSetupPhase: false, card: selectedPokemon }
+          );
+          
+          newState = addLogEntry(newState, {
+            type: 'pokemon_played',
+            player: 'cpu',
+            message: 'CPUがたねポケモンをベンチに出しました'
+          });
+        }
+      }
+      
+      console.log(`✅ Unified CPU setup completed (initial: ${isInitialSetup})`);
+      return newState;
+      
+    } catch (error) {
+      console.error('❌ Error in unified CPU setup:', error);
+      return state;
+    }
+  }
 
-    // バトル場用のたねポケモンを見つける
+
+
+
+
+
+  /**
+   * 非ブロッキングCPUセットアップ（1枚ずつ順次実行）
+   */
+  async startNonBlockingCpuSetup() {
+    console.log('🎯 Starting non-blocking CPU setup...');
+    
+    if (!window.gameInstance || !window.gameInstance.state) {
+      console.warn('⚠️ Game instance not available');
+      return;
+    }
+
+    // 現在の状態を取得
+    let currentState = window.gameInstance.state;
+    
+    // CPUがすでにアクティブポケモンを持っている場合はスキップ
+    if (currentState.players.cpu.active) {
+      console.log('ℹ️ CPU already has active Pokemon, skipping setup');
+      return;
+    }
+
+    const cpuState = currentState.players.cpu;
     const basicPokemon = cpuState.hand.filter(card => 
       card.card_type === 'Pokémon' && card.stage === 'BASIC'
     );
 
     if (basicPokemon.length === 0) {
-      console.warn('⚠️ CPU has no basic Pokemon for active position');
-      return newState;
+      console.warn('⚠️ CPU has no Basic Pokemon for setup');
+      return;
     }
 
-    // 最初のたねポケモンをバトル場に配置（裏向き）
-    const activeCandidate = basicPokemon[0];
-    const activeIndex = cpuState.hand.findIndex(card => card.id === activeCandidate.id);
-    const activePokemon = cpuState.hand.splice(activeIndex, 1)[0];
-    cpuState.active = { ...activePokemon, setupFaceDown: true };
+    console.log(`🔍 CPU will place ${basicPokemon.length} Basic Pokemon`);
 
-    // 残りのたねポケモンをベンチに配置（最大5体、裏向き）
-    const remainingBasic = cpuState.hand.filter(card => 
-      card.card_type === 'Pokémon' && card.stage === 'BASIC'
-    );
-
-    let benchCount = 0;
-    for (const pokemon of remainingBasic) {
-      if (benchCount >= 5) break;
+    // 1枚ずつ順次配置
+    let placementIndex = 0;
+    const placementInterval = setInterval(async () => {
+      // 最新の状態を取得
+      currentState = window.gameInstance.state;
       
-      const benchIndex = cpuState.hand.findIndex(card => card.id === pokemon.id);
-      if (benchIndex !== -1) {
-        const benchPokemon = cpuState.hand.splice(benchIndex, 1)[0];
-        cpuState.bench[benchCount] = { ...benchPokemon, setupFaceDown: true };
-        benchCount++;
+      if (placementIndex >= basicPokemon.length) {
+        clearInterval(placementInterval);
+        console.log('✅ Non-blocking CPU setup completed');
+        return;
       }
-    }
 
-    newState = addLogEntry(newState, {
-      type: 'cpu_setup',
-      message: `CPUが初期ポケモンを配置しました（バトル場: ${cpuState.active.name_ja}, ベンチ: ${benchCount}体）`
-    });
+      const pokemon = basicPokemon[placementIndex];
+      console.log(`🤖 CPU placing card ${placementIndex + 1}/${basicPokemon.length}: ${pokemon.name_ja}`);
 
-    // CPU配置アニメーション
-    await this.animateCpuPokemonPlacement();
+      try {
+        let newState;
+        let animationDetails = null; // アニメーション情報を保持する変数
+        
+        if (placementIndex === 0) {
+          // 最初のポケモンはアクティブに配置
+          newState = Logic.placeCardInActive(currentState, 'cpu', pokemon.id);
+          if (newState.players.cpu.active) {
+            newState.players.cpu.active.setupFaceDown = true;
+            // アニメーション情報を保存
+            animationDetails = {
+              playerId: 'cpu',
+              cardId: pokemon.id,
+              sourceZone: 'hand',
+              targetZone: 'active',
+              targetIndex: 0,
+              options: { isSetupPhase: true, card: pokemon }
+            };
+          }
+        } else {
+          // 2番目以降はベンチに配置
+          const benchIndex = placementIndex - 1;
+          if (benchIndex < 5) {
+            newState = Logic.placeCardOnBench(currentState, 'cpu', pokemon.id, benchIndex);
+            if (newState.players.cpu.bench[benchIndex]) {
+              newState.players.cpu.bench[benchIndex].setupFaceDown = true;
+              // アニメーション情報を保存
+              animationDetails = {
+                playerId: 'cpu',
+                cardId: pokemon.id,
+                sourceZone: 'hand',
+                targetZone: 'bench',
+                targetIndex: benchIndex,
+                options: { isSetupPhase: true, card: pokemon }
+              };
+            }
+          }
+        }
 
-    return newState;
-  }
+        // 状態を更新
+        if (newState && newState !== currentState) {
+          window.gameInstance._updateState(newState);
+          // DOM更新を待つ
+          await new Promise(resolve => requestAnimationFrame(resolve));
+        }
 
-  /**
-   * CPU配置アニメーション
-   */
-  async animateCpuPokemonPlacement() {
-    const cpuActive = document.querySelector('.opponent-board .active-top');
-    const cpuBench = document.querySelectorAll('.opponent-board .top-bench-1, .opponent-board .top-bench-2, .opponent-board .top-bench-3, .opponent-board .top-bench-4, .opponent-board .top-bench-5');
+        // アニメーションを実行
+        if (animationDetails) {
+          await unifiedAnimationManager.createUnifiedCardAnimation(
+            animationDetails.playerId,
+            animationDetails.cardId,
+            animationDetails.sourceZone,
+            animationDetails.targetZone,
+            animationDetails.targetIndex,
+            animationDetails.options
+          );
+        }
 
-    const elements = [cpuActive, ...Array.from(cpuBench)];
-    
-    for (const element of elements) {
-      if (element && element.children.length > 0) {
-        await animationManager.animatePlayCard(
-          element.children[0],
-          { x: element.offsetLeft, y: element.offsetTop - 100 },
-          { x: element.offsetLeft, y: element.offsetTop }
-        );
+      } catch (error) {
+        console.error(`❌ Error placing CPU card ${placementIndex + 1}:`, error);
       }
-    }
+
+      placementIndex++;
+    }, 1200); // 1.2秒間隔で1枚ずつ配置
   }
 
   /**
@@ -528,23 +709,24 @@ export class SetupManager {
       return newState;
     }
 
-    // プレイヤーターンに移行
-    newState.phase = GAME_PHASES.PLAYER_DRAW;
-    newState.prompt.message = '山札をクリックしてカードを引いてください。';
+    // サイドカード配布フェーズに移行
+    newState.phase = GAME_PHASES.PRIZE_CARD_SETUP;
+    newState.prompt.message = 'サイドカードを配布しています...';
     newState.setupSelection.confirmed = true;
 
-    // ターン制約をリセット
-    newState.hasDrawnThisTurn = false;
-    newState.hasAttachedEnergyThisTurn = false;
-    newState.canRetreat = true;
-    newState.canPlaySupporter = true;
+    // サイドカード配布
+    newState = await this.setupPrizeCards(newState);
+
+    // ゲーム開始準備完了フェーズに移行
+    newState.phase = GAME_PHASES.GAME_START_READY;
+    newState.prompt.message = '準備完了！「ゲームスタート」を押してバトルを開始してください。';
 
     newState = addLogEntry(newState, {
-      type: 'setup_confirmed',
-      message: `セットアップが完了しました。ゲーム開始！ あなた: ${newState.players.player.active.name_ja}, 相手: ${newState.players.cpu.active.name_ja}`
+      type: 'prize_setup_complete',
+      message: 'サイドカードが配布されました。ゲーム開始の準備が整いました！'
     });
 
-    console.log('✅ Setup confirmed successfully');
+    console.log('✅ Setup confirmed successfully, prize cards distributed');
     return newState;
   }
 
