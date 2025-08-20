@@ -4,8 +4,7 @@
  * プレイヤーとCPUのターン進行、制約管理、自動処理を統括
  */
 
-import { animationManager } from './animations.js';
-import { unifiedAnimationManager } from './unified-animations.js';
+import { animationManager, unifiedAnimationManager } from './unified-animations.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';

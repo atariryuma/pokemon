@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modal System Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* モーダルシステムのスタイルをインポート（index.htmlから） */
+        .central-modal {
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            background: rgba(0, 0, 0, 0.75);
+        }
+
+        .central-modal-content {
+            background: linear-gradient(135deg, rgba(31, 41, 55, 0.98), rgba(17, 24, 39, 0.98));
+            border: 1px solid rgba(75, 85, 99, 0.5);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(77, 208, 253, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .toast-container {
+            z-index: 95;
+            pointer-events: none;
+        }
+
+        .toast-item {
+            pointer-events: auto;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toast-success {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(21, 128, 61, 0.9));
+            border-left: 4px solid #10b981;
+        }
+
+        .toast-warning {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9));
+            border-left: 4px solid #f59e0b;
+        }
+
+        .toast-error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(185, 28, 28, 0.9));
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast-info {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(29, 78, 216, 0.9));
+            border-left: 4px solid #3b82f6;
+        }
+
+        .action-hud {
+            z-index: 90;
+            background: linear-gradient(135deg, rgba(31, 41, 55, 0.95), rgba(17, 24, 39, 0.95));
+            border: 1px solid rgba(75, 85, 99, 0.6);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(77, 208, 253, 0.2);
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        @keyframes modalFadeOut {
+            from { opacity: 1; transform: scale(1) translateY(0); }
+            to { opacity: 0; transform: scale(0.95) translateY(-10px); }
+        }
+
+        @keyframes toastSlideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes toastSlideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        @keyframes hudPopIn {
+            from { opacity: 0; transform: scale(0.8) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-enter { animation: modalFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .modal-exit { animation: modalFadeOut 0.3s ease-out forwards; }
+        .toast-enter { animation: toastSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .toast-exit { animation: toastSlideOut 0.3s ease-out forwards; }
+        .hud-enter { animation: hudPopIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white flex items-center justify-center">
+    <div class="container mx-auto p-8">
+        <h1 class="text-4xl font-bold text-center mb-8">🎭 統一モーダルシステム テスト</h1>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+            <!-- 中央モーダル テスト -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-semibold">中央モーダル</h3>
+                <button id="test-central-modal" class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg">
+                    重要な選択
+                </button>
+                <button id="test-game-start" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg">
+                    ゲーム開始
+                </button>
+                <button id="test-card-selection" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg">
+                    カード選択
+                </button>
+            </div>
+
+            <!-- トースト通知 テスト -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-semibold">通知トースト</h3>
+                <button id="test-toast-success" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg">
+                    成功
+                </button>
+                <button id="test-toast-warning" class="w-full px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-lg">
+                    警告
+                </button>
+                <button id="test-toast-error" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg">
+                    エラー
+                </button>
+                <button id="test-toast-info" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg">
+                    情報
+                </button>
+            </div>
+
+            <!-- アクションHUD テスト -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-semibold">アクションHUD</h3>
+                <button id="test-hud-target" class="w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg">
+                    対象カード
+                </button>
+                <button id="test-hud-energy" class="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg">
+                    エネルギー選択
+                </button>
+            </div>
+
+            <!-- 組み合わせテスト -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-semibold">組み合わせ</h3>
+                <button id="test-combo-1" class="w-full px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white font-bold rounded-lg">
+                    連続通知
+                </button>
+                <button id="test-combo-2" class="w-full px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg">
+                    全クリア
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { modalManager } from './js/modal-manager.js';
+        
+        // DOM準備完了後に初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🎭 Initializing ModalManager for testing...');
+            modalManager.init();
+            
+            // 中央モーダルテスト
+            document.getElementById('test-central-modal').onclick = () => {
+                modalManager.showCentralModal({
+                    title: '重要な決定',
+                    message: 'この行動を実行しますか？元に戻すことはできません。',
+                    actions: [
+                        { text: '実行', callback: () => alert('実行されました！') },
+                        { text: 'キャンセル', callback: () => alert('キャンセルされました') }
+                    ]
+                });
+            };
+            
+            document.getElementById('test-game-start').onclick = () => {
+                modalManager.showCentralModal({
+                    title: '🎮 ゲーム開始',
+                    message: 'ポケモンカードバトルを開始します。準備はよろしいですか？',
+                    actions: [
+                        { 
+                            text: '開始', 
+                            callback: () => {
+                                modalManager.showToast({ message: 'ゲームが開始されました！', type: 'success' });
+                            },
+                            className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
+                        },
+                        { text: '戻る', callback: () => {} }
+                    ]
+                });
+            };
+            
+            document.getElementById('test-card-selection').onclick = () => {
+                const dummyCards = [
+                    { id: '1', name_ja: 'ピカチュウ', imagePath: '/placeholder-card.png' },
+                    { id: '2', name_ja: 'フシギダネ', imagePath: '/placeholder-card.png' },
+                    { id: '3', name_ja: 'ヒトカゲ', imagePath: '/placeholder-card.png' }
+                ];
+                
+                modalManager.showCentralModal({
+                    title: 'カードを選択してください',
+                    message: '手札からカードを1枚選んでください：',
+                    cardData: {
+                        cards: dummyCards,
+                        onCardSelect: (cardId) => {
+                            const card = dummyCards.find(c => c.id === cardId);
+                            modalManager.showToast({ 
+                                message: `${card.name_ja}を選択しました！`, 
+                                type: 'success' 
+                            });
+                            modalManager.closeCentralModal();
+                        }
+                    },
+                    actions: [
+                        { text: 'キャンセル', callback: () => {} }
+                    ]
+                });
+            };
+            
+            // トーストテスト
+            document.getElementById('test-toast-success').onclick = () => {
+                modalManager.showToast({ message: '操作が成功しました！', type: 'success' });
+            };
+            
+            document.getElementById('test-toast-warning').onclick = () => {
+                modalManager.showToast({ message: 'このターンはすでにアクションを実行済みです', type: 'warning' });
+            };
+            
+            document.getElementById('test-toast-error').onclick = () => {
+                modalManager.showToast({ message: 'エネルギーが不足しています', type: 'error' });
+            };
+            
+            document.getElementById('test-toast-info').onclick = () => {
+                modalManager.showToast({ message: '相手のターンです', type: 'info' });
+            };
+            
+            // HUDテスト
+            document.getElementById('test-hud-target').onclick = (e) => {
+                modalManager.showActionHUD({
+                    targetElement: e.target,
+                    actions: [
+                        { text: '詳細を見る', callback: () => alert('詳細表示') },
+                        { text: '選択', callback: () => alert('選択しました') }
+                    ],
+                    position: 'above'
+                });
+            };
+            
+            document.getElementById('test-hud-energy').onclick = (e) => {
+                modalManager.showActionHUD({
+                    targetElement: e.target,
+                    actions: [
+                        { text: '炎エネルギー', callback: () => alert('炎エネルギーを付けました') },
+                        { text: '水エネルギー', callback: () => alert('水エネルギーを付けました') },
+                        { text: 'キャンセル', callback: () => modalManager.hideActionHUD() }
+                    ],
+                    position: 'below'
+                });
+            };
+            
+            // 組み合わせテスト
+            document.getElementById('test-combo-1').onclick = () => {
+                // 連続通知
+                modalManager.showToast({ message: 'ターン開始！', type: 'info' });
+                setTimeout(() => {
+                    modalManager.showToast({ message: 'カードをドローしました', type: 'success' });
+                }, 1000);
+                setTimeout(() => {
+                    modalManager.showToast({ message: 'エネルギーを付けました', type: 'info' });
+                }, 2000);
+            };
+            
+            document.getElementById('test-combo-2').onclick = () => {
+                modalManager.closeAllModals();
+                modalManager.showToast({ message: 'すべてのモーダルをクリアしました', type: 'success' });
+            };
+        });
+    </script>
+</body>
+</html>

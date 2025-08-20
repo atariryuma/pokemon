@@ -1,4 +1,5 @@
 import { Game } from './game.js';
+import { errorHandler } from './error-handler.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('main.js loaded and DOMContentLoaded fired!');
@@ -7,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('initializeApp() called.');
         const root = document.getElementById('game-board');
         if (!root) {
-            console.error('ゲームボードのルート要素が見つかりません。');
+            errorHandler.handleError(new Error('ゲームボードのルート要素が見つかりません。'), 'setup_failed');
             return;
         }
 

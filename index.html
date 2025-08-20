@@ -15,19 +15,101 @@
             background: #1a1a2e;
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
             overflow-x: hidden; /* 横スクロールを防止 */
-            perspective: 1500px;
+            perspective: 1500px; /* 3D効果を復活 */
             padding: 6rem 0; /* 上下の余白を十分に確保 */
         }
 
         /* Z-Order Guidelines (lowest -> highest)
            10: Board base, 15: slots/cards, 20–25: hover/highlights, 60: hands, 80: HUD, 90: panels, 100: modals */
 
+        /* 🎬 ゲームフローアニメーション */
+        .game-start-flash {
+            animation: gameStartFlash 1s ease-out;
+        }
+        
+        @keyframes gameStartFlash {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.3) saturate(1.2); }
+            100% { filter: brightness(1); }
+        }
+        
+        .turn-ending {
+            animation: turnEnding 0.5s ease-out;
+            opacity: 0.7;
+        }
+        
+        @keyframes turnEnding {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(0.95); opacity: 0.7; }
+        }
+        
+        .turn-starting {
+            animation: turnStarting 0.5s ease-out;
+        }
+        
+        @keyframes turnStarting {
+            from { transform: scale(0.95); opacity: 0.7; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .attacking {
+            animation: attackingPulse 0.8s ease-in-out;
+        }
+        
+        @keyframes attackingPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 15px rgba(255, 100, 100, 0.8)); }
+        }
+        
+        .highlight-available {
+            animation: availableHighlight 2s infinite;
+        }
+        
+        @keyframes availableHighlight {
+            0%, 100% { box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
+        }
+        
+        /* 🏆 勝利演出 */
+        .victory-celebration {
+            animation: victoryCelebration 2s ease-out;
+        }
+        
+        @keyframes victoryCelebration {
+            0% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.1) rotate(5deg); }
+            50% { transform: scale(1.2) rotate(-5deg); }
+            75% { transform: scale(1.1) rotate(3deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        
+        /* ⚡ フェーズ遷移 */
+        .phase-transition {
+            animation: phaseTransition 0.3s ease-out;
+        }
+        
+        @keyframes phaseTransition {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 💫 エラー表示 */
+        .error-shake {
+            animation: errorShake 0.5s ease-in-out;
+        }
+        
+        @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
         #game-board {
             transform-style: preserve-3d;
             transform: rotateX(35deg);
             position: relative;
-            width: 679px;           /* 完全固定サイズ */
-            height: 679px;          /* 完全固定サイズ */
+            width: 679px !important;           /* 完全固定サイズ */
+            height: 679px !important;          /* 完全固定サイズ */
             margin: 0 auto;         /* 中央配置 */
             z-index: 10;            /* ボード基底レイヤー */
         }
@@ -37,8 +119,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 679px;           /* 完全固定サイズ */
-            height: 679px;          /* 完全固定サイズ */
+            width: 679px !important;           /* 完全固定サイズ */
+            height: 679px !important;          /* 完全固定サイズ */
             object-fit: none;       /* 1:1ピクセルマッピング */
             z-index: 10;
         }
@@ -536,15 +618,99 @@
         }
 
         /* 盤面の下に余白を追加して、固定手札と重ならないようにするためのスクロールエリア */
-        .scroll-spacer { height: 18rem; } /* 手札位置に合わせて適度な余白 */
+        .scroll-spacer { 
+            height: 18rem; /* 手札位置に合わせて適度な余白 */
+        }
 
-                            border: 1px solid rgba(255, 255, 255, 0.1); /* Lighter border for contrast */
+        /* ゲームボード装飾 */
+        #game-board {
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Lighter border for contrast */
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); /* More pronounced shadow */
+        }
 
         #game-status-panel {
             color: #fff;
             padding: 1rem;
             font-size: 0.875rem;
+            width: 320px !important; /* 固定幅 */
+            height: 480px !important; /* 固定高さ */
+            /* 右上固定位置 - 完全フローティング */
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            z-index: 85 !important; /* 中央モーダル(100)より背面、HUD(80)より前面 */
+            transform: none !important; /* transformを無効化 */
+            will-change: auto !important;
+            perspective: none !important;
+        }
+
+        .status-panel-content {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.95));
+            border: 1px solid rgba(75, 85, 99, 0.6);
+            border-radius: 12px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.4),
+                0 0 20px rgba(77, 208, 253, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+        }
+
+        .status-panel-header {
+            padding: 16px 20px 12px 20px;
+            border-bottom: 1px solid rgba(75, 85, 99, 0.3);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+        }
+
+        .status-panel-body {
+            flex: 1;
+            padding: 16px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .status-info-section {
+            background: rgba(55, 65, 81, 0.4);
+            border-radius: 8px;
+            padding: 12px 16px;
+            border-left: 3px solid rgba(77, 208, 253, 0.6);
+        }
+
+        .status-info-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgba(156, 163, 175, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .status-info-value {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: white;
+        }
+
+        .game-message-area {
+            background: rgba(31, 41, 55, 0.6);
+            border-radius: 8px;
+            padding: 12px 16px;
+            border: 1px solid rgba(75, 85, 99, 0.3);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .game-message-text {
+            font-size: 0.875rem;
+            line-height: 1.4;
+            color: rgba(229, 231, 235, 0.9);
         }
 
         /* Hand Dock (Mac Dock-like magnification) */
@@ -598,7 +764,9 @@
         }
 
         /* UI layers */
-                    background: rgba(10, 10, 10, 0.6); /* Darker, more opaque */
+        .ui-overlay {
+            background: rgba(10, 10, 10, 0.6); /* Darker, more opaque */
+        }
         
         #action-modal { z-index: 100 !important; }
         #player-hand.hand-dock .hand-card img {
@@ -736,6 +904,7 @@
         /* CPU カード向き制御（回転あり） */
         .cpu-card {
             /* transform: rotateX(180deg); */ /* Moved to img to prevent double rotation with animation */
+            position: relative;
         }
         
         .cpu-card img {
@@ -758,6 +927,239 @@
         
         .player-card img {
             transform: none;
+        }
+
+        /* カードハイライトスタイル */
+        .card-highlighted {
+            position: relative;
+            z-index: 100 !important;
+        }
+        
+        .card-highlighted::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ffd700, #ffed4a, #ffd700);
+            border-radius: 8px;
+            z-index: -1;
+            animation: pulse-glow 1.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulse-glow {
+            0% {
+                opacity: 0.7;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1.02);
+            }
+        }
+
+        /* ================== 新統一モーダルシステム ================== */
+
+        /* 中央モーダル - 重要な意思決定用 */
+        .central-modal {
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            background: rgba(0, 0, 0, 0.75);
+        }
+
+        .central-modal-content {
+            background: linear-gradient(135deg, rgba(31, 41, 55, 0.98), rgba(17, 24, 39, 0.98));
+            border: 1px solid rgba(75, 85, 99, 0.5);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(77, 208, 253, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .central-modal-content:hover {
+            border-color: rgba(77, 208, 253, 0.6);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(77, 208, 253, 0.4);
+        }
+
+        /* 通知トースト - 右上自動消失 */
+        .toast-container {
+            z-index: 95;
+            pointer-events: none;
+        }
+
+        .toast-item {
+            pointer-events: auto;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toast-success {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(21, 128, 61, 0.9));
+            border-left: 4px solid #10b981;
+        }
+
+        .toast-warning {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9));
+            border-left: 4px solid #f59e0b;
+        }
+
+        .toast-error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(185, 28, 28, 0.9));
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast-info {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(29, 78, 216, 0.9));
+            border-left: 4px solid #3b82f6;
+        }
+
+        /* アクションHUD - コンテキスト依存UI */
+        .action-hud {
+            z-index: 90;
+            background: linear-gradient(135deg, rgba(31, 41, 55, 0.95), rgba(17, 24, 39, 0.95));
+            border: 1px solid rgba(75, 85, 99, 0.6);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(77, 208, 253, 0.2);
+        }
+
+        .action-hud::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            background: linear-gradient(45deg, transparent, rgba(77, 208, 253, 0.3), transparent);
+            border-radius: inherit;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .action-hud:hover::before {
+            opacity: 1;
+        }
+
+        /* モーダルアニメーション */
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes modalFadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.95) translateY(-10px);
+            }
+        }
+
+        @keyframes toastSlideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes toastSlideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes hudPopIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* モーダルアニメーションクラス */
+        .modal-enter {
+            animation: modalFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-exit {
+            animation: modalFadeOut 0.3s ease-out forwards;
+        }
+
+        .toast-enter {
+            animation: toastSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .toast-exit {
+            animation: toastSlideOut 0.3s ease-out forwards;
+        }
+
+        .hud-enter {
+            animation: hudPopIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .central-modal-content {
+                margin: 1rem;
+                max-width: calc(100vw - 2rem);
+            }
+            
+            .toast-container {
+                top: 1rem;
+                right: 1rem;
+                left: 1rem;
+            }
+            
+            .toast-item {
+                margin-bottom: 0.5rem;
+            }
+        }
+
+        /* 高コントラストモード対応 */
+        @media (prefers-contrast: high) {
+            .central-modal-content {
+                border: 2px solid #ffffff;
+                background: #000000;
+            }
+            
+            .toast-item {
+                border: 2px solid #ffffff;
+            }
+        }
+
+        /* アニメーション無効化対応 */
+        @media (prefers-reduced-motion: reduce) {
+            .modal-enter, .modal-exit,
+            .toast-enter, .toast-exit,
+            .hud-enter {
+                animation: none;
+            }
+            
+            .central-modal-content,
+            .toast-item,
+            .action-hud {
+                transition: none;
+            }
         }
 
     </style>
@@ -847,57 +1249,61 @@
     </div>
 
 
-    <!-- Game Status Panel (右端中央固定) -->
-    <div id="game-status-panel" class="fixed right-4 top-1/2 -translate-y-1/2 z-50 min-w-80 max-w-96">
-        <div class="bg-gray-900 bg-opacity-95 rounded-lg shadow-2xl border border-gray-600 p-4">
-            <!-- Phase & Turn Info -->
-            <div class="flex justify-between items-center mb-3">
-                <div class="text-sm text-gray-300">
-                    <span id="phase-indicator">セットアップ</span> | 
-                    <span id="turn-indicator">ターン 1</span>
+    <!-- Game Status Panel (右上固定) -->
+    <div id="game-status-panel" class="">
+        <div class="status-panel-content">
+            <!-- Header Section -->
+            <div class="status-panel-header">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-lg font-bold text-white">ゲーム状況</div>
+                    <div class="text-sm text-blue-300">
+                        <span id="turn-player" class="font-semibold">YOU</span>
+                    </div>
                 </div>
-                <div class="text-xs text-gray-400" id="current-player">プレイヤー</div>
-            </div>
-            
-            <!-- Progress Indicators -->
-            <div id="setup-progress" class="mb-4">
-                <div class="flex items-center space-x-2 text-xs">
-                    <div class="flex items-center">
-                        <div id="active-status" class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                        <span class="text-gray-300">バトル場</span>
-                    </div>
-                    <div class="flex items-center">
-                        <div id="bench-status" class="w-3 h-3 rounded-full bg-gray-500 mr-2"></div>
-                        <span class="text-gray-300">ベンチ (<span id="bench-count">0</span>/5)</span>
-                    </div>
+                <div class="text-xs text-gray-300">
+                    <span id="phase-indicator">セットアップ</span> • ターン <span id="turn-indicator">1</span>
                 </div>
             </div>
 
-            <!-- Game Message Display -->
-            <div id="game-message-display" class="text-white text-sm font-bold px-3 py-2 mb-4 text-center hidden">
-                <!-- Messages will be displayed here -->
+            <!-- Body Section -->
+            <div class="status-panel-body">
+                <!-- Progress Indicators (セットアップ時のみ表示) -->
+                <div id="setup-progress" class="status-info-section">
+                    <div class="status-info-title">セットアップ進行</div>
+                    <div class="flex items-center space-x-4 text-xs mt-2">
+                        <div class="flex items-center">
+                            <div id="active-status" class="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
+                            <span class="text-gray-300">バトル場</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div id="bench-status" class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div>
+                            <span class="text-gray-300">ベンチ (<span id="bench-count">0</span>/5)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Message Area -->
+                <div class="status-info-section">
+                    <div class="status-info-title">現在の状況</div>
+                    <div class="game-message-area">
+                        <div id="game-message-display" class="game-message-text">
+                            ゲームを開始してください
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-
-            <!-- Initial Pokemon Selection UI -->
-            <div id="initial-pokemon-selection" class="flex flex-col items-center gap-3 mb-4 hidden">
-                <button id="confirm-initial-pokemon-button" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg text-sm">
-                    <!-- Button text will be set dynamically by JavaScript -->
-                </button>
+            <!-- 旧ボタン類は非表示で保持（互換性のため） -->
+            <div id="initial-pokemon-selection" class="hidden">
+                <button id="confirm-initial-pokemon-button" class="hidden"></button>
             </div>
-
-            <!-- Player Action Buttons -->
-            <div id="player-action-buttons" class="flex justify-center gap-4">
-                <button id="retreat-button" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-lg shadow-lg text-sm">
-                    にげる
-                </button>
-                <button id="attack-button" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg text-sm">
-                    攻撃
-                </button>
-                <button id="end-turn-button" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg text-sm">
-                    ターン終了
-                </button>
+            <div id="static-action-buttons" class="hidden">
+                <button id="retreat-button" class="hidden">にげる</button>
+                <button id="attack-button" class="hidden">攻撃</button>
+                <button id="end-turn-button" class="hidden">ターン終了</button>
             </div>
+            <div id="dynamic-interactive-buttons" class="hidden"></div>
         </div>
     </div>
 
@@ -988,37 +1394,17 @@
                 const bgImage = gameBoard.querySelector('.board-bg');
                 const containerRect = gameBoard.getBoundingClientRect();
                 
-                console.group('🔍 背景プレイマット状態確認');
-                console.log('📦 game-board container:', {
-                    width: containerRect.width.toFixed(0),
-                    height: containerRect.height.toFixed(0),
-                    css: {
-                        width: gameBoard.style.width || 'auto',
-                        height: gameBoard.style.height || 'auto',
-                        aspectRatio: '1/1',
-                        transform: 'rotateX(35deg)'
-                    }
-                });
+                // デバッグモードでのみログ出力
+                const DEBUG_MODE = false; // 本番環境では false に設定
                 
-                if (bgImage) {
-                    const bgRect = bgImage.getBoundingClientRect();
-                    console.log('🖼️ .board-bg element:', {
-                        width: bgRect.width.toFixed(0),
-                        height: bgRect.height.toFixed(0),
-                        css: {
-                            objectFit: 'contain',
-                            objectPosition: 'center center',
-                            inset: '0'
-                        }
+                if (DEBUG_MODE) {
+                    console.group('🔍 背景プレイマット状態確認');
+                    console.log('📦 game-board container:', {
+                        width: containerRect.width.toFixed(0),
+                        height: containerRect.height.toFixed(0)
                     });
-                    
-                    console.log('⚠️ 問題の可能性:', {
-                        containerVsBg: containerRect.width === bgRect.width ? '✅ 一致' : '❌ 不一致',
-                        naturalSize: bgImage.naturalWidth ? `${bgImage.naturalWidth}x${bgImage.naturalHeight}` : '未読み込み',
-                        computedStyle: getComputedStyle(bgImage).objectFit
-                    });
+                    console.groupEnd();
                 }
-                console.groupEnd();
                 
                 // 完全固定サイズ：679x679px
                 const PLAYMAT_WIDTH = 679;
@@ -1028,13 +1414,6 @@
                 const scale = 1;
                 const offsetX = 0;
                 const offsetY = 0;
-                
-                console.group('📊 完全固定サイズ（1:1直接マッピング）');
-                console.log('📦 Container:', `${containerRect.width.toFixed(0)}x${containerRect.height.toFixed(0)}`);
-                console.log('📺 Playmat:', `${PLAYMAT_WIDTH}x${PLAYMAT_HEIGHT}px (固定)`);
-                console.log('🎯 Scale Factor:', `${scale} (1:1直接マッピング)`);
-                console.log('📏 Offset:', `(${offsetX}, ${offsetY}) - オフセットなし`);
-                console.groupEnd();
                 
                 // シンプルにプレイマット座標データをそのまま使用
                 
@@ -1073,7 +1452,9 @@
                     element.style.opacity = '1';
                     
                     // 直接マッピングのデバッグ情報
-                    console.log(`📍 ${key}: (${coords.x},${coords.y}) → (${htmlX},${htmlY}) ${htmlWidth}x${htmlHeight} [直接マッピング]`);
+                    if (DEBUG_MODE) {
+                        console.log(`📍 ${key}: (${coords.x},${coords.y}) → (${htmlX},${htmlY}) ${htmlWidth}x${htmlHeight} [直接マッピング]`);
+                    }
                     
                     // デバッグ情報は削除（通常のゲーム状態）
                 }
@@ -1168,6 +1549,21 @@
         </div>
     </div>
 
+    <script type="module">
+        // Modal Manager の初期化
+        import { modalManager } from './js/modal-manager.js';
+        
+        // DOM準備完了後にModal Managerを初期化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                modalManager.init();
+                console.log('🎭 Modal Manager initialized on DOMContentLoaded');
+            });
+        } else {
+            modalManager.init();
+            console.log('🎭 Modal Manager initialized immediately');
+        }
+    </script>
     <script src="js/main.js" type="module"></script>
 </body>
 </html>

@@ -94,7 +94,7 @@ export function drawCard(state, player) {
     if (playerState.deck.length === 0) {
         let newState = {
             ...state,
-            phase: 'game-over',
+            phase: GAME_PHASES.GAME_OVER,
             winner: player === 'player' ? 'cpu' : 'player',
             gameEndReason: 'deck_out',
         };
@@ -459,11 +459,11 @@ export function checkForWinner(state) {
     // Check prize card condition
     if (state.players.player.prizeRemaining <= 0) {
         newState = addLogEntry(newState, { message: '🏆 あなたの勝利！サイドを全て取りきった！' });
-        return { ...newState, phase: 'gameOver', winner: 'player', gameEndReason: 'prizes' };
+        return { ...newState, phase: GAME_PHASES.GAME_OVER, winner: 'player', gameEndReason: 'prizes' };
     }
     if (state.players.cpu.prizeRemaining <= 0) {
         newState = addLogEntry(newState, { message: '🏆 相手の勝利！サイドを全て取りきった！' });
-        return { ...newState, phase: 'gameOver', winner: 'cpu', gameEndReason: 'prizes' };
+        return { ...newState, phase: GAME_PHASES.GAME_OVER, winner: 'cpu', gameEndReason: 'prizes' };
     }
 
     // Check if a player has no pokemon left in play (active or bench)

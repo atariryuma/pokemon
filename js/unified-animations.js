@@ -5,8 +5,29 @@
  * 位置判定の統一、カード移動の最適化、重複コード削除
  */
 
-import { animationManager } from './animations.js';
 import { CardOrientationManager } from './card-orientation.js';
+
+/**
+ * アニメーション統一設定
+ */
+export const ANIMATION_CONFIG = {
+  durations: {
+    fast: 200,
+    normal: 400,
+    slow: 600,
+    gameOver: 1500,
+    phaseTransition: 300,
+    cardMove: 500,
+    dealCard: 600,
+    attack: 800,
+    damage: 600
+  },
+  easing: {
+    default: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+    smooth: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+  }
+};
 
 /**
  * 統一アニメーションマネージャー
@@ -14,6 +35,370 @@ import { CardOrientationManager } from './card-orientation.js';
 export class UnifiedAnimationManager {
   constructor() {
     console.log('🎬 Unified Animation Manager initialized');
+    this.activeAnimations = new Set();
+    this.phaseTransitionQueue = [];
+    
+    // animations.jsの機能統合
+    this.animationMap = new Map();
+  }
+
+  /**
+   * アニメーションクラスを追加
+   * @param {Element} element - 対象要素
+   * @param {string} animationClass - アニメーションクラス名
+   */
+  addAnimationClass(element, animationClass) {
+    if (element) {
+      element.classList.add(animationClass);
+    }
+  }
+
+  /**
+   * アニメーションクラスを削除
+   * @param {Element} element - 対象要素
+   * @param {string} animationClass - アニメーションクラス名
+   */
+  removeAnimationClass(element, animationClass) {
+    if (element) {
+      element.classList.remove(animationClass);
+    }
+  }
+
+  /**
+   * アニメーション完了を待機
+   * @param {Element} element - 対象要素
+   * @param {string} animationName - アニメーション名
+   * @param {Function} callback - コールバック関数
+   */
+  waitForAnimation(element, animationName, callback) {
+    if (!element) return callback();
+
+    const duration = ANIMATION_CONFIG.durations[animationName] || ANIMATION_CONFIG.durations.normal;
+    
+    setTimeout(() => {
+      callback();
+    }, duration);
+  }
+
+  /**
+   * カードディール アニメーション（animations.jsより統合）
+   * @param {Array<Element>} cardElements - カード要素の配列
+   * @param {number} staggerDelay - 遅延時間（ミリ秒）
+   */
+  async animateDealCards(cardElements, staggerDelay = 100) {
+    const promises = cardElements.map((element, index) => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          if (element) {
+            const target = element.querySelector('img') || element;
+            
+            // JSで表示状態にしてからアニメーション開始
+            element.style.opacity = '1';
+
+            this.addAnimationClass(target, 'animate-deal-card');
+
+            this.waitForAnimation(target, 'dealCard', () => {
+              resolve();
+            });
+          } else {
+            resolve();
+          }
+        }, index * staggerDelay);
+      });
+    });
+    
+    return Promise.all(promises);
+  }
+
+  /**
+   * カードドロー アニメーション（animations.jsより統合）
+   * @param {Element} cardElement - カード要素
+   */
+  async animateDrawCard(cardElement) {
+    return new Promise(resolve => {
+      const target = cardElement?.querySelector('img') || cardElement;
+      if (!target) return resolve();
+      if (target.tagName && target.tagName.toLowerCase() === 'img') {
+        target.classList.add('is-animating', 'is-hidden');
+      }
+      this.addAnimationClass(target, 'animate-draw-card');
+      this.waitForAnimation(target, 'drawCard', () => {
+        if (target.tagName && target.tagName.toLowerCase() === 'img') {
+          target.classList.remove('is-animating', 'is-hidden');
+        }
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * メッセージアニメーション（animations.jsより統合）
+   * @param {Element} messageElement - メッセージ要素
+   */
+  async animateMessage(messageElement) {
+    if (!messageElement) return;
+    
+    messageElement.style.opacity = '0';
+    messageElement.style.transform = 'translateY(-10px)';
+    
+    // フェードイン
+    await new Promise(resolve => {
+      setTimeout(() => {
+        messageElement.style.transition = 'opacity 300ms ease, transform 300ms ease';
+        messageElement.style.opacity = '1';
+        messageElement.style.transform = 'translateY(0)';
+        resolve();
+      }, 50);
+    });
+  }
+
+  /**
+   * エラーメッセージアニメーション（animations.jsより統合）
+   * @param {Element} messageElement - メッセージ要素
+   */
+  async animateError(messageElement) {
+    if (!messageElement) return;
+    
+    // 振動エフェクト
+    messageElement.style.animation = 'shake 0.5s ease-in-out';
+    
+    setTimeout(() => {
+      messageElement.style.animation = '';
+    }, 500);
+  }
+
+  /**
+   * カードハイライト表示（統合時に漏れた機能を追加）
+   * @param {Element} cardElement - ハイライトするカード要素
+   */
+  highlightCard(cardElement) {
+    if (!cardElement) return;
+    
+    // ハイライトクラスを追加
+    cardElement.classList.add('card-highlighted');
+    
+    // 視覚効果を適用
+    cardElement.style.transform = 'scale(1.05)';
+    cardElement.style.transition = 'transform 200ms ease, box-shadow 200ms ease';
+    cardElement.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
+    cardElement.style.zIndex = '100';
+  }
+
+  /**
+   * カードハイライト解除（統合時に漏れた機能を追加）
+   * @param {Element} cardElement - ハイライト解除するカード要素
+   */
+  unhighlightCard(cardElement) {
+    if (!cardElement) return;
+    
+    // ハイライトクラスを削除
+    cardElement.classList.remove('card-highlighted');
+    
+    // スタイルをリセット
+    cardElement.style.transform = '';
+    cardElement.style.boxShadow = '';
+    cardElement.style.zIndex = '';
+  }
+
+  /**
+   * カードフリップアニメーション（統合時に漏れた機能を追加）
+   * @param {Element} cardElement - フリップするカード要素
+   * @param {string} frontImageSrc - 表面の画像パス
+   */
+  async flipCardFaceUp(cardElement, frontImageSrc) {
+    console.log(`🔥 ANIMATION CALLED: flipCardFaceUp for element:`, cardElement?.dataset?.cardId || 'unknown', 'image:', frontImageSrc);
+    
+    return new Promise((resolve) => {
+      if (!cardElement) return resolve();
+      
+      const imgElement = cardElement.querySelector('img');
+      if (!imgElement) return resolve();
+      
+      // フリップアニメーション開始
+      cardElement.style.transition = 'transform 300ms ease-in-out';
+      cardElement.style.transform = 'rotateY(90deg)';
+      
+      // 90度回転後に画像を切り替え
+      setTimeout(() => {
+        imgElement.src = frontImageSrc;
+        imgElement.alt = 'Card Face';
+        
+        // 画像読み込み完了後に反転完了
+        imgElement.onload = () => {
+          cardElement.style.transform = 'rotateY(0deg)';
+          setTimeout(resolve, 300);
+        };
+        
+        // 画像読み込み失敗時のフォールバック
+        imgElement.onerror = () => {
+          cardElement.style.transform = 'rotateY(0deg)';
+          setTimeout(resolve, 300);
+        };
+      }, 150);
+    });
+  }
+
+  /**
+   * フェーズ間遷移アニメーション
+   */
+  async animatePhaseTransition(fromPhase, toPhase) {
+    console.log(`🎭 Animating phase transition: ${fromPhase} → ${toPhase}`);
+    
+    // 既存のアニメーションをクリーンアップ
+    await this.cleanupActiveAnimations();
+    
+    // フェーズ特有のアニメーション実行
+    switch (`${fromPhase}->${toPhase}`) {
+      case 'setup->initialPokemonSelection':
+        await this.animateSetupToSelection();
+        break;
+      case 'initialPokemonSelection->gameStartReady':
+        await this.animateSelectionToGameStart();
+        break;
+      case 'gameStartReady->playerMain':
+        await this.animateGameStart();
+        break;
+      case 'playerMain->playerAttack':
+        await this.animateAttackPhase();
+        break;
+      case 'playerAttack->cpuTurn':
+        await this.animateTurnTransition('player', 'cpu');
+        break;
+      case 'cpuTurn->playerTurn':
+        await this.animateTurnTransition('cpu', 'player');
+        break;
+      default:
+        await this.animateGenericTransition();
+    }
+  }
+
+  /**
+   * アクティブなアニメーションのクリーンアップ
+   */
+  async cleanupActiveAnimations() {
+    const promises = Array.from(this.activeAnimations);
+    this.activeAnimations.clear();
+    await Promise.all(promises);
+  }
+
+  /**
+   * セットアップからポケモン選択への遷移
+   */
+  async animateSetupToSelection() {
+    // 手札カードをハイライト
+    const handCards = document.querySelectorAll('[data-owner="player"] .hand .card');
+    const promises = [];
+    
+    handCards.forEach((card, index) => {
+      const promise = new Promise(resolve => {
+        setTimeout(() => {
+          card.classList.add('highlight-available');
+          resolve();
+        }, index * 100);
+      });
+      promises.push(promise);
+    });
+    
+    await Promise.all(promises);
+  }
+
+  /**
+   * ポケモン選択からゲーム開始準備への遷移
+   */
+  async animateSelectionToGameStart() {
+    // カードを表向きにする演出
+    const pokemonCards = document.querySelectorAll('[data-zone="active"], [data-zone="bench"]');
+    
+    for (const card of pokemonCards) {
+      await this.animateCardFlip(card);
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+
+  /**
+   * ゲーム開始アニメーション
+   */
+  async animateGameStart() {
+    // ゲーム開始の派手な演出
+    const gameBoard = document.getElementById('game-board');
+    if (gameBoard) {
+      gameBoard.classList.add('game-start-flash');
+      
+      await new Promise(resolve => {
+        setTimeout(() => {
+          gameBoard.classList.remove('game-start-flash');
+          resolve();
+        }, ANIMATION_CONFIG.durations.phaseTransition);
+      });
+    }
+  }
+
+  /**
+   * 攻撃フェーズアニメーション
+   */
+  async animateAttackPhase() {
+    const activeCard = document.querySelector('[data-owner="player"][data-zone="active"] .card');
+    if (activeCard) {
+      activeCard.classList.add('attacking');
+      
+      await new Promise(resolve => {
+        setTimeout(() => {
+          activeCard.classList.remove('attacking');
+          resolve();
+        }, ANIMATION_CONFIG.durations.attack);
+      });
+    }
+  }
+
+  /**
+   * ターン遷移アニメーション
+   */
+  async animateTurnTransition(fromPlayer, toPlayer) {
+    // ターン遷移の視覚的効果
+    const fromBoard = document.querySelector(`[data-owner="${fromPlayer}"]`);
+    const toBoard = document.querySelector(`[data-owner="${toPlayer}"]`);
+    
+    if (fromBoard) {
+      fromBoard.classList.add('turn-ending');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.durations.phaseTransition));
+    
+    if (fromBoard) {
+      fromBoard.classList.remove('turn-ending');
+    }
+    if (toBoard) {
+      toBoard.classList.add('turn-starting');
+      setTimeout(() => {
+        toBoard.classList.remove('turn-starting');
+      }, ANIMATION_CONFIG.durations.phaseTransition);
+    }
+  }
+
+  /**
+   * 汎用遷移アニメーション
+   */
+  async animateGenericTransition() {
+    await new Promise(resolve => 
+      setTimeout(resolve, ANIMATION_CONFIG.durations.fast)
+    );
+  }
+
+  /**
+   * カードフリップアニメーション
+   */
+  async animateCardFlip(cardElement) {
+    if (!cardElement) return;
+    
+    return new Promise(resolve => {
+      cardElement.style.transform = 'rotateY(180deg)';
+      cardElement.style.transition = `transform ${ANIMATION_CONFIG.durations.normal}ms ${ANIMATION_CONFIG.easing.default}`;
+      
+      setTimeout(() => {
+        cardElement.style.transform = 'rotateY(0deg)';
+        setTimeout(resolve, ANIMATION_CONFIG.durations.normal);
+      }, ANIMATION_CONFIG.durations.normal);
+    });
   }
 
   /**
@@ -64,7 +449,8 @@ export class UnifiedAnimationManager {
     if (!imgElement) return null;
 
     // セットアップ中は裏向き、ゲーム中は表向き
-    const shouldShowBack = isSetupPhase && card.setupFaceDown;
+    // サイドカードは常に裏向き（プライズカードフラグをチェック）
+    const shouldShowBack = (isSetupPhase && card.setupFaceDown) || card.isPrizeCard;
     
     return {
       element: imgElement,
@@ -473,8 +859,8 @@ export class UnifiedAnimationManager {
                 break;
             }
 
-            animationManager.addAnimationClass(target, animationClass);
-            animationManager.waitForAnimation(target, this._getAnimationName(animationType, direction), () => {
+            this.addAnimationClass(target, animationClass);
+            this.waitForAnimation(target, this._getAnimationName(animationType, direction), () => {
               // 最終的な向きを確定
               if (applyOrientation) {
                 const zone = this._getZoneFromAnimationType(animationType);
@@ -558,6 +944,8 @@ export class UnifiedAnimationManager {
    * @param {Object} options - オプション
    */
   async animatePrizeDeal(cardElements, playerId, options = {}) {
+    console.log(`🔥 ANIMATION CALLED: animatePrizeDeal for ${playerId}, elements:`, cardElements.length);
+    
     const defaultOptions = {
       staggerDelay: 150,
       direction: playerId === 'player' ? 'right' : 'left',
@@ -582,3 +970,6 @@ export class UnifiedAnimationManager {
 
 // デフォルトの統一アニメーションマネージャーインスタンス
 export const unifiedAnimationManager = new UnifiedAnimationManager();
+
+// 後方互換性のため、animationManager もエクスポート
+export const animationManager = unifiedAnimationManager;

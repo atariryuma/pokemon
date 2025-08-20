@@ -20,12 +20,15 @@
       "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\cards.js\")",
       "Bash(npm start)",
       "Bash(npm run:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\animations.js\")"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "C:\\c\\Users\\Public\\Documents"
+      "C:\\c\\Users\\Public\\Documents",
+      "C:\\d C:\\Users\\Public\\Documents"
     ]
   }
 }

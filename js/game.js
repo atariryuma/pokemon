@@ -1,10 +1,11 @@
 import { createInitialState } from './state.js';
 import { View } from './view.js';
 import * as Logic from './logic.js';
-import { animationManager } from './animations.js';
-import { unifiedAnimationManager } from './unified-animations.js';
+import { animationManager, unifiedAnimationManager } from './unified-animations.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
+import { BUTTON_IDS, ACTION_BUTTON_GROUPS } from './ui-constants.js';
+import { errorHandler, ERROR_TYPES } from './error-handler.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
 import { getCardImagePath, loadCardsFromJSON } from './data-manager.js';
@@ -21,29 +22,41 @@ export class Game {
         this.phaseManager = phaseManager;
         this.setupManager = setupManager;
         this.turnManager = turnManager;
+        this.unifiedAnimationManager = unifiedAnimationManager;
         
         // Selected card for setup
         this.selectedCardForSetup = null;
         
         // Animation control flags
         this.setupAnimationsExecuted = false;
+        this.prizeCardAnimationExecuted = false;
+        this.cardRevealAnimationExecuted = false;
     } // End of constructor
 
     _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     } // End of _delay
 
+    resetAnimationFlags() {
+        this.setupAnimationsExecuted = false;
+        this.prizeCardAnimationExecuted = false;
+        this.cardRevealAnimationExecuted = false;
+        console.log('🔄 Animation flags reset');
+    }
+
     async init() {
         // 📦 Load card data first
         try {
             await loadCardsFromJSON();
         } catch (error) {
-            console.error('❌ Failed to load card data:', error);
-            // Propagate error or handle gracefully if game cannot start without data
+            await errorHandler.handleError(error, ERROR_TYPES.NETWORK);
             return; 
         }
         
         try {
+            // アニメーションフラグをリセット
+            this.resetAnimationFlags();
+            
             this.state = createInitialState();
             
             // Initialize view
@@ -51,13 +64,12 @@ export class Game {
             this.view.bindCardClick(this._handleCardClick.bind(this));
             this.view.setConfirmSetupButtonHandler(this._handleConfirmSetup.bind(this)); // Bind confirm button
 
-            // Bind action buttons
-            this.view.retreatButton.onclick = this._handleRetreat.bind(this);
-            this.view.attackButton.onclick = this._handleAttack.bind(this);
-            this.view.endTurnButton.onclick = this._handleEndTurn.bind(this); // Bind end turn button
+            // Setup action button event handlers
+            this._setupActionButtonHandlers();
 
             // Render the initial board state immediately after state creation
-            
+            console.log('🎨 Rendering initial game state with deck...');
+            this.view.render(this.state);
 
             // Show game start message instead of auto-starting
             this.setupManager.showGameStartModal(this.view);
@@ -65,7 +77,7 @@ export class Game {
             // Make game instance globally accessible for modal callbacks
             window.gameInstance = this;
         } catch (error) {
-            console.error('❌ Error during Game.init() after card data load:', error);
+            await errorHandler.handleError(error, ERROR_TYPES.SETUP_FAILED);
         }
     } // End of init
 
@@ -83,11 +95,18 @@ export class Game {
         // }, 500);
     }
 
-    _updateState(newState) {
+    async _updateState(newState) {
+        const previousPhase = this.state?.phase;
         this.state = newState;
         
         // Update phase manager
+        const oldPhase = this.phaseManager.currentPhase;
         this.phaseManager.currentPhase = newState.phase;
+        
+        // フェーズ遷移アニメーションを実行
+        if (oldPhase !== newState.phase) {
+            await this.unifiedAnimationManager.animatePhaseTransition(oldPhase, newState.phase);
+        }
         
         // Always render the board first
         this.view.render(this.state);
@@ -95,6 +114,43 @@ export class Game {
         // Then control UI elements based on phase
         this._updateUI();
     } // End of _updateState
+
+    /**
+     * アクションボタンのイベントハンドラーを設定
+     * DOM準備完了を確認してからバインドする
+     */
+    _setupActionButtonHandlers() {
+        console.log('🔧 Setting up action button handlers');
+        
+        // DOMContentLoadedまたはDOM準備完了まで待機
+        const setupHandlers = () => {
+            const retreatButton = this.view.getButton(BUTTON_IDS.RETREAT);
+            const attackButton = this.view.getButton(BUTTON_IDS.ATTACK);
+            const endTurnButton = this.view.getButton(BUTTON_IDS.END_TURN);
+
+            if (retreatButton) {
+                retreatButton.onclick = this._handleRetreat.bind(this);
+                console.log('✅ Retreat button handler bound');
+            }
+
+            if (attackButton) {
+                attackButton.onclick = this._handleAttack.bind(this);
+                console.log('✅ Attack button handler bound');
+            }
+
+            if (endTurnButton) {
+                endTurnButton.onclick = this._handleEndTurn.bind(this);
+                console.log('✅ End turn button handler bound');
+            }
+        };
+
+        // DOM準備が完了している場合は即実行、そうでなければ待機
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupHandlers);
+        } else {
+            setupHandlers();
+        }
+    }
 
     async _handleCardClick(dataset) {
         const { owner, zone, cardId, index } = dataset;
@@ -149,6 +205,9 @@ export class Game {
         // 単一のレンダリングサイクルで処理（二重レンダリング防止）
         this._updateState(this.state);
         
+        // 初期セットアップ後に確定HUD表示判定
+        this._showConfirmHUDIfReady();
+        
         // DOM要素の完全な準備を確実に待つ
         this._scheduleSetupAnimations();
         
@@ -157,19 +216,7 @@ export class Game {
             console.warn('⚠️ State.players not initialized for debug logging');
         }
         
-        // 初期状態のレンダリング完了後の手札確認
-        setTimeout(() => {
-            const handElements = document.querySelectorAll('#player-hand .hand-card, #player-hand-inner .hand-card');
-            const playerHandLength = this.state?.players?.player?.hand?.length || 0;
-            
-            if (handElements.length !== playerHandLength) {
-                console.warn('⚠️ Hand element count mismatch detected!');
-                const playerHandElement = this.view.playerHandInner || this.view.playerHand;
-                if (playerHandElement && this.state?.players?.player?.hand) {
-                    this.view._renderHand(playerHandElement, this.state.players.player.hand, 'player');
-                }
-            }
-        }, 500); // アニメーション完了を待つ
+        // 手札レンダリングはview.render()で既に処理済み
     }
 
     /**
@@ -244,6 +291,9 @@ export class Game {
 
                 // 一度だけレンダリングし、重複を防止
                 this._updateState(this.state); // まずViewを更新
+                
+                // バトルポケモンが配置されている場合は確定HUDを表示
+                this._showConfirmHUDIfReady();
 
                 // DOM更新を待つ
                 await new Promise(resolve => requestAnimationFrame(resolve));
@@ -263,6 +313,10 @@ export class Game {
                         }
                     );
                 }
+                
+                // アニメーション完了後に確定HUDを再表示（確実に表示されるように）
+                console.log('🔍 Animation completed, showing confirm HUD again');
+                this._showConfirmHUDIfReady();
 
             } else if ((zone === 'active' || zone === 'bench') && !this.selectedCardForSetup) {
                 // カードが選択されていない状態でスロットをクリックした場合
@@ -280,7 +334,7 @@ export class Game {
     async _handlePlayerDraw() {
         if (this.state.hasDrawnThisTurn) {
             this.state = addLogEntry(this.state, { message: 'このターンはすでにカードを引いています。' });
-            this.view.showErrorMessage('このターンはすでにカードを引いています。');
+            this.view.showErrorMessage('このターンはすでにカードを引いています。', 'warning');
             return;
         }
         
@@ -350,7 +404,7 @@ export class Game {
             newState.prompt.message = '相手のターンです...';
         }
         
-        this._updateState(newState);
+        await this._updateState(newState);
     }
 
     /**
@@ -388,8 +442,7 @@ export class Game {
      * UI更新処理
      */
     _updateUI() {
-        // 基本的なUI要素の初期状態
-        this.view.hideGameMessage();
+        // 基本的なUI要素の初期状態（メッセージは次のメッセージまで保持）
         this.view.hideActionButtons();
 
         // ゲームステータスパネルを常時更新
@@ -401,24 +454,10 @@ export class Game {
             case GAME_PHASES.SETUP:
             case GAME_PHASES.INITIAL_POKEMON_SELECTION:
                 this.view.showGameMessage(this.state.prompt.message);
-                this.view.showActionButtons(['confirm-initial-pokemon-button']);
-                this.view.showInitialPokemonSelectionUI();
-                // バトルポケモンが選択されていない場合はボタンを無効化
-                const confirmButton = document.getElementById('confirm-initial-pokemon-button');
-                if (confirmButton) {
-                    const playerActive = this.state.players.player.active;
-                    const hasBasicPokemonInActive = playerActive && playerActive.card_type === 'Pokémon' && playerActive.stage === 'BASIC';
-
-                    if (hasBasicPokemonInActive) {
-                        confirmButton.disabled = false;
-                        confirmButton.textContent = '確定';
-                        confirmButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                    } else {
-                        confirmButton.disabled = true;
-                        confirmButton.textContent = 'たねポケモンをバトル場へ配置';
-                        confirmButton.classList.add('opacity-50', 'cursor-not-allowed');
-                    }
-                }
+                // 静的な確定ボタンは非表示（アクションHUDを使用）
+                this.view.hideInitialPokemonSelectionUI();
+                // 確定HUDの表示判定
+                this._showConfirmHUDIfReady();
                 break;
 
             case GAME_PHASES.PRIZE_CARD_SETUP:
@@ -430,7 +469,7 @@ export class Game {
             case GAME_PHASES.GAME_START_READY:
                 this.view.hideInitialPokemonSelectionUI();
                 this.view.showGameMessage(this.state.prompt.message);
-                this.view.showActionButtons(['confirm-initial-pokemon-button']);
+                this.view.showActionButtons(ACTION_BUTTON_GROUPS.INITIAL_POKEMON);
                 // ボタンテキストを変更
                 const gameStartButton = document.getElementById('confirm-initial-pokemon-button');
                 if (gameStartButton) {
@@ -447,7 +486,8 @@ export class Game {
 
             case GAME_PHASES.PLAYER_MAIN:
                 this.view.showGameMessage(this.state.prompt.message);
-                this.view.showActionButtons(['retreat-button', 'attack-button', 'end-turn-button']);
+                // プレイヤーメインフェーズでのアクションHUD表示
+                this._showPlayerMainActionsHUD();
                 break;
 
             case GAME_PHASES.PLAYER_ATTACK:
@@ -471,6 +511,8 @@ export class Game {
 
             case GAME_PHASES.GAME_OVER:
                 this.view.showGameMessage(this.state.prompt.message);
+                // ゲーム終了処理を実行
+                this._handleGameOver(this.state.winner, this.state.gameEndReason);
                 break;
         }
 
@@ -488,13 +530,14 @@ export class Game {
         if (!card) return;
 
         if (card.card_type === 'Pokémon' && card.stage === 'BASIC') {
-            // たねポケモンをベンチに出す
+            // たねポケモンをベンチに出す - 重要な意思決定なので中央モーダル
             await this.view.showInteractiveMessage(
                 `「${card.name_ja}」をベンチに出しますか？`,
                 [
                     { text: 'はい', callback: () => this._placeOnBench(cardId) },
                     { text: 'いいえ', callback: () => {} }
-                ]
+                ],
+                'central'
             );
         } else if (card.card_type === 'Basic Energy') {
             // エネルギーを付ける
@@ -610,7 +653,8 @@ export class Game {
                     callback: () => this._executeAttack(attack.index)
                 })),
                 { text: 'キャンセル', callback: () => {} }
-            ]
+            ],
+            'central' // 攻撃選択は重要な意思決定なので中央モーダル
         );
     }
 
@@ -643,8 +687,12 @@ export class Game {
         let newState = this.turnManager.endPlayerTurn(this.state);
         this._updateState(newState);
         
+        // ターン終了通知
+        this.view.showInfoMessage('ターンが終了しました');
+        
         // CPUターン開始
         setTimeout(async () => {
+            this.view.showInfoMessage('相手のターンが開始されました');
             await this._executeCpuTurn();
         }, 1000);
     }
@@ -665,19 +713,143 @@ export class Game {
     /**
      * ゲーム終了処理
      */
-    _handleGameOver(winner, reason = '') {
-        const winnerText = winner === 'player' ? 'あなたの勝ち！' : '相手の勝ち！';
-        const reasonText = reason ? ` (${reason})` : '';
+    async _handleGameOver(winner, reason = '') {
+        console.log('🏆 Game Over:', winner, reason);
         
-        this.view.displayModal(
-            {
-                title: 'ゲーム終了',
-                message: `ゲーム終了！ ${winnerText}${reasonText}`,
-                actions: [
-                    { text: 'もう一度プレイ', callback: () => this.init() },
-                ]
-            }
-        );
+        // ゲーム終了アニメーション実行
+        await this._playGameOverAnimation(winner);
+        
+        // 勝敗理由の詳細メッセージ
+        const reasonMessages = {
+            'prizes': 'サイドカードを全て取得',
+            'no_pokemon': '場のポケモンが全滅',
+            'deck_out': '山札が尽きた'
+        };
+        
+        const winnerText = winner === 'player' ? '🎉 あなたの勝利！' : '😢 相手の勝利！';
+        const reasonText = reasonMessages[reason] || reason || '不明な理由';
+        
+        // ゲーム統計情報を取得
+        const gameStats = this._getGameStats();
+        
+        // ゲーム終了モーダル表示
+        this.view.displayModal({
+            title: 'ゲーム終了',
+            message: `
+                <div class="game-over-content">
+                    <h2 class="text-2xl font-bold mb-4">${winnerText}</h2>
+                    <p class="text-lg mb-4">勝因: ${reasonText}</p>
+                    <div class="game-stats">
+                        <h3 class="font-semibold mb-2">ゲーム統計</h3>
+                        <p>ターン数: ${gameStats.turns}</p>
+                        <p>プレイヤー残りサイド: ${gameStats.playerPrizes}</p>
+                        <p>CPU残りサイド: ${gameStats.cpuPrizes}</p>
+                    </div>
+                </div>
+            `,
+            actions: [
+                { 
+                    text: '新しいゲーム', 
+                    callback: () => this._startNewGame(),
+                    className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
+                },
+                { 
+                    text: 'ゲーム統計を見る', 
+                    callback: () => this._showDetailedStats(gameStats),
+                    className: 'px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg'
+                }
+            ]
+        });
+    }
+
+    /**
+     * ゲーム終了アニメーション
+     */
+    async _playGameOverAnimation(winner) {
+        // 勝者側のカードを光らせる
+        const winnerSide = winner === 'player' ? 'player' : 'cpu';
+        const cards = document.querySelectorAll(`[data-owner="${winnerSide}"] .card`);
+        
+        // カード光らせアニメーション
+        cards.forEach((card, index) => {
+            setTimeout(() => {
+                card.classList.add('animate-pulse', 'ring-4', 'ring-yellow-400');
+            }, index * 100);
+        });
+        
+        // 勝利演出の遅延
+        await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+
+    /**
+     * ゲーム統計情報取得
+     */
+    _getGameStats() {
+        return {
+            turns: this.state.turn || 0,
+            playerPrizes: this.state.players?.player?.prizeRemaining || 0,
+            cpuPrizes: this.state.players?.cpu?.prizeRemaining || 0,
+            winner: this.state.winner || 'unknown',
+            reason: this.state.gameEndReason || 'unknown'
+        };
+    }
+
+    /**
+     * 新しいゲーム開始
+     */
+    async _startNewGame() {
+        console.log('🎮 Starting new game...');
+        
+        // モーダルを閉じる
+        this.view.hideModal();
+        
+        // 画面をクリア（メッセージは新しいゲーム開始時のみクリア）
+        this.view.hideGameMessage();
+        this.view.hideActionButtons();
+        
+        // 新しいゲーム初期化
+        await this.init();
+    }
+
+    /**
+     * 詳細統計表示
+     */
+    _showDetailedStats(stats) {
+        this.view.displayModal({
+            title: 'ゲーム詳細統計',
+            message: `
+                <div class="detailed-stats">
+                    <h3 class="font-bold text-lg mb-4">バトル結果</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="player-stats">
+                            <h4 class="font-semibold">プレイヤー</h4>
+                            <p>残りサイド: ${stats.playerPrizes}</p>
+                        </div>
+                        <div class="cpu-stats">
+                            <h4 class="font-semibold">CPU</h4>
+                            <p>残りサイド: ${stats.cpuPrizes}</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <p><strong>総ターン数:</strong> ${stats.turns}</p>
+                        <p><strong>勝者:</strong> ${stats.winner === 'player' ? 'プレイヤー' : 'CPU'}</p>
+                        <p><strong>勝因:</strong> ${stats.reason}</p>
+                    </div>
+                </div>
+            `,
+            actions: [
+                {
+                    text: '新しいゲーム',
+                    callback: () => this._startNewGame(),
+                    className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
+                },
+                {
+                    text: '閉じる',
+                    callback: () => this.view.hideModal(),
+                    className: 'px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg'
+                }
+            ]
+        });
     }
 
     /**
@@ -689,13 +861,13 @@ export class Game {
         const activePokemon = this.state.players.player.active;
         if (!activePokemon) {
             this.state = addLogEntry(this.state, { message: 'バトル場にポケモンがいません。' });
-            this.view.showErrorMessage('バトル場にポケモンがいません。');
+            this.view.showErrorMessage('バトル場にポケモンがいません。', 'warning');
             return;
         }
 
         if (!this.state.canRetreat) {
             this.state = addLogEntry(this.state, { message: 'このターンはすでににげました。' });
-            this.view.showErrorMessage('このターンはすでににげました。');
+            this.view.showErrorMessage('このターンはすでににげました。', 'warning');
             return;
         }
 
@@ -704,7 +876,7 @@ export class Game {
 
         if (attachedEnergyCount < retreatCost) {
             this.state = addLogEntry(this.state, { message: 'にげるためのエネルギーが足りません。' });
-            this.view.showErrorMessage('にげるためのエネルギーが足りません。');
+            this.view.showErrorMessage('にげるためのエネルギーが足りません。', 'warning');
             return;
         }
 
@@ -731,6 +903,105 @@ export class Game {
     }
 
     /**
+     * エネルギーが足りるかチェック（フォールバック用）
+     */
+    _hasEnoughEnergy(pokemon, attack) {
+        if (!pokemon.attached_energy || !attack.cost) return false;
+        
+        const attached = pokemon.attached_energy.map(e => e.energy_type || e.type);
+        const cost = [...attack.cost];
+        
+        // 簡単なエネルギーマッチング
+        for (let i = attached.length - 1; i >= 0; i--) {
+            const energyType = attached[i];
+            const costIndex = cost.findIndex(c => c === energyType || c === 'Colorless');
+            if (costIndex !== -1) {
+                cost.splice(costIndex, 1);
+                attached.splice(i, 1);
+            }
+        }
+        
+        return cost.length === 0 || (cost.every(c => c === 'Colorless') && attached.length >= cost.length);
+    }
+
+    /**
+     * プレイヤーメインフェーズのアクションHUD表示
+     */
+    _showPlayerMainActionsHUD() {
+        if (this.state.phase !== GAME_PHASES.PLAYER_MAIN) return;
+        
+        const actions = [];
+        
+        // にげるアクション
+        const activePokemon = this.state.players.player.active;
+        if (activePokemon && this.state.canRetreat) {
+            const retreatCost = activePokemon.retreat_cost || 0;
+            const attachedEnergyCount = activePokemon.attached_energy ? activePokemon.attached_energy.length : 0;
+            
+            if (attachedEnergyCount >= retreatCost) {
+                actions.push({
+                    text: `🏃 にげる (${retreatCost})`,
+                    callback: () => this._handleRetreat(),
+                    className: 'px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded text-sm'
+                });
+            }
+        }
+        
+        // 攻撃アクション
+        if (activePokemon && activePokemon.attacks) {
+            const hasEnoughEnergyFn = Logic.hasEnoughEnergy || this._hasEnoughEnergy;
+            const usableAttacks = activePokemon.attacks.filter(attack => 
+                hasEnoughEnergyFn.call(this, activePokemon, attack)
+            );
+            
+            if (usableAttacks.length > 0) {
+                actions.push({
+                    text: `⚔️ 攻撃`,
+                    callback: () => this._handleAttack(),
+                    className: 'px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-sm'
+                });
+            }
+        }
+        
+        // ターン終了
+        actions.push({
+            text: `✅ ターン終了`,
+            callback: () => this._handleEndTurn(),
+            className: 'px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-sm'
+        });
+        
+        // 手札エリアの上にアクションHUDを表示
+        const handArea = document.getElementById('player-hand');
+        if (handArea && actions.length > 0) {
+            this.view.showActionHUD(handArea, actions, 'above', 'プレイヤーアクション');
+            console.log('🎯 Player main actions HUD displayed');
+        }
+    }
+
+    /**
+     * 確定HUDの表示判定と表示
+     */
+    _showConfirmHUDIfReady() {
+        if (this.state.phase !== GAME_PHASES.INITIAL_POKEMON_SELECTION) return;
+        
+        const playerActive = this.state.players.player.active;
+        const hasBasicPokemonInActive = playerActive && playerActive.card_type === 'Pokémon' && playerActive.stage === 'BASIC';
+        
+        if (hasBasicPokemonInActive) {
+            const handArea = document.getElementById('player-hand');
+            if (handArea) {
+                this.view.showActionHUD(handArea, [
+                    {
+                        text: '✅ ポケモン配置を確定',
+                        callback: () => this._handleConfirmSetup(),
+                        className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
+                    }
+                ], 'above', 'セットアップ確定');
+            }
+        }
+    }
+
+    /**
      * セットアップ確定処理
      */
     async _handleConfirmSetup() {
@@ -744,49 +1015,70 @@ export class Game {
 
         // 初期ポケモン配置確定の場合
         // 強制的にボタンの無効化状態をチェック
-        const confirmButton = document.getElementById('confirm-setup-button');
+        const confirmButton = document.getElementById('confirm-initial-pokemon-button');
         if (confirmButton && confirmButton.disabled) {
             this.state = addLogEntry(this.state, { message: 'バトル場にたねポケモンを配置してください。' });
-            // this.view.showErrorMessage('バトル場にたねポケモンを配置してください。'); // Removed
             return;
         }
         
         const active = this.state?.players?.player?.active;
         if (!active || active.card_type !== 'Pokémon' || active.stage !== 'BASIC') {
             this.state = addLogEntry(this.state, { message: 'バトル場にたねポケモンを配置してください。' });
-            // this.view.showErrorMessage('バトル場にたねポケモンを配置してください。'); // Removed
             return;
         }
 
-        this.state = addLogEntry(this.state, { message: 'ポケモン配置完了！サイドカードを配布します...' });
+        console.log('🔥 CONFIRM BUTTON PRESSED - Starting setup confirmation flow');
+        console.log('🔥 Animation flags at confirm button press:', {
+            setupAnimationsExecuted: this.setupAnimationsExecuted,
+            prizeCardAnimationExecuted: this.prizeCardAnimationExecuted,
+            cardRevealAnimationExecuted: this.cardRevealAnimationExecuted
+        });
+        
+        // 確定ボタン押下時にUIを非表示
+        this.view.hideActionHUD(); // 確定HUDを非表示
+        this.view.clearInteractiveButtons();
+        this.view.hideInitialPokemonSelectionUI();
+        // メッセージは次のメッセージが表示されるまで保持
+        
+        // 「サイドカード配布中...」メッセージを表示 - 進行状況なので右パネル
+        this.view.showInteractiveMessage('ポケモン配置完了！サイドカードを配布しています...', [], 'panel');
+        this.state = addLogEntry(this.state, { message: 'サイドカード配布開始' });
+        
+        console.log('🔥 About to call setupManager.confirmSetup');
         
         // 状態を更新して、サイドカード配布を含む完全なセットアップを実行
         let newState = await this.setupManager.confirmSetup(this.state);
         this._updateState(newState);
         
-        // サイドカードが配布された後でアニメーション実行
+        // サイドカード配布が完了した後でアニメーションとUI更新を順次実行
         if (newState.phase === GAME_PHASES.GAME_START_READY) {
-            // DOM更新を待ってからアニメーション実行
-            setTimeout(async () => {
-                await this._animatePrizeCardSetup();
-            }, 200); // DOM更新を待つ
-
-            // 準備完了モーダルに「ゲームスタート」ボタンを表示して案内
+            console.log('🎯 Prize cards setup completed, showing animation and start button');
+            
+            // 1. DOM更新を少し待つ
+            await this._delay(300);
+            
+            // 2. サイドカードアニメーション実行
+            console.log('🔥 About to call _animatePrizeCardSetup');
+            await this._animatePrizeCardSetup();
+            console.log('✅ Prize card animation completed');
+            
+            // 3. アニメーション完了後に準備完了メッセージとスタートボタンを表示
+            await this._delay(500); // アニメーション完了を待つ
+            
             try {
-                                this.view.displayModal(
-                {
-                    title: '準備完了',
-                    message: '準備完了！「ゲームスタート」を押してバトルを開始してください。',
-                    actions: [
+                this.view.showInteractiveMessage(
+                    '準備完了！「ゲームスタート」を押してバトルを開始してください。',
+                    [
                         {
                             text: 'ゲームスタート',
                             callback: () => {
+                                console.log('🔥 GAME START BUTTON CLICKED - Starting actual game');
                                 this._startActualGame();
                             }
                         }
-                    ]
-                }
-            );
+                    ],
+                    'central' // ゲームスタートは重要な意思決定なので中央モーダル
+                );
             } catch (e) {
                 console.warn('Failed to show game start modal, fallback to side button.', e);
             }
@@ -797,8 +1089,25 @@ export class Game {
      * 実際のゲーム開始処理
      */
     async _startActualGame() {
+        console.log('🔥 _startActualGame() CALLED - Current phase:', this.state.phase);
+        console.log('🔥 _startActualGame() - Animation flags:', {
+            setupAnimationsExecuted: this.setupAnimationsExecuted,
+            prizeCardAnimationExecuted: this.prizeCardAnimationExecuted,
+            cardRevealAnimationExecuted: this.cardRevealAnimationExecuted
+        });
+        
+        // 重複実行を防ぐため、既にゲーム開始済みなら早期return
+        if (this.state.phase === GAME_PHASES.PLAYER_MAIN || this.state.phase === GAME_PHASES.PLAYER_TURN) {
+            console.log('🔄 Game already started, skipping _startActualGame');
+            return;
+        }
+        
+        console.log('🎮 Starting actual game with card reveal animation');
+        
         // 1. カードをめくるアニメーションを実行
+        console.log('🔥 About to call _animateCardReveal');
         await this._animateCardReveal();
+        console.log('🔥 _animateCardReveal completed');
 
         // 2. カードを表向きにする (State更新)
         let newState = await this.setupManager.startGameRevealCards(this.state);
@@ -822,6 +1131,15 @@ export class Game {
      * カード公開アニメーション
      */
     async _animateCardReveal() {
+        // 重複実行防止
+        if (this.cardRevealAnimationExecuted) {
+            console.log('🔄 Card reveal animation already executed, skipping');
+            return;
+        }
+        
+        this.cardRevealAnimationExecuted = true;
+        console.log('🃏 Starting card reveal animation');
+        
         const allPokemonElements = [];
 
         // プレイヤーのバトル場とベンチ
@@ -849,9 +1167,12 @@ export class Game {
         });
 
         // 各ポケモンをフリップ
+        console.log(`🔥 About to flip ${allPokemonElements.length} pokemon cards`);
         for (const { element, card } of allPokemonElements) {
+            console.log(`🔥 Flipping card: ${card.name_ja} (${card.name_en})`);
             await animationManager.flipCardFaceUp(element, getCardImagePath(card.name_en));
         }
+        console.log(`🔥 All ${allPokemonElements.length} pokemon cards flipped`);
     }
 
     /**
@@ -890,7 +1211,7 @@ export class Game {
             // Note: CPUの初期ポケモン配置はプレイヤーの操作後に実行
             // サイドカードアニメーションは配布後に実行（重複防止）
         } catch (error) {
-            console.error('❌ Setup animation error:', error);
+            errorHandler.handleError(error, ERROR_TYPES.ANIMATION_FAILED, false);
         }
     }
 
@@ -955,6 +1276,15 @@ export class Game {
      * サイドカード配置アニメーション
      */
     async _animatePrizeCardSetup() {
+        // 重複実行防止
+        if (this.prizeCardAnimationExecuted) {
+            console.log('🔄 Prize card animation already executed, skipping');
+            return;
+        }
+        
+        this.prizeCardAnimationExecuted = true;
+        console.log('🎯 Starting prize card animation');
+        
         // 実際にカード要素が入っているスロットの子要素を取得
         const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
         const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
