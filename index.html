@@ -387,6 +387,16 @@
             100% { opacity: 0; transform: scale(1); }
         }
 
+        @keyframes deckLift {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); } /* Lift up slightly */
+            100% { transform: translateY(0px); }
+        }
+
+        .deck-card-element.is-drawing {
+            animation: deckLift 0.3s ease-out forwards; /* Apply the lift animation */
+        }
+
         /* アニメーションクラス */
         .animate-deal-card {
             animation: dealCard 0.6s ease-out;

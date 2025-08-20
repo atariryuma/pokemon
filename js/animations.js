@@ -693,6 +693,9 @@ export class AnimationManager {
         return resolve();
       }
 
+      // CPUカードかプレイヤーカードかを判定
+      const isCpuCard = cardElement.closest('.opponent-board');
+      
       // 最初の半分のアニメーション（裏面が見えなくなるまで）
       imgElement.style.transition = 'transform 0.3s ease-in';
       imgElement.style.transform = 'rotateY(90deg)';
@@ -704,13 +707,24 @@ export class AnimationManager {
 
         // 後半のアニメーション（表面が見えるように）
         imgElement.style.transition = 'transform 0.3s ease-out';
-        imgElement.style.transform = 'rotateY(180deg)'; // 最終的に0degに戻るように
+        
+        // CPUカードは上下逆向きに表示（プレイヤーから見て正しい向き）
+        if (isCpuCard) {
+          imgElement.style.transform = 'rotateY(0deg) rotateX(180deg)';
+        } else {
+          imgElement.style.transform = 'rotateY(0deg)';
+        }
 
         // アニメーション完了後にスタイルをリセット
         imgElement.addEventListener('transitionend', function handler() {
           imgElement.removeEventListener('transitionend', handler);
           imgElement.style.transition = '';
-          imgElement.style.transform = ''; // 最終状態をリセット
+          // CPUカードは最終状態も上下逆向きを維持
+          if (isCpuCard) {
+            imgElement.style.transform = 'rotateX(180deg)';
+          } else {
+            imgElement.style.transform = '';
+          }
           resolve();
         }, { once: true });
       }, 300); // 0.3s後に画像を切り替え

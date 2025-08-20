@@ -322,6 +322,14 @@ export class Game {
             return;
         }
         
+        // Get the player's deck element for animation
+        const playerDeckElement = document.querySelector('.player-self .deck-card-element');
+        if (playerDeckElement) {
+            playerDeckElement.classList.add('is-drawing');
+            // Add a small delay to make the lift visible before the card moves
+            await new Promise(resolve => setTimeout(resolve, 150));
+        }
+
         this.view.showMessage('カードを引きました', 'info');
         this.state = await this.turnManager.handlePlayerDraw(this.state);
         
@@ -330,6 +338,11 @@ export class Game {
         this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
 
         this._updateState(this.state);
+
+        // After state update and re-render, remove the drawing class
+        if (playerDeckElement) {
+            playerDeckElement.classList.remove('is-drawing');
+        }
     }
 
     /**

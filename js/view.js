@@ -619,7 +619,7 @@ export class View {
         }
     }
 
-    _createCardElement(card, playerType, zone, index, isFaceDown = false) {
+        _createCardElement(card, playerType, zone, index, isFaceDown = false) {
         const container = document.createElement('div');
         container.className = 'relative w-full h-full';
         container.style.transformStyle = 'preserve-3d'; // Add this for 3D transforms
