@@ -805,6 +805,25 @@ export class Game {
             setTimeout(async () => {
                 await this._animatePrizeCardSetup();
             }, 200); // DOM更新を待つ
+
+            // 準備完了モーダルに「ゲームスタート」ボタンを表示して案内
+            try {
+                await this.view.showModal({
+                    title: '準備完了',
+                    body: '<p class="text-sm text-gray-300">準備完了！「ゲームスタート」を押してバトルを開始してください。</p>',
+                    actions: [
+                        {
+                            text: 'ゲームスタート',
+                            callback: () => {
+                                // 実際のゲーム開始へ
+                                this._startActualGame();
+                            }
+                        }
+                    ]
+                });
+            } catch (e) {
+                console.warn('Failed to show game start modal, fallback to side button.', e);
+            }
         }
         
         console.log('✅ Setup confirmed, waiting for game start button.');
