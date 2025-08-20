@@ -8,6 +8,7 @@ import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
 import { getCardImagePath, loadCardsFromJSON } from './data-manager.js';
+import { addLogEntry } from './state.js';
 
 export class Game {
     constructor(rootEl, playmatSlotsData) {
@@ -41,46 +42,52 @@ export class Game {
             console.log('✅ Card data loaded successfully');
         } catch (error) {
             console.error('❌ Failed to load card data:', error);
+            // Propagate error or handle gracefully if game cannot start without data
+            return; 
         }
         
-        this.state = createInitialState();
-        
-        // Initialize view
-        this.view = new View(this.rootEl);
-        this.view.bindCardClick(this._handleCardClick.bind(this));
-        this.view.setConfirmSetupButtonHandler(this._handleConfirmSetup.bind(this)); // Bind confirm button
+        try {
+            this.state = createInitialState();
+            
+            // Initialize view
+            this.view = new View(this.rootEl);
+            this.view.bindCardClick(this._handleCardClick.bind(this));
+            this.view.setConfirmSetupButtonHandler(this._handleConfirmSetup.bind(this)); // Bind confirm button
 
-        // Bind action buttons
-        this.view.retreatButton.onclick = this._handleRetreat.bind(this);
-        this.view.attackButton.onclick = this._handleAttack.bind(this);
-        this.view.endTurnButton.onclick = this._handleEndTurn.bind(this); // Bind end turn button
+            // Bind action buttons
+            this.view.retreatButton.onclick = this._handleRetreat.bind(this);
+            this.view.attackButton.onclick = this._handleAttack.bind(this);
+            this.view.endTurnButton.onclick = this._handleEndTurn.bind(this); // Bind end turn button
 
-        // Render the initial board state immediately after state creation
-        this._updateState(this.state); // <--- ADD THIS LINE
+            // Render the initial board state immediately after state creation
+            
 
-        // Show game start modal instead of auto-starting
-        this.setupManager.showGameStartModal();
-        
-        // Make game instance globally accessible for modal callbacks
-        window.gameInstance = this;
-        
-        console.log('Game.init() finished.');
+            // Show game start message instead of auto-starting
+            this.setupManager.showGameStartModal(this.view);
+            
+            // Make game instance globally accessible for modal callbacks
+            window.gameInstance = this;
+            
+            console.log('Game.init() finished.');
+        } catch (error) {
+            console.error('❌ Error during Game.init() after card data load:', error);
+        }
     } // End of init
 
     /**
      * モーダルからトリガーされるセットアップ開始
      */
     async triggerInitialSetup() {
-        console.log('🎮 Triggering initial setup from modal...');
+        console.log('🎮 Triggering initial setup from message...');
         
-        // モーダルを隠す
-        setTimeout(async () => {
-            const modal = document.getElementById('action-modal');
-            modal?.classList.add('hidden');
+        // No longer hiding a modal, as messages are now in game-message-display
+        // setTimeout(async () => {
+        //     const modal = document.getElementById('action-modal');
+        //     modal?.classList.add('hidden');
             
             // 実際のセットアップ開始
             await this._startGameSetup();
-        }, 500);
+        // }, 500);
     }
 
     _updateState(newState) {
@@ -231,7 +238,7 @@ export class Game {
                     this.view.updateStatusMessage(this.state.prompt.message);
                     console.log(`✅ Selected Pokemon for setup: ${card.name_ja}`);
                 } else {
-                    this.view.showMessage('たねポケモンのみ選択できます。', 'warning');
+                    this.view.showGameMessage('たねポケモンのみ選択できます。', 'warning');
                     console.log('❌ Invalid card selection:', card?.name_ja || 'Unknown card');
                 }
             } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
@@ -308,7 +315,7 @@ export class Game {
 
             } else if ((zone === 'active' || zone === 'bench') && !this.selectedCardForSetup) {
                 // カードが選択されていない状態でスロットをクリックした場合
-                this.view.showMessage('先に手札からたねポケモンを選択してください。', 'warning');
+                this.state = addLogEntry(this.state, { message: '先に手札からたねポケモンを選択してください。' });
             }
         } finally {
             // 処理終了後にStateのisProcessingフラグをfalseに設定
@@ -321,7 +328,7 @@ export class Game {
      */
     async _handlePlayerDraw() {
         if (this.state.hasDrawnThisTurn) {
-            this.view.showMessage('このターンはすでにカードを引いています。', 'warning');
+            this.state = addLogEntry(this.state, { message: 'このターンはすでにカードを引いています。' });
             this.view.showErrorMessage('このターンはすでにカードを引いています。');
             return;
         }
@@ -334,7 +341,7 @@ export class Game {
             await new Promise(resolve => setTimeout(resolve, 150));
         }
 
-        this.view.showMessage('カードを引きました', 'info');
+        
         this.state = await this.turnManager.handlePlayerDraw(this.state);
         
         // ドロー後にメインフェーズに移行
@@ -423,7 +430,7 @@ export class Game {
             const newState = Logic.placeCardOnBench(this.state, 'player', cardId, emptyIndex);
             this._updateState(newState);
         } else {
-            this.view.showModal({ title: 'ベンチが満員です。', actions: [{ text: 'OK', callback: () => {} }] });
+            this.view.showGameMessage('ベンチが満員です。');
         }
     } // End of _placeOnBench
 
@@ -431,6 +438,7 @@ export class Game {
      * UI更新処理
      */
     _updateUI() {
+        console.log('Game._updateUI() called. Current phase:', this.state.phase);
         // 基本的なUI要素の初期状態
         this.view.hideGameMessage();
         this.view.hideActionButtons();
@@ -444,6 +452,7 @@ export class Game {
             case GAME_PHASES.SETUP:
             case GAME_PHASES.INITIAL_POKEMON_SELECTION:
                 this.view.showGameMessage(this.state.prompt.message);
+                console.log('Calling showActionButtons for setup phase.');
                 this.view.showActionButtons(['confirm-initial-pokemon-button']);
                 this.view.showInitialPokemonSelectionUI();
                 // バトルポケモンが選択されていない場合はボタンを無効化
@@ -473,6 +482,7 @@ export class Game {
             case GAME_PHASES.GAME_START_READY:
                 this.view.hideInitialPokemonSelectionUI();
                 this.view.showGameMessage(this.state.prompt.message);
+                console.log('Calling showActionButtons for game start ready phase.');
                 this.view.showActionButtons(['confirm-initial-pokemon-button']);
                 // ボタンテキストを変更
                 const gameStartButton = document.getElementById('confirm-initial-pokemon-button');
@@ -490,6 +500,7 @@ export class Game {
 
             case GAME_PHASES.PLAYER_MAIN:
                 this.view.showGameMessage(this.state.prompt.message);
+                console.log('Calling showActionButtons for player main phase.');
                 this.view.showActionButtons(['retreat-button', 'attack-button', 'end-turn-button']);
                 break;
 
@@ -532,8 +543,9 @@ export class Game {
 
         if (card.card_type === 'Pokémon' && card.stage === 'BASIC') {
             // たねポケモンをベンチに出す
-            await this.view.showModal({
-                title: `「${card.name_ja}」をベンチに出しますか？`,
+            await this.view.displayModal({
+                title: 'ポケモン配置確認',
+                message: `「${card.name_ja}」をベンチに出しますか？`,
                 actions: [
                     { text: 'はい', callback: () => this._placeOnBench(cardId) },
                     { text: 'いいえ', callback: () => {} }
@@ -542,10 +554,7 @@ export class Game {
         } else if (card.card_type === 'Basic Energy') {
             // エネルギーを付ける
             if (this.state.hasAttachedEnergyThisTurn) {
-                this.view.showModal({
-                    title: 'このターンはすでにエネルギーをつけました。',
-                    actions: [{ text: 'OK', callback: () => {} }]
-                });
+                this.state = addLogEntry(this.state, { message: 'このターンはすでにエネルギーをつけました。' });
                 return;
             }
             
@@ -601,7 +610,7 @@ export class Game {
             // エネルギー付与アニメーション
             await this._animateEnergyAttachment(energyId, pokemonId);
             
-            this.view.showMessage('エネルギーを付けました', 'success');
+            
             newState.pendingAction = null;
             newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
         }
@@ -623,7 +632,7 @@ export class Game {
         });
 
         if (newState !== this.state) {
-            this.view.showMessage('にげました', 'success');
+            
             newState.pendingAction = null;
             newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
         }
@@ -644,23 +653,23 @@ export class Game {
             .filter(attack => Logic.hasEnoughEnergy(attacker, attack));
             
         if (usableAttacks.length === 0) {
-            this.view.showModal({
-                title: '使えるワザがありません。',
-                actions: [{ text: 'OK', callback: () => {} }]
-            });
+            this.view.showGameMessage('使えるワザがありません。');
             return;
         }
         
-        this.view.showModal({
-            title: 'どのワザを使いますか？',
-            actions: [
-                ...usableAttacks.map(attack => ({
-                    text: `${attack.name_ja} (${attack.damage || 0})`,
-                    callback: () => this._executeAttack(attack.index)
-                })),
-                { text: 'キャンセル', callback: () => {} }
-            ]
-        });
+        this.view.displayModal(
+            {
+                title: 'ワザの選択',
+                message: 'どのワザを使いますか？',
+                actions: [
+                    ...usableAttacks.map(attack => ({
+                        text: `${attack.name_ja} (${attack.damage || 0})`,
+                        callback: () => this._executeAttack(attack.index)
+                    })),
+                    { text: 'キャンセル', callback: () => {} }
+                ]
+            }
+        );
     }
 
     /**
@@ -722,13 +731,15 @@ export class Game {
         const winnerText = winner === 'player' ? 'あなたの勝ち！' : '相手の勝ち！';
         const reasonText = reason ? ` (${reason})` : '';
         
-        this.view.showModal({
-            title: 'ゲーム終了！',
-            body: `<p class="text-xl">${winnerText}${reasonText}</p>`,
-            actions: [
-                { text: 'もう一度プレイ', callback: () => this.init() },
-            ],
-        });
+        this.view.displayModal(
+            {
+                title: 'ゲーム終了',
+                message: `ゲーム終了！ ${winnerText}${reasonText}`,
+                actions: [
+                    { text: 'もう一度プレイ', callback: () => this.init() },
+                ]
+            }
+        );
     }
 
     /**
@@ -739,13 +750,13 @@ export class Game {
 
         const activePokemon = this.state.players.player.active;
         if (!activePokemon) {
-            this.view.showMessage('バトル場にポケモンがいません。', 'warning');
+            this.state = addLogEntry(this.state, { message: 'バトル場にポケモンがいません。' });
             this.view.showErrorMessage('バトル場にポケモンがいません。');
             return;
         }
 
         if (!this.state.canRetreat) {
-            this.view.showMessage('このターンはすでににげました。', 'warning');
+            this.state = addLogEntry(this.state, { message: 'このターンはすでににげました。' });
             this.view.showErrorMessage('このターンはすでににげました。');
             return;
         }
@@ -754,19 +765,21 @@ export class Game {
         const attachedEnergyCount = activePokemon.attached_energy ? activePokemon.attached_energy.length : 0;
 
         if (attachedEnergyCount < retreatCost) {
-            this.view.showMessage('にげるためのエネルギーが足りません。', 'warning');
+            this.state = addLogEntry(this.state, { message: 'にげるためのエネルギーが足りません。' });
             this.view.showErrorMessage('にげるためのエネルギーが足りません。');
             return;
         }
 
-        this.view.showModal({
-            title: 'にげますか？',
-            body: `<p>バトル場の「${activePokemon.name_ja}」をにがします。ベンチポケモンを選択してください。</p>`,
-            actions: [
-                { text: 'はい', callback: () => this._initiateRetreat() },
-                { text: 'いいえ', callback: () => {} }
-            ]
-        });
+        this.view.displayModal(
+            {
+                title: 'にげる確認',
+                message: `にげますか？ バトル場の「${activePokemon.name_ja}」をにがします。ベンチポケモンを選択してください。`,
+                actions: [
+                    { text: 'はい', callback: () => this._initiateRetreat() },
+                    { text: 'いいえ', callback: () => {} }
+                ]
+            }
+        );
     }
 
     /**
@@ -797,19 +810,19 @@ export class Game {
         // 強制的にボタンの無効化状態をチェック
         const confirmButton = document.getElementById('confirm-setup-button');
         if (confirmButton && confirmButton.disabled) {
-            this.view.showMessage('バトル場にたねポケモンを配置してください。', 'warning');
-            this.view.showErrorMessage('バトル場にたねポケモンを配置してください。');
+            this.state = addLogEntry(this.state, { message: 'バトル場にたねポケモンを配置してください。' });
+            // this.view.showErrorMessage('バトル場にたねポケモンを配置してください。'); // Removed
             return;
         }
         
         const active = this.state?.players?.player?.active;
         if (!active || active.card_type !== 'Pokémon' || active.stage !== 'BASIC') {
-            this.view.showMessage('バトル場にたねポケモンを配置してください。', 'warning');
-            this.view.showErrorMessage('バトル場にたねポケモンを配置してください。');
+            this.state = addLogEntry(this.state, { message: 'バトル場にたねポケモンを配置してください。' });
+            // this.view.showErrorMessage('バトル場にたねポケモンを配置してください。'); // Removed
             return;
         }
 
-        this.view.showMessage('ポケモン配置完了！サイドカードを配布します...', 'success');
+        this.state = addLogEntry(this.state, { message: 'ポケモン配置完了！サイドカードを配布します...' });
         
         // 状態を更新して、サイドカード配布を含む完全なセットアップを実行
         let newState = await this.setupManager.confirmSetup(this.state);
@@ -825,19 +838,20 @@ export class Game {
 
             // 準備完了モーダルに「ゲームスタート」ボタンを表示して案内
             try {
-                await this.view.showModal({
+                                this.view.displayModal(
+                {
                     title: '準備完了',
-                    body: '<p class="text-sm text-gray-300">準備完了！「ゲームスタート」を押してバトルを開始してください。</p>',
+                    message: '準備完了！「ゲームスタート」を押してバトルを開始してください。',
                     actions: [
                         {
                             text: 'ゲームスタート',
                             callback: () => {
-                                // 実際のゲーム開始へ
                                 this._startActualGame();
                             }
                         }
                     ]
-                });
+                }
+            );
             } catch (e) {
                 console.warn('Failed to show game start modal, fallback to side button.', e);
             }
@@ -869,7 +883,7 @@ export class Game {
 
         this._updateState(newState);
 
-        this.view.showMessage('バトル開始！', 'success');
+        this.state = addLogEntry(this.state, { message: 'バトル開始！' });
     }
 
     /**

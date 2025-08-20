@@ -30,6 +30,9 @@ export class View {
         this.modalBody = document.getElementById('modal-body');
         this.modalActions = document.getElementById('modal-actions');
 
+        // Player Action Buttons container (for dynamic buttons)
+        this.playerActionButtonsContainer = document.getElementById('player-action-buttons');
+
         // Game Message Display
         this.gameMessageDisplay = document.getElementById('game-message-display');
 
@@ -55,7 +58,7 @@ export class View {
         this.setupProgress = document.getElementById('setup-progress');
         
         // Message system
-        this.createMessageContainer();
+        // this.createMessageContainer(); // Removed as per refactoring
 
         // Initialize Mac Dock–style magnification for player's hand (delayed)
         setTimeout(() => {
@@ -71,45 +74,67 @@ export class View {
         }
     }
 
+    /**
+     * 汎用モーダルを表示し、内容を設定します。
+     * @param {Object} options - モーダルの設定オプション
+     * @param {string} options.title - モーダルのタイトル
+     * @param {string} options.message - モーダルの本文メッセージ
+     * @param {Array<Object>} options.actions - { text: string, callback: Function, className?: string } の配列
+     */
+    displayModal({ title, message, actions = [] }) {
+        if (!this.modal || !this.modalTitle || !this.modalBody || !this.modalActions) {
+            console.error('Modal elements not found.');
+            return;
+        }
+
+        this.modalTitle.textContent = title;
+        this.modalBody.textContent = message;
+
+        // 既存のボタンをクリア
+        this.modalActions.innerHTML = '';
+
+        // アクションボタンを動的に作成して追加
+        actions.forEach(action => {
+            const button = document.createElement('button');
+            button.textContent = action.text;
+            // デフォルトのTailwind CSSクラスを適用
+            button.className = action.className || 'px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg text-sm';
+            button.addEventListener('click', () => {
+                action.callback();
+                this.hideModal(); // ボタンクリック後にモーダルを非表示
+            });
+            this.modalActions.appendChild(button);
+        });
+
+        // モーダルを表示
+        this.modal.classList.remove('hidden');
+        // アニメーションクラスを追加して表示
+        this.modal.querySelector('div:first-child').classList.remove('opacity-0', 'scale-95');
+        this.modal.querySelector('div:first-child').classList.add('opacity-100', 'scale-100');
+    }
+
+    /**
+     * 汎用モーダルを非表示にします。
+     */
+    hideModal() {
+        if (!this.modal) return;
+
+        // アニメーションクラスを削除して非表示
+        this.modal.querySelector('div:first-child').classList.remove('opacity-100', 'scale-100');
+        this.modal.querySelector('div:first-child').classList.add('opacity-0', 'scale-95');
+
+        // アニメーション完了後にhiddenクラスを追加
+        this.modal.addEventListener('transitionend', () => {
+            this.modal.classList.add('hidden');
+        }, { once: true });
+    }
+
     bindCardClick(handler) {
         this.cardClickHandler = handler;
     }
 
-    createMessageContainer() {
-        // Create a simple message container if it doesn't exist
-        if (!document.getElementById('message-container')) {
-            const container = document.createElement('div');
-            container.id = 'message-container';
-            container.className = 'fixed top-4 right-4 z-50 space-y-2';
-            document.body.appendChild(container);
-        }
-        this.messageContainer = document.getElementById('message-container');
-    }
-
-    showMessage(text, type = 'info') {
-        const message = document.createElement('div');
-        const colors = {
-            success: 'bg-green-600',
-            info: 'bg-blue-600',
-            warning: 'bg-yellow-600',
-            error: 'bg-red-600'
-        };
-        
-        message.className = `${colors[type] || colors.info} text-white px-4 py-2 rounded shadow-lg transition-opacity duration-300`;
-        message.textContent = text;
-        
-        this.messageContainer.appendChild(message);
-        
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            message.style.opacity = '0';
-            setTimeout(() => {
-                if (message.parentNode) {
-                    message.parentNode.removeChild(message);
-                }
-            }, 300);
-        }, 3000);
-    }
+    // createMessageContainer and showMessage are removed as per refactoring
+    // All messages will now go through showGameMessage or showErrorMessage
 
     render(state) {
         console.log('🎨 View.render() started');
@@ -874,28 +899,34 @@ export class View {
         return html;
     }
 
-    async showModal({ title, body, actions }) {
-        this.modalTitle.textContent = title;
-        this.modalBody.innerHTML = body || '';
-        this.modalActions.innerHTML = '';
-        actions.forEach(action => {
-            const button = document.createElement('button');
-            button.textContent = action.text;
-            button.className = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors';
-            button.addEventListener('click', () => {
-                action.callback();
-                this.hideModal();
-            });
-            this.modalActions.appendChild(button);
+    // showModal and hideModal are removed as per refactoring plan.
+    // All modal interactions will be replaced by game message display and dynamic action buttons.
+
+    /**
+     * インタラクティブなメッセージとボタンを表示
+     * @param {string} message - 表示するメッセージ
+     * @param {Array<Object>} actions - { text: string, callback: Function } の配列
+     */
+    showInteractiveMessage(message, actions) {
+        // 新しいdisplayModal関数を使用
+        this.displayModal({
+            title: 'ゲームメッセージ',
+            message: message,
+            actions: actions.map(action => ({
+                text: action.text,
+                callback: action.callback,
+                className: action.className // 必要であればカスタムクラスも渡せるように
+            }))
         });
-        
-        // アニメーション付きでモーダルを表示
-        await animationManager.animateModalShow(this.modal);
     }
 
-    async hideModal() {
-        // アニメーション付きでモーダルを非表示
-        await animationManager.animateModalHide(this.modal);
+    /**
+     * 動的に追加されたインタラクティブボタンをクリア
+     */
+    clearInteractiveButtons() {
+        // displayModalがモーダル内のボタンを自動でクリアするため、この関数は不要になる
+        // ただし、game.jsからの呼び出しがあるため、空の関数として残しておく
+        console.warn('clearInteractiveButtons is deprecated. Use displayModal for interactive messages.');
     }
 
     // Game Message Display

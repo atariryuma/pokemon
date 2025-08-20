@@ -1,4 +1,5 @@
 import { GAME_PHASES } from './phase-manager.js';
+import { addLogEntry } from './state.js';
 
 /**
  * Finds a card in a player's hand.
@@ -91,19 +92,21 @@ export function placeCardOnBench(state, player, cardId, benchIndex) {
 export function drawCard(state, player) {
     const playerState = state.players[player];
     if (playerState.deck.length === 0) {
-        return {
+        let newState = {
             ...state,
             phase: 'game-over',
             winner: player === 'player' ? 'cpu' : 'player',
             gameEndReason: 'deck_out',
         };
+        newState = addLogEntry(newState, { message: `${player === 'player' ? 'あなた' : '相手'}の山札がなくなった！` });
+        return newState;
     }
 
     const newDeck = [...playerState.deck];
     const drawnCard = newDeck.shift(); // Take the top card
     const newHand = [...playerState.hand, drawnCard];
 
-    return {
+    let newState = {
         ...state,
         players: {
             ...state.players,
@@ -114,6 +117,8 @@ export function drawCard(state, player) {
             },
         },
     };
+    newState = addLogEntry(newState, { message: `${player === 'player' ? 'あなた' : '相手'}はカードを1枚引いた。` });
+    return newState;
 }
 
 /**
@@ -146,19 +151,19 @@ export function attachEnergy(state, player, energyId, pokemonId) {
 
     // Check if energy can be attached
     if (state.hasAttachedEnergyThisTurn) {
-        console.error('Already attached energy this turn.');
-        return state;
+        let newState = addLogEntry(state, { message: `${player === 'player' ? 'あなた' : '相手'}はすでにこのターンにエネルギーを付けている。` });
+        return newState;
     }
 
     const energyInfo = findCardInHand(playerState, energyId);
     if (!energyInfo) {
-        console.error('Energy card not found in hand.');
+        // This should ideally not happen if UI prevents it
         return state;
     }
 
     const targetInfo = findPokemonById(playerState, pokemonId);
     if (!targetInfo) {
-        console.error('Target pokemon not found on board.');
+        // This should ideally not happen if UI prevents it
         return state;
     }
 
@@ -181,7 +186,7 @@ export function attachEnergy(state, player, energyId, pokemonId) {
         newBench[targetInfo.index] = updatedPokemon;
     }
 
-    return {
+    let newState = {
         ...state,
         hasAttachedEnergyThisTurn: true,
         players: {
@@ -194,6 +199,8 @@ export function attachEnergy(state, player, energyId, pokemonId) {
             },
         },
     };
+    newState = addLogEntry(newState, { message: `${player === 'player' ? 'あなた' : '相手'}は${targetInfo.pokemon.name_ja}に${energyInfo.card.name_ja}を付けた。` });
+    return newState;
 }
 
 /**
@@ -216,7 +223,8 @@ export function retreat(state, player, fromActiveId, toBenchIndex) {
     const retreatCost = active.retreat_cost || 0;
     const attached = [...(active.attached_energy || [])];
     if (attached.length < retreatCost) {
-        return state;
+        let newState = addLogEntry(state, { message: `${player === 'player' ? 'あなた' : '相手'}は${active.name_ja}をにがすためのエネルギーが足りない。` });
+        return newState;
     }
 
     const energyToDiscard = attached.slice(0, retreatCost);
@@ -225,7 +233,7 @@ export function retreat(state, player, fromActiveId, toBenchIndex) {
     const newBench = [...playerState.bench];
     newBench[toBenchIndex] = { ...active, attached_energy: remainingEnergy };
 
-    return {
+    let newState = {
         ...state,
         players: {
             ...state.players,
@@ -237,6 +245,8 @@ export function retreat(state, player, fromActiveId, toBenchIndex) {
             }
         }
     };
+    newState = addLogEntry(newState, { message: `${player === 'player' ? 'あなた' : '相手'}は${active.name_ja}をにがし、${benchPokemon.name_ja}をバトル場に出した。` });
+    return newState;
 }
 
 /**
@@ -280,20 +290,19 @@ export function performAttack(state, attackingPlayerId, attackIndex) {
     const defender = defenderState.active;
 
     if (!attacker || !defender) {
-        console.error('Active pokemon missing for attack.');
+        // These should ideally not happen if UI prevents it
         return state;
     }
 
     const attack = attacker.attacks[attackIndex];
     if (!attack) {
-        console.error('Invalid attack index.');
+        // These should ideally not happen if UI prevents it
         return state;
     }
 
     if (!hasEnoughEnergy(attacker, attack)) {
-        console.error('Not enough energy for this attack.');
-        // In a real game, show this to the user, don't just log.
-        return state;
+        let newState = addLogEntry(state, { message: `${attacker.name_ja}は${attack.name_ja}に必要なエネルギーが足りない。` });
+        return newState;
     }
 
     // --- Damage Calculation ---
@@ -303,33 +312,24 @@ export function performAttack(state, attackingPlayerId, attackIndex) {
     const previousDamage = defender.damage || 0;
     const newDamage = previousDamage + damage;
 
-    console.log(`⚔️ DAMAGE CALCULATION: ${attacker.name_ja} attacks ${defender.name_ja}`);
-    console.log(`  💥 Attack damage: ${damage}`);
-    console.log(`  🩸 Previous damage: ${previousDamage}`);
-    console.log(`  🔴 New total damage: ${newDamage}`);
+    let newState = addLogEntry(state, { message: `${attacker.name_ja}の${attack.name_ja}！${defender.name_ja}に${damage}ダメージ！` });
 
     const updatedDefender = {
         ...defender,
         damage: newDamage,
     };
 
-    console.log(`✅ Defender updated:`, {
-        name: updatedDefender.name_ja,
-        hp: updatedDefender.hp,
-        damage: updatedDefender.damage,
-        damageType: typeof updatedDefender.damage
-    });
-
-    return {
-        ...state,
+    newState = {
+        ...newState, // Use newState from previous addLogEntry
         players: {
-            ...state.players,
+            ...newState.players,
             [defendingPlayerId]: {
                 ...defenderState,
                 active: updatedDefender,
             },
         },
     };
+    return newState;
 }
 
 /**
@@ -373,41 +373,32 @@ export function checkForKnockout(state, defendingPlayerId) {
     const defenderState = state.players[defendingPlayerId];
     const defender = defenderState.active;
 
-    console.log(`🔍 Checking knockout for ${defendingPlayerId}:`, {
-        pokemon: defender?.name_ja,
-        damage: defender?.damage || 0,
-        hp: defender?.hp,
-        isKO: defender && defender.damage >= defender.hp
-    });
-
     if (!defender || !defender.damage || defender.damage < defender.hp) {
-        console.log('✅ No knockout occurred');
-        return state; // No KO
+        // No KO, no log needed for simplicity
+        return state;
     }
 
     // It's a KO!
-    console.log(`💀 KNOCKOUT! ${defender.name_ja} is knocked out`);
+    let newState = addLogEntry(state, { message: `${defender.name_ja}がきぜつした！` });
     const attackingPlayerId = defendingPlayerId === 'player' ? 'cpu' : 'player';
-    const attackerState = state.players[attackingPlayerId];
+    const attackerState = newState.players[attackingPlayerId]; // Use newState for attackerState
 
     // Move KO'd pokemon and its cards to discard
     const newDiscard = [...defenderState.discard, defender, ...(defender.attached_energy || [])];
 
     // ベンチにポケモンがいるかチェック
     const hasBenchPokemon = defenderState.bench.some(p => p !== null);
-    console.log(`🔎 ${defendingPlayerId} has bench pokemon:`, hasBenchPokemon);
-    console.log(`🎯 Prize update: ${attackingPlayerId} gains 1 prize (${attackerState.prizeRemaining} -> ${attackerState.prizeRemaining - 1})`);
 
-    const newState = {
-        ...state,
-        phase: hasBenchPokemon ? GAME_PHASES.AWAITING_NEW_ACTIVE : state.phase, // Only change phase if bench has pokemon
+    newState = {
+        ...newState,
+        phase: hasBenchPokemon ? GAME_PHASES.AWAITING_NEW_ACTIVE : newState.phase, // Only change phase if bench has pokemon
         prompt: {
             message: hasBenchPokemon 
                 ? `${defendingPlayerId === 'player' ? 'あなた' : '相手'}のバトルポケモンがきぜつした。ベンチから新しいポケモンを選んでください。`
-                : state.prompt?.message,
+                : newState.prompt?.message,
         },
         players: {
-            ...state.players,
+            ...newState.players,
             [defendingPlayerId]: {
                 ...defenderState,
                 active: null,
@@ -420,8 +411,7 @@ export function checkForKnockout(state, defendingPlayerId) {
             },
         },
     };
-
-    console.log(`🔄 Post-KO phase: ${newState.phase}`);
+    newState = addLogEntry(newState, { message: `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドを1枚とった！` });
     return newState;
 }
 
@@ -464,37 +454,32 @@ export function takePrizeCard(state, player, prizeIndex) {
  * @returns {object} The new state, potentially with a winner.
  */
 export function checkForWinner(state) {
-    console.log('🏆 Checking win conditions...');
-    
+    let newState = state; // Start with current state
+
     // Check prize card condition
-    console.log(`🎯 Prize remaining - Player: ${state.players.player.prizeRemaining}, CPU: ${state.players.cpu.prizeRemaining}`);
     if (state.players.player.prizeRemaining <= 0) {
-        console.log('🏆 GAME OVER: Player wins by prizes!');
-        return { ...state, phase: 'gameOver', winner: 'player', gameEndReason: 'prizes' };
+        newState = addLogEntry(newState, { message: '🏆 あなたの勝利！サイドを全て取りきった！' });
+        return { ...newState, phase: 'gameOver', winner: 'player', gameEndReason: 'prizes' };
     }
     if (state.players.cpu.prizeRemaining <= 0) {
-        console.log('🏆 GAME OVER: CPU wins by prizes!');
-        return { ...state, phase: 'gameOver', winner: 'cpu', gameEndReason: 'prizes' };
+        newState = addLogEntry(newState, { message: '🏆 相手の勝利！サイドを全て取りきった！' });
+        return { ...newState, phase: 'gameOver', winner: 'cpu', gameEndReason: 'prizes' };
     }
 
     // Check if a player has no pokemon left in play (active or bench)
     const isPlayerOutOfPokemon = !state.players.player.active && state.players.player.bench.every(p => p === null);
     const isCpuOutOfPokemon = !state.players.cpu.active && state.players.cpu.bench.every(p => p === null);
-    
-    console.log(`🔍 Pokemon status - Player out: ${isPlayerOutOfPokemon}, CPU out: ${isCpuOutOfPokemon}`);
-    console.log(`🔍 Player active: ${state.players.player.active?.name_ja || 'none'}, bench: ${state.players.player.bench.filter(p => p).length}/5`);
-    console.log(`🔍 CPU active: ${state.players.cpu.active?.name_ja || 'none'}, bench: ${state.players.cpu.bench.filter(p => p).length}/5`);
 
     if (isPlayerOutOfPokemon) {
-        console.log('🏆 GAME OVER: CPU wins - Player has no pokemon!');
-        return { ...state, phase: GAME_PHASES.GAME_OVER, winner: 'cpu', gameEndReason: 'no_pokemon' };
+        newState = addLogEntry(newState, { message: '🏆 相手の勝利！あなたがポケモンを出せなくなった！' });
+        return { ...newState, phase: GAME_PHASES.GAME_OVER, winner: 'cpu', gameEndReason: 'no_pokemon' };
     }
     if (isCpuOutOfPokemon) {
-        console.log('🏆 GAME OVER: Player wins - CPU has no pokemon!');
-        return { ...state, phase: GAME_PHASES.GAME_OVER, winner: 'player', gameEndReason: 'no_pokemon' };
+        newState = addLogEntry(newState, { message: '🏆 あなたの勝利！相手がポケモンを出せなくなった！' });
+        return { ...newState, phase: GAME_PHASES.GAME_OVER, winner: 'player', gameEndReason: 'no_pokemon' };
     }
 
-    console.log('✅ No winner yet, game continues');
-    return state; // No winner yet
+    // No winner yet, no log needed for simplicity
+    return newState;
 }
 

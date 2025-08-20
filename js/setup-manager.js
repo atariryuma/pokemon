@@ -93,7 +93,6 @@ export class SetupManager {
    * 初期手札ドロー（7枚ずつ）
    */
   async drawInitialHands(state) {
-    console.log('🎴 Drawing initial hands...');
     let newState = cloneGameState(state);
 
     // プレイヤーとCPUの初期手札をドロー
@@ -111,7 +110,10 @@ export class SetupManager {
       }
     }
 
-    console.log('🎴 Hand draw completed. Player:', newState.players.player.hand.length, 'CPU:', newState.players.cpu.hand.length);
+    newState = addLogEntry(newState, {
+      type: 'initial_draw',
+      message: '両プレイヤーが初期手札を引きました。'
+    });
     
     // 手札の内容をデバッグ出力
     console.log('👤 Player hand contents:');
@@ -814,39 +816,20 @@ export class SetupManager {
   /**
    * ゲーム開始モーダルを表示
    */
-  showGameStartModal() {
-    console.log('🎮 Showing game start modal...');
-    const modal = document.getElementById('action-modal');
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    const actions = document.getElementById('modal-actions');
-
-    if (!modal || !title || !body || !actions) {
-      console.error('❌ Modal elements not found');
-      return;
-    }
-
-    title.textContent = 'ポケモンカードゲーム';
-    body.innerHTML = `
-      <div class="text-center">
-        <p class="text-lg mb-4">バトルの準備をしましょう！</p>
-        <p class="text-sm text-gray-300">山札をシャッフルして手札を配ります</p>
-      </div>
-    `;
-
-    actions.innerHTML = `
-      <button id="start-deal-cards" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg">
-        手札を配る
-      </button>
-    `;
-
-    // ボタンイベント
-    document.getElementById('start-deal-cards').addEventListener('click', () => {
-      this.handleStartDealCards();
-    });
-
-    // モーダル表示
-    modal.classList.remove('hidden');
+  showGameStartModal(view) {
+    console.log('🎮 Showing game start message...');
+    // Use the new interactive message system
+    view.showInteractiveMessage(
+      'バトルの準備をしましょう！山札をシャッフルして手札を配ります。',
+      [
+        {
+          text: '手札を配る',
+          callback: () => {
+            this.handleStartDealCards();
+          }
+        }
+      ]
+    );
   }
 
   /**
@@ -854,22 +837,8 @@ export class SetupManager {
    */
   async handleStartDealCards() {
     console.log('🎴 Starting card deal...');
-    const modal = document.getElementById('action-modal');
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    const actions = document.getElementById('modal-actions');
-
-    // モーダル内容を更新
-    title.textContent = '手札配布中...';
-    body.innerHTML = `
-      <div class="text-center">
-        <p class="text-lg mb-4">山札から7枚ずつ配布しています</p>
-        <div class="animate-pulse text-blue-400">●●●</div>
-      </div>
-    `;
-    actions.innerHTML = '';
-
-    // 実際の手札配布処理をトリガー
+    // No need to update modal content here, as it's handled by the new message system
+    // Just trigger the initial setup
     window.gameInstance?.triggerInitialSetup();
   }
 

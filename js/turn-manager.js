@@ -488,11 +488,7 @@ export class TurnManager {
       if (newState !== state) {
         await unifiedAnimationManager.createUnifiedEnergyAnimation('cpu', energyCards[0].id, cpuState.active.id);
         
-        newState = addLogEntry(newState, {
-          type: 'energy_attached',
-          player: 'cpu',
-          message: 'CPUがエネルギーを付けました'
-        });
+        
       }
     }
 

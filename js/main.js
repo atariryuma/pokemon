@@ -1,22 +1,23 @@
 import { Game } from './game.js';
 
-/**
- * ページ読み込み完了時にアプリケーションを初期化
- */
 document.addEventListener('DOMContentLoaded', () => {
-  /**
-   * アプリケーションのエントリーポイント
-   */
+    console.log('main.js loaded and DOMContentLoaded fired!');
+
     function initializeApp() {
-    const root = document.getElementById('game-board');
-    if (!root) {
-      console.error('ゲームボードのルート要素が見つかりません。');
-      return;
+        console.log('initializeApp() called.');
+        const root = document.getElementById('game-board');
+        if (!root) {
+            console.error('ゲームボードのルート要素が見つかりません。');
+            return;
+        }
+
+        const game = new Game(root, window.playmatSlotsData);
+        console.log('Game instance created.');
+        game.init();
+        console.log('game.init() called.');
     }
 
-    const game = new Game(root, window.playmatSlotsData);
-    game.init();
-  }
-
-  initializeApp();
+    console.log('Calling initializeApp()...');
+    initializeApp();
+    console.log('initializeApp() finished.');
 });

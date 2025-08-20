@@ -538,14 +538,12 @@
         /* 盤面の下に余白を追加して、固定手札と重ならないようにするためのスクロールエリア */
         .scroll-spacer { height: 18rem; } /* 手札位置に合わせて適度な余白 */
 
-        #card-info-panel {
-            width: 260px;
-            background: rgba(15, 15, 25, 0.95);
-            border: 2px solid #4dd0fd;
-            box-shadow: 0 0 20px #4dd0fd;
+                            border: 1px solid rgba(255, 255, 255, 0.1); /* Lighter border for contrast */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); /* More pronounced shadow */
+
+        #game-status-panel {
             color: #fff;
             padding: 1rem;
-            border-radius: 8px;
             font-size: 0.875rem;
         }
 
@@ -586,9 +584,22 @@
         }
         #cpu-hand .relative { z-index: 61 !important; }
 
+        button {
+            /* background-color: rgba(255, 255, 255, 0.1); */ /* Base color from Tailwind classes */
+            backdrop-filter: blur(5px); /* Subtle blur for buttons */
+            border: 1px solid rgba(255, 255, 255, 0.2); /* Light border */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Soft shadow */
+            transition: all 0.2s ease-in-out; /* Smooth transitions */
+        }
+
+        button:hover {
+            /* background-color: rgba(255, 255, 255, 0.2); */ /* Slightly more opaque on hover */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover */
+        }
+
         /* UI layers */
-        #game-message-display { position: relative; z-index: 80; }
-        #card-info-panel { z-index: 90 !important; }
+                    background: rgba(10, 10, 10, 0.6); /* Darker, more opaque */
+        
         #action-modal { z-index: 100 !important; }
         #player-hand.hand-dock .hand-card img {
             pointer-events: auto;
@@ -876,7 +887,7 @@
             </div>
 
             <!-- Player Action Buttons -->
-            <div id="player-action-buttons" class="flex flex-col gap-2">
+            <div id="player-action-buttons" class="flex justify-center gap-4">
                 <button id="retreat-button" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-lg shadow-lg text-sm hidden">
                     にげる
                 </button>
@@ -901,14 +912,7 @@
 <!-- Card Info Panel -->
 <div id="card-info-panel" class="hidden fixed z-50"></div>
 
-<!-- Action Modal -->
-<div id="action-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
-    <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md text-center">
-        <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
-        <div id="modal-body" class="mb-6"></div>
-        <div id="modal-actions" class="flex justify-center gap-4"></div>
-    </div>
-</div>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1153,6 +1157,17 @@
             });
         });
     </script>
+    <!-- Action Modal -->
+    <div id="action-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100]">
+        <div class="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl p-6 w-full max-w-md m-4 transform transition-all duration-300 ease-out scale-95 opacity-0">
+            <h3 id="modal-title" class="text-2xl font-bold text-white mb-4"></h3>
+            <p id="modal-body" class="text-gray-300 mb-6"></p>
+            <div id="modal-actions" class="flex justify-end gap-4">
+                <!-- Action buttons will be injected here -->
+            </div>
+        </div>
+    </div>
+
     <script src="js/main.js" type="module"></script>
 </body>
 </html>
