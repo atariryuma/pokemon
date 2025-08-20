@@ -81,7 +81,8 @@ export class UnifiedAnimationManager {
       const {
         isSetupPhase = false,
         duration = 600,
-        card = null
+                    card = null,
+            initialSourceRect = null // ★ 追加: 新しいオプションを受け取る
       } = options;
 
       // 移動元要素の取得
@@ -111,7 +112,7 @@ export class UnifiedAnimationManager {
         targetElement, 
         placedCardElement, 
         card, 
-        { playerId, isSetupPhase, duration }
+        { playerId, isSetupPhase, duration, initialSourceRect } // ★ 追加: initialSourceRect を渡す
       );
 
       console.log(`✅ Unified animation completed: ${playerId} ${cardId} -> ${targetZone}[${targetIndex}]`);
@@ -161,10 +162,11 @@ export class UnifiedAnimationManager {
    * カード移動アニメーションの実行
    */
   async executeCardMoveAnimation(sourceElement, targetElement, placedCardElement, card, options) {
-    const { playerId, isSetupPhase, duration } = options;
+    const { playerId, isSetupPhase, duration, initialSourceRect } = options; // ★ 変更: initialSourceRect を受け取る
 
     // 位置情報取得
-    const sourceRect = this.getElementRect(sourceElement);
+    // ★ 変更: initialSourceRect があればそれを使用、なければ手札コンテナの位置を使用
+    const sourceRect = initialSourceRect || this.getElementRect(sourceElement);
     const targetRect = this.getElementRect(targetElement);
     
     if (!sourceRect || !targetRect) {
@@ -180,7 +182,7 @@ export class UnifiedAnimationManager {
     }
 
     // アニメーション用のクローン要素を作成
-    const animCard = this.createAnimationCard(placedCardElement, imageInfo, sourceRect, playerId);
+    const animCard = this.createAnimationCard(placedCardElement, imageInfo, sourceRect, playerId, options);
     
     // 元のカードを一時的に隠す
     placedCardElement.style.opacity = '0';
@@ -201,7 +203,7 @@ export class UnifiedAnimationManager {
   /**
    * アニメーション用カード要素の作成
    */
-  createAnimationCard(originalCard, imageInfo, sourceRect, playerId) {
+  createAnimationCard(originalCard, imageInfo, sourceRect, playerId, options) {
     const animCard = originalCard.cloneNode(true);
     
     // 画像の正確な設定
@@ -217,10 +219,17 @@ export class UnifiedAnimationManager {
     // アニメーション用スタイル設定
     const handOffset = playerId === 'cpu' ? 20 : 50;
     
+    // アニメーション用スタイル設定
+    // ★ 変更: handOffset の適用方法を調整 (initialSourceRect があれば不要な場合も)
+    // sourceRect がすでにカードの正確な位置であれば、handOffset は不要か、
+    // 微調整用として小さくする
+    const finalSourceLeft = sourceRect.left + (options.initialSourceRect ? 0 : (playerId === 'cpu' ? 20 : 50));
+    const finalSourceTop = sourceRect.top + (options.initialSourceRect ? 0 : 20);
+    
     animCard.style.cssText = `
       position: fixed;
-      left: ${sourceRect.left + handOffset}px;
-      top: ${sourceRect.top + 20}px;
+      left: ${finalSourceLeft}px;
+      top: ${finalSourceTop}px;
       width: ${originalCard.offsetWidth}px;
       height: ${originalCard.offsetHeight}px;
       z-index: 9999;

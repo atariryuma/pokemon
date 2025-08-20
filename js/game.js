@@ -245,6 +245,8 @@ export class Game {
 
                 // アニメーションに必要な情報を事前に取得
                 const cardToAnimate = this.selectedCardForSetup; // アニメーション用にカード情報を保持
+                // ★ 追加: アニメーション開始時のカードの正確な位置を取得
+                const initialCardRect = cardElement ? cardElement.getBoundingClientRect() : null;
 
                 // 状態更新実行（手札から除外し、配置）
                 const previousState = this.state;
@@ -292,7 +294,11 @@ export class Game {
                         'hand', // 移動元は手札
                         zone, // 移動先は 'active' または 'bench'
                         targetIndex, // ベンチの場合のインデックス
-                        { isSetupPhase: true, card: cardToAnimate } // 事前に取得したカード情報を使用
+                        {
+                            isSetupPhase: true,
+                            card: cardToAnimate,
+                            initialSourceRect: initialCardRect // ★ 追加: 初期位置を渡す
+                        }
                     );
                 }
 
