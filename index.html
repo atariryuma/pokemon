@@ -275,6 +275,44 @@
             z-index: 22; /* ボード内で前面 */
         }
 
+        /* JSで制御するホバーエフェクト用クラス */
+        .slot-hover-effect {
+            transform: translateY(-8px) scale(1.08);
+            border-color: #4dd0fd;
+            box-shadow: 0 0 25px #4dd0fd80;
+            z-index: 22; /* ボード内で前面 */
+        }
+
+        /* --- 全体の transform-style を設定 --- */
+        .card-slot {
+            transform-style: preserve-3d; /* 子要素の3D transform を有効にする */
+        }
+
+        /* --- CPUカードの反転 --- */
+        .cpu-card .card-image {
+            transform: rotateX(180deg);
+            backface-visibility: visible; /* 裏面も表示 */
+        }
+
+        /* --- デッキの影問題とホバー問題の解決 --- */
+        .card-image {
+            transform: translateZ(0);
+            transition: transform 0.2s ease-out;
+        }
+
+        .card-slot:hover .card-image {
+            transform: translateZ(20px);
+        }
+
+        .card-slot:hover .cpu-card .card-image {
+            transform: rotateX(180deg) translateZ(20px);
+        }
+
+        /* --- CPUの裏向きカードの操作を無効化 --- */
+        .is-cpu-facedown {
+            pointer-events: none;
+        }
+
         /* Enhanced hover effects for stacked cards */
         .side-cards-container .card-slot:hover {
             transform: translateY(-12px) scale(1.15) !important;
@@ -633,13 +671,13 @@
             padding: 1rem;
             font-size: 0.875rem;
             width: 320px !important; /* 固定幅 */
-            height: 480px !important; /* 固定高さ */
-            /* 右上固定位置 - 完全フローティング */
+            height: 420px !important; /* 高さを短くする */
+            /* 右側中央寄りに配置 */
             position: fixed !important;
-            top: 20px !important;
+            top: 50% !important;
             right: 20px !important;
-            z-index: 85 !important; /* 中央モーダル(100)より背面、HUD(80)より前面 */
-            transform: none !important; /* transformを無効化 */
+            transform: translateY(-50%) !important; /* 垂直方向中央揃え */
+            z-index: 85 !important;
             will-change: auto !important;
             perspective: none !important;
         }
@@ -909,6 +947,18 @@
         
         .cpu-card img {
             transform: rotateX(180deg);
+            /* 3D空間での挙動を安定させるため */
+            transform-style: preserve-3d;
+        }
+
+        /* ホバー時にカード画像を手前に出す（プレイヤー側デッキに適用） */
+        .deck-container:hover .card-image {
+            transform: translateZ(5px);
+        }
+
+        /* CPUデッキのホバー時は、反転と手前に出すを両立（上記ルールを上書き） */
+        .deck-container:hover .cpu-card .card-image {
+            transform: rotateX(180deg) translateZ(5px);
         }
         
         /* CPU カード向き制御（回転なし・手札用） */
@@ -1160,6 +1210,11 @@
             .action-hud {
                 transition: none;
             }
+        }
+
+        /* 新しいアクションHUDのスタイル */
+                .hud-enter {
+            animation: hudPopIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
     </style>

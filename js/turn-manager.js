@@ -262,16 +262,15 @@ export class TurnManager {
     // 攻撃アニメーション
     await this.animateAttack(attacker, newState);
 
-    // HPダメージアニメーション
+    // ダメージアニメーションを実行
     if (defenderElement) {
-      const hpTarget = defenderElement.querySelector('.hp') || defenderElement;
-      await animationManager.animateHPDamage(hpTarget);
+        await animationManager.animateDamage(defenderElement);
     }
 
     // きぜつチェックとアニメーション
     const defenderState = newState.players[defender];
-    if (defenderElement && defenderState.active && defenderState.active.damage >= defenderState.active.hp) {
-      await animationManager.animateKnockout(defenderElement);
+    if (defenderState.active && defenderState.active.damage >= defenderState.active.hp) {
+      await animationManager.createUnifiedKnockoutAnimation(defender, defenderState.active.id);
     }
     newState = Logic.checkForKnockout(newState, defender);
 
@@ -616,16 +615,8 @@ export class TurnManager {
    * 攻撃アニメーション
    */
   async animateAttack(attackerId, state) {
-    const attackerOrientation = CardOrientationManager.getCardOrientation(attackerId, 'active');
     const defenderId = attackerId === 'player' ? 'cpu' : 'player';
-    const defenderOrientation = CardOrientationManager.getCardOrientation(defenderId, 'active');
-    
-    const attackerElement = document.querySelector(`${attackerOrientation.playerSelector} ${attackerId === 'player' ? '.active-bottom' : '.active-top'}`);
-    const defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defenderId === 'player' ? '.active-bottom' : '.active-top'}`);
-
-    if (attackerElement && defenderElement) {
-      await animationManager.animateAttack(attackerElement, defenderElement);
-    }
+    await animationManager.createUnifiedAttackAnimation(attackerId, defenderId);
   }
 
 

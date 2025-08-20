@@ -265,7 +265,7 @@ export class View {
         const discard = Array.isArray(safePlayer.discard) ? safePlayer.discard : [];
         const prize = Array.isArray(safePlayer.prize) ? safePlayer.prize.slice(0, 6) : new Array(6).fill(null);
 
-        // Active - HTMLのクラス名に合わせて修正
+        // Active
         const activeSelector = playerType === 'player' ? '.active-bottom' : '.active-top';
         const activeSlot = boardElement.querySelector(activeSelector);
         if (activeSlot) {
@@ -273,16 +273,12 @@ export class View {
             const isFaceDown = activePokemon && activePokemon.setupFaceDown;
             const cardEl = this._createCardElement(activePokemon, playerType, 'active', 0, isFaceDown);
             activeSlot.appendChild(cardEl);
-            
-            // セットアップ中はアクティブスロットをクリック可能にする
             if (playerType === 'player') {
-                activeSlot.style.zIndex = '10'; // Above base layer
-                activeSlot.classList.add('setup-interactive');
-                this._makeSlotClickable(activeSlot, 'active', 0);
+                this._makeSlotClickable(activeSlot, playerType, 'active', 0);
             }
         }
 
-        // Bench - HTMLのクラス名に合わせて修正
+        // Bench
         for (let i = 0; i < 5; i++) {
             const benchPrefix = playerType === 'player' ? 'bottom-bench' : 'top-bench';
             const benchSlot = boardElement.querySelector(`.${benchPrefix}-${i + 1}`);
@@ -292,12 +288,8 @@ export class View {
             const isFaceDown = benchPokemon && benchPokemon.setupFaceDown;
             const cardEl = this._createCardElement(benchPokemon, playerType, 'bench', i, isFaceDown);
             benchSlot.appendChild(cardEl);
-            
-            // セットアップ中はベンチスロットをクリック可能にする
             if (playerType === 'player') {
-                benchSlot.style.zIndex = '10'; // Above base layer
-                benchSlot.classList.add('setup-interactive');
-                this._makeSlotClickable(benchSlot, 'bench', i);
+                this._makeSlotClickable(benchSlot, playerType, 'bench', i);
             }
         }
 
@@ -705,111 +697,47 @@ export class View {
         _createCardElement(card, playerType, zone, index, isFaceDown = false) {
         const container = document.createElement('div');
         container.className = 'relative w-full h-full';
-        container.style.transformStyle = 'preserve-3d'; // Add this for 3D transforms
-        
-        // デッキゾーンの場合はスタック効果を追加
-        if (zone === 'deck') {
-            container.classList.add('deck-stack');
-        }
+        container.style.transformStyle = 'preserve-3d';
 
         if (!card) {
             container.classList.add('card-placeholder');
-            console.log(`🏷️ Creating placeholder for ${playerType} ${zone}${index !== undefined ? `[${index}]` : ''} - card was null/undefined`);
-            
-            // プレースホルダーでもCPU向き処理を適用
-            console.log(`🔄 Applying placeholder orientation: ${playerType} ${zone}`);
-            CardOrientationManager.applyCardOrientation(container, playerType, zone);
-            
             return container;
         }
 
-        // Enhanced debug logging for card creation
-        console.log(`🎨 Creating card element: ${card.name_ja} (${card.name_en}) for ${playerType} ${zone}${index !== undefined ? `[${index}]` : ''}`);
-        console.log(`🖼️ Image path: ${isFaceDown ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en)}`);
-        console.log(`🔍 Card damage state:`, {
-            damage: card.damage,
-            damageType: typeof card.damage,
-            hasDamage: card.damage > 0,
-            cardType: card.card_type,
-            playerType,
-            zone
-        });
-
-        const img = document.createElement('img');
-        // Ensure proper CSS classes for visibility and sizing
-        img.className = 'card-image w-full h-full object-contain rounded-lg'; // Change object-cover to object-contain
-        // Remove any stale animation-hidden classes to avoid invisible cards
-        img.classList.remove('is-animating', 'is-hidden');
-        img.style.aspectRatio = '74 / 103'; // Enforce aspect ratio
-        img.dataset.dynamic = true;
-        // サイドカード（プライズカード）は常に裏面
-        const shouldShowBack = isFaceDown || card.isPrizeCard;
-        img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
-        img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
-        
-        // 統一されたカード向き制御システムを使用（ゾーン情報を含めて判定）
-        console.log(`🔄 Applying card orientation: ${playerType} ${zone} - ${card.name_ja}`);
-        CardOrientationManager.applyCardOrientation(container, playerType, zone);
+        // --- クラスによる状態管理 ---
         if (playerType === 'cpu') {
-            img.style.pointerEvents = 'none'; // ホバーイベントを親要素(スロット)に透過させる
-            img.style.backfaceVisibility = 'visible'; // 裏返っても表示を保証
+            container.classList.add('cpu-card');
         }
-        
-        // Add error handling for image loading failures
-        img.onerror = function() {
-            errorHandler.handleError(new Error(`Failed to load image: ${this.src}`), 'network', false);
-            // Fallback to card back if image fails to load
-            this.src = 'assets/ui/card_back.webp';
-        };
-        
-        // 確実にカードが表示されるよう初期状態を設定
-        img.style.opacity = '1';
-        img.style.visibility = 'visible';
-        img.style.display = 'block';
-        img.style.pointerEvents = 'auto';
-        
-        // アニメーション関連のクラスをクリア（表示を妨げる可能性）
-        img.classList.remove('is-animating', 'is-hidden', 'opacity-0');
-        
-        // 画像読み込み完了の確認
-        img.onload = function() {
-            console.log(`✅ Card image loaded: ${this.src}`);
-            // 強制的に表示状態を保証
-            this.style.opacity = '1';
-            this.style.visibility = 'visible';
-            this.style.display = 'block';
-        };
+        if (zone === 'deck') {
+            container.classList.add('deck-stack');
+        }
+        // CPUの裏向きカード操作を無効化するクラス
+        if (playerType === 'cpu' && isFaceDown) {
+            container.classList.add('is-cpu-facedown');
+        }
 
-        // ★変更: data-card-id属性をimg要素ではなく、その親のcontainer要素に付与
         container.dataset.cardId = card.id;
         container.dataset.owner = playerType;
         container.dataset.zone = zone;
         container.dataset.index = index;
 
-        // クリック可能であればカーソルスタイルを追加
-        const clickable = (
-            // Face-up cards
-            !isFaceDown
-            // Player can click own deck to draw
-            || (zone === 'deck' && playerType === 'player')
-            // Player can click prizes to take
-            || (zone === 'prize' && playerType === 'player')
-        );
-        if (clickable) { // cardClickHandler のチェックは不要になる
-            container.classList.add('cursor-pointer');
-        }
+        const img = document.createElement('img');
+        img.className = 'card-image w-full h-full object-contain rounded-lg';
+        const shouldShowBack = isFaceDown || card.isPrizeCard;
+        img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
+        img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
+        container.appendChild(img);
 
-        // Show card details on right-click for face-up cards
+        // --- イベントリスナー ---
+        // 表向きのカードなら誰のでも詳細表示リスナーを追加
         if (!isFaceDown) {
-            img.addEventListener('contextmenu', (e) => {
+            container.classList.add('cursor-pointer');
+            container.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 this.showCardInfo(card, e.currentTarget);
             });
         }
 
-        container.appendChild(img);
-
-        // Simple damage badge creation
         if (card.damage > 0) {
             const damageCounter = document.createElement('div');
             damageCounter.className = 'absolute top-1 right-1 bg-red-600 text-white text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center';
@@ -1088,11 +1016,9 @@ export class View {
     /**
      * アクションHUDを表示（コンテキスト依存UI）
      */
-    showActionHUD(targetElement, actions, position = 'above', title = null) {
+    showActionHUD({ actions, title }) {
         modalManager.showActionHUD({
-            targetElement,
             actions,
-            position,
             title
         });
     }
@@ -1270,19 +1196,12 @@ export class View {
         }
     }
 
-    /**
-     * スロットをクリック可能にする
-     */
-    _makeSlotClickable(slotElement, zone, index) {
+    _makeSlotClickable(slotElement, owner, zone, index) {
         if (!slotElement || !this.cardClickHandler) return;
-        
-        // スロット自体にクリックイベントを追加
+
         slotElement.style.cursor = 'pointer';
-        slotElement.style.zIndex = '10';
-        slotElement.style.pointerEvents = 'auto';
-        
+
         slotElement.addEventListener('click', (e) => {
-            // 子要素がクリックされた場合も含めて処理
             e.stopPropagation();
             e.preventDefault();
             
@@ -1290,19 +1209,14 @@ export class View {
             const cardId = cardInSlot ? cardInSlot.dataset.cardId : null;
 
             const dataset = {
-                owner: 'player',
+                owner: owner,
                 zone: zone,
                 index: index.toString(),
-                cardId: cardId // スロット内の要素から cardId を取得
+                cardId: cardId
             };
             
             this.cardClickHandler(dataset);
         });
-        
-        // スロットが空の場合の視覚的フィードバック
-        if (!slotElement.querySelector('.relative')) {
-            slotElement.classList.add('border-2', 'border-dashed', 'border-blue-400', 'bg-blue-50');
-        }
     }
 
     _clearBoard() {

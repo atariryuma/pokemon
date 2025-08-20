@@ -539,23 +539,43 @@ export class Game {
                 ],
                 'central'
             );
-        } else if (card.card_type === 'Basic Energy') {
+        } else if (card.card_type === 'Basic Energy' || card.card_type === 'Energy') {
             // エネルギーを付ける
             if (this.state.hasAttachedEnergyThisTurn) {
                 this.state = addLogEntry(this.state, { message: 'このターンはすでにエネルギーをつけました。' });
+                this.view.showErrorMessage('このターンはすでにエネルギーをつけました。', 'warning');
                 return;
             }
-            
-            // エネルギー付与のペンディングアクション設定
+
+            const energyType = card.energy_type;
+            const sourceCardId = card.id;
+
+            // 既に同じエネルギー付与アクションがペンディング中の場合、キャンセルする
+            if (this.state.pendingAction &&
+                this.state.pendingAction.type === 'attach-energy' &&
+                this.state.pendingAction.sourceCardId === sourceCardId) {
+
+                this.state.pendingAction = null;
+                this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
+                this._clearAllHighlights(); // すべてのハイライトをクリア
+                this._updateState(this.state);
+                return;
+            }
+
+            // 他のペンディングアクションがあればクリアし、ハイライトも一旦すべて消す
+            this._clearAllHighlights();
+
+            // エネルギー付与の新しいペンディングアクション設定
             this.state.pendingAction = {
                 type: 'attach-energy',
-                sourceCardId: cardId
+                sourceCardId: sourceCardId,
+                energyType: energyType
             };
             this.state.prompt.message = 'エネルギーをつけるポケモンを選んでください。';
-            this._updateState(this.state);
-            
+            this._updateState(this.state); // ここで一度UIを更新
+
             // ターゲット可能なポケモンをハイライト
-            this._highlightEnergyTargets();
+            this._highlightEnergyTargets(energyType);
         }
     }
 
@@ -736,27 +756,17 @@ export class Game {
         this.view.displayModal({
             title: 'ゲーム終了',
             message: `
-                <div class="game-over-content">
-                    <h2 class="text-2xl font-bold mb-4">${winnerText}</h2>
-                    <p class="text-lg mb-4">勝因: ${reasonText}</p>
-                    <div class="game-stats">
-                        <h3 class="font-semibold mb-2">ゲーム統計</h3>
-                        <p>ターン数: ${gameStats.turns}</p>
-                        <p>プレイヤー残りサイド: ${gameStats.playerPrizes}</p>
-                        <p>CPU残りサイド: ${gameStats.cpuPrizes}</p>
-                    </div>
+                <div class="text-center p-4">
+                    <div class="text-6xl mb-4">${winner === 'player' ? '🎉' : '😢'}</div>
+                    <h2 class="text-3xl font-bold mb-2">${winnerText}</h2>
+                    <p class="text-lg text-gray-400 mb-6">勝因: ${reasonText}</p>
                 </div>
             `,
             actions: [
                 { 
-                    text: '新しいゲーム', 
+                    text: '🚀 新しいゲームを始める', 
                     callback: () => this._startNewGame(),
-                    className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
-                },
-                { 
-                    text: 'ゲーム統計を見る', 
-                    callback: () => this._showDetailedStats(gameStats),
-                    className: 'px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg'
+                    className: 'w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
                 }
             ]
         });
@@ -971,9 +981,8 @@ export class Game {
         });
         
         // 手札エリアの上にアクションHUDを表示
-        const handArea = document.getElementById('player-hand');
-        if (handArea && actions.length > 0) {
-            this.view.showActionHUD(handArea, actions, 'above', 'プレイヤーアクション');
+        if (actions.length > 0) {
+            this.view.showActionHUD({ actions });
             console.log('🎯 Player main actions HUD displayed');
         }
     }
@@ -988,16 +997,15 @@ export class Game {
         const hasBasicPokemonInActive = playerActive && playerActive.card_type === 'Pokémon' && playerActive.stage === 'BASIC';
         
         if (hasBasicPokemonInActive) {
-            const handArea = document.getElementById('player-hand');
-            if (handArea) {
-                this.view.showActionHUD(handArea, [
+            this.view.showActionHUD({
+                actions: [
                     {
                         text: '✅ ポケモン配置を確定',
                         callback: () => this._handleConfirmSetup(),
                         className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
                     }
-                ], 'above', 'セットアップ確定');
-            }
+                ]
+            });
         }
     }
 
@@ -1343,87 +1351,68 @@ export class Game {
     async _animateCardPlacement(cardElement, zone, index) {
         if (!cardElement) return;
 
-        const targetSelector = zone === 'active'
-            ? '.player-self .active-bottom'
-            : `.player-self .bottom-bench-${index + 1}`;
-        const targetElement = document.querySelector(targetSelector);
+        const cardId = cardElement.dataset.cardId;
+        const card = this.state.players.player.hand.find(c => c.id === cardId);
 
-        if (targetElement) {
-            // カードを一時的にハイライト
-            cardElement.style.transition = 'all 0.3s ease';
-            cardElement.style.transform = 'scale(1.1) rotate(2deg)';
-            cardElement.style.zIndex = '100';
-            cardElement.style.boxShadow = '0 8px 25px rgba(77, 208, 253, 0.6)';
-
-            // 少し待ってから移動アニメーション
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            const fromRect = cardElement.getBoundingClientRect();
-            const toRect = targetElement.getBoundingClientRect();
-
-            const fromPos = { x: fromRect.left, y: fromRect.top };
-            const toPos = { x: toRect.left, y: toRect.top };
-
-            // 移動アニメーション実行
-            await animationManager.animatePlayCard(cardElement, fromPos, toPos);
-
-            // 配置完了後の効果
-            if (targetElement.children.length > 0) {
-                const placedCard = targetElement.children[0];
-                placedCard.style.transform = 'scale(1.2)';
-                placedCard.style.transition = 'transform 0.4s ease';
-                
-                setTimeout(() => {
-                    placedCard.style.transform = 'scale(1)';
-                }, 400);
-            }
-        }
+        await animationManager.createUnifiedCardAnimation(
+            'player',
+            cardId,
+            'hand', // sourceZone is assumed to be hand for this legacy function
+            zone,   // targetZone
+            index,  // targetIndex
+            { card }
+        );
     }
 
     /**
      * ポケモン昇格アニメーション
      */
     async _animatePokemonPromotion(playerId, benchIndex) {
-        // 統一システムを使用（既存のアニメーションマネージャーのsmoothCardMoveを活用）
-        const orientation = CardOrientationManager.getCardOrientation(playerId, 'bench');
-        const playerClass = orientation.playerSelector;
-        const benchSelector = playerId === 'player' ? `.bottom-bench-${benchIndex + 1}` : `.top-bench-${benchIndex + 1}`;
-        const activeSelector = playerId === 'player' ? '.active-bottom' : '.active-top';
-        
-        const benchElement = document.querySelector(`${playerClass} ${benchSelector}`);
-        const activeElement = document.querySelector(`${playerClass} ${activeSelector}`);
-        
-        if (benchElement && activeElement) {
-            await animationManager.animateSmoothCardMove(benchElement, benchElement, activeElement, 'normal');
-        }
+        const playerState = this.state.players[playerId];
+        const card = playerState.bench[benchIndex];
+        if (!card) return;
+
+        await animationManager.createUnifiedCardAnimation(
+            playerId,
+            card.id,
+            'bench',
+            'active',
+            0, // active zone index is always 0
+            { card }
+        );
     }
 
     /**
      * エネルギー付与アニメーション
      */
     async _animateEnergyAttachment(energyId, pokemonId) {
-        // 統一システムを使用（既存のアニメーションマネージャーのenergyAttachを活用）
-        const energyElement = document.querySelector(`[data-card-id="${energyId}"]`);
-        const pokemonElement = document.querySelector(`[data-card-id="${pokemonId}"]`);
-        
-        if (energyElement && pokemonElement) {
-            await animationManager.animateEnergyAttach(energyElement, pokemonElement);
-        }
+        // 統一システムを使用
+        await animationManager.createUnifiedEnergyAnimation(
+            'player', 
+            energyId, 
+            pokemonId
+        );
     }
 
     /**
      * サイドカード取得アニメーション
      */
     async _animatePrizeTake(playerId, prizeIndex) {
-        const orientation = CardOrientationManager.getCardOrientation(playerId, 'prize');
-        const playerClass = orientation.playerSelector;
-        const sideClass = playerId === 'player' ? '.side-left' : '.side-right';
-        const prizeElement = document.querySelector(`${playerClass} ${sideClass} .card-slot:nth-child(${prizeIndex + 1})`);
-        const handElement = document.getElementById(`${playerId}-hand`);
-        
-        if (prizeElement && handElement) {
-            await animationManager.animateSmoothCardMove(prizeElement, prizeElement, handElement, 'normal');
-        }
+        const playerState = this.state.players[playerId];
+        const card = playerState.prize[prizeIndex]; // This might be null if prize is face down
+        // We need a card object for the animation. If it's not available, we might need to skip.
+        // For now, let's assume we can get the card info.
+        // In a real scenario, the logic would reveal the card before moving it to hand.
+        const placeholderCard = { id: `prize-${prizeIndex}`, name_ja: 'サイドカード', name_en: 'Prize Card' };
+
+        await animationManager.createUnifiedCardAnimation(
+            playerId,
+            card ? card.id : placeholderCard.id,
+            'prize',
+            'hand',
+            playerState.hand.length, // Approximate index in hand
+            { card: card || placeholderCard }
+        );
     }
 
     // ==================== ハイライト関連メソッド ====================
@@ -1445,17 +1434,24 @@ export class Game {
     /**
      * エネルギー対象ハイライト
      */
-    _highlightEnergyTargets() {
-        const playerActive = document.querySelector('.player-self .active-bottom');
-        const playerBench = document.querySelectorAll('.player-self [class*="bottom-bench-"]');
-        
-        if (playerActive) {
-            animationManager.highlightSlot(playerActive, 'energy');
+    _highlightEnergyTargets(energyType) {
+        const player = this.state.players.player;
+
+        // アクティブポケモンをチェック
+        if (player.active && Logic.canUseEnergy(player.active, energyType)) {
+            const activeCardElement = document.querySelector('.player-self .active-bottom .relative');
+            if (activeCardElement) {
+                animationManager.highlightCard(activeCardElement);
+            }
         }
-        
-        playerBench.forEach(slot => {
-            if (slot.children.length > 0) {
-                animationManager.highlightSlot(slot, 'energy');
+
+        // ベンチポケモンをチェック
+        player.bench.forEach((pokemon, index) => {
+            if (pokemon && Logic.canUseEnergy(pokemon, energyType)) {
+                const benchCardElement = document.querySelector(`.player-self .bottom-bench-${index + 1} .relative`);
+                if (benchCardElement) {
+                    animationManager.highlightCard(benchCardElement);
+                }
             }
         });
     }
@@ -1464,11 +1460,9 @@ export class Game {
      * ベンチスロットハイライト
      */
     _highlightBenchSlots() {
-        const benchSlots = document.querySelectorAll('.player-self [class*="bottom-bench-"]');
-        benchSlots.forEach(slot => {
-            if (slot.children.length > 0) {
-                animationManager.highlightSlot(slot, 'slot');
-            }
+        const benchCards = document.querySelectorAll('.player-self [class*="bottom-bench-"] .relative');
+        benchCards.forEach(card => {
+            animationManager.highlightCard(card);
         });
     }
 
@@ -1476,7 +1470,10 @@ export class Game {
      * 全ハイライト解除
      */
     _clearAllHighlights() {
-        animationManager.clearAllHighlights();
+        const highlightedCards = document.querySelectorAll('.card-highlighted');
+        highlightedCards.forEach(card => {
+            animationManager.unhighlightCard(card);
+        });
     }
 
     /**

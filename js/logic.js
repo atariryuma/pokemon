@@ -483,3 +483,27 @@ export function checkForWinner(state) {
     return newState;
 }
 
+/**
+ * 指定されたポケモンが、特定のエネルギータイプをワザのために使えるか判定する
+ * @param {Object} pokemon - ポケモンカードオブジェクト
+ * @param {string} energyType - エネルギータイプ (e.g., "Grass", "Fire")
+ * @returns {boolean} - エネルギーが有効な場合はtrue
+ */
+export function canUseEnergy(pokemon, energyType) {
+    if (!pokemon || !pokemon.attacks || !energyType) {
+        return false;
+    }
+
+    // ポケモンの全てのワザをチェック
+    for (const attack of pokemon.attacks) {
+        if (attack.cost) {
+            // ワザのコストに、指定されたエネルギータイプか「Colorless」が含まれているかチェック
+            if (attack.cost.includes(energyType) || attack.cost.includes('Colorless')) {
+                return true; // 一つでも有効なワザがあればtrue
+            }
+        }
+    }
+
+    return false; // どのワザにも使えなければfalse
+}
+

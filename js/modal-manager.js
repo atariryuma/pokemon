@@ -327,49 +327,55 @@ export class ModalManager {
      * @param {Object} options - HUD設定
      */
     showActionHUD({
-        targetElement,
         actions = [],
-        position = 'above',
         title = null
     }) {
-        if (!targetElement) return;
+        const hudContainer = this.actionHUD;
+        hudContainer.innerHTML = ''; // Clear previous content
 
-        const hud = this.actionHUD;
-        hud.innerHTML = '';
-        hud.className = 'fixed pointer-events-auto action-hud';
-        hud.style.background = 'transparent';
-        hud.style.border = 'none';
-        hud.style.padding = '0';
-        
-        // アクションボタンのみ
+        // Apply new fixed-hud styles
+        hudContainer.className = 'fixed-hud'; 
+        hudContainer.id = 'action-hud-container'; // Use ID for reliable styling
+
+        const hudContent = document.createElement('div');
+        hudContent.className = 'action-hud p-3 rounded-lg flex flex-col items-center gap-2';
+
+        if (title) {
+            const titleEl = document.createElement('h4');
+            titleEl.className = 'text-sm font-bold text-gray-300 mb-1';
+            titleEl.textContent = title;
+            hudContent.appendChild(titleEl);
+        }
+
         if (actions.length > 0) {
             const actionsContainer = document.createElement('div');
-            actionsContainer.className = 'flex flex-col gap-2';
+            actionsContainer.className = 'flex items-center gap-2';
             
             actions.forEach(action => {
                 const btn = document.createElement('button');
-                btn.className = action.className || 'px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg';
+                btn.className = action.className || 'px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg';
                 btn.textContent = action.text;
-                btn.onclick = () => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
                     if (action.callback) action.callback();
-                    this.hideActionHUD();
+                    // Do not auto-hide, let the game logic decide
                 };
                 actionsContainer.appendChild(btn);
             });
-            
-            hud.appendChild(actionsContainer);
+            hudContent.appendChild(actionsContainer);
         }
 
-        // 右側パネルの下に配置
-        hud.style.right = '20px';
-        hud.style.top = '520px'; // ステータスパネル（480px + 40px余白）の下
-        hud.style.left = 'auto';
-        
-        // 表示
-        hud.classList.remove('hidden');
-        hud.style.display = 'block';
-        hud.style.opacity = '1';
-        hud.style.zIndex = MODAL_PRIORITY.ACTION_HUD;
+        hudContainer.appendChild(hudContent);
+
+        // 画面中央より少し下、左寄りに配置
+        hudContainer.style.left = '40%'; // 画面の左から40%の位置
+        hudContainer.style.top = '65%';  // 画面の上から65%の位置
+        hudContainer.style.transform = 'translate(-50%, -50%)'; // 自身の中心が指定したtop/leftに来るように調整
+
+        // Make it visible
+        hudContainer.classList.remove('hidden');
+        hudContainer.style.display = 'block';
+        this.activeModals.set(MODAL_TYPES.ACTION_HUD, { element: hudContainer });
     }
 
 

@@ -687,13 +687,6 @@ export class UnifiedAnimationManager {
     console.log(`🔋 Starting unified energy animation: ${playerId} ${energyCardId} -> ${targetPokemonId}`);
     
     try {
-      // 手札のエネルギーカード要素を取得
-      const handElement = document.querySelector(this.getHandSelector(playerId));
-      if (!handElement) {
-        console.warn(`⚠️ Hand element not found for ${playerId}`);
-        return;
-      }
-
       // 対象ポケモン要素を取得（アクティブまたはベンチ）
       const pokemonElement = this.findPokemonElement(playerId, targetPokemonId);
       if (!pokemonElement) {
@@ -701,22 +694,26 @@ export class UnifiedAnimationManager {
         return;
       }
 
-      // 手札の最後のカード（エネルギー想定）を取得
-      const handCards = handElement.querySelectorAll('.relative');
-      const energyCard = handCards.length > 0 ? handCards[handCards.length - 1] : null;
-      
-      if (!energyCard) {
-        console.warn(`⚠️ Energy card not found in ${playerId} hand`);
-        return;
-      }
+      // エネルギーカードのデータを取得（これは本来Gameクラスが持つべき情報）
+      // ここでは仮のデータを生成
+      const energyCardData = { id: energyCardId, name_ja: 'エネルギー', name_en: 'Energy' };
 
-      // アニメーション実行
-      await animationManager.animateEnergyAttach(energyCard, pokemonElement);
+      // 汎用カード移動アニメーションを実行
+      await this.createUnifiedCardAnimation(
+          playerId,
+          energyCardId,
+          'hand',
+          pokemonElement.dataset.zone,
+          parseInt(pokemonElement.dataset.index, 10),
+          { card: energyCardData }
+      );
       
       console.log(`✅ Unified energy animation completed: ${playerId}`);
 
     } catch (error) {
       console.error('❌ Error in unified energy animation:', error);
+      // エラーを再スローして呼び出し元に伝える
+      throw error;
     }
   }
 
@@ -754,29 +751,32 @@ export class UnifiedAnimationManager {
   /**
    * 攻撃アニメーションの統一処理
    */
-  async createUnifiedAttackAnimation(attackerPlayerId, defenderPlayerId, attackType = 'normal') {
+  async createUnifiedAttackAnimation(attackerPlayerId, defenderPlayerId) {
     console.log(`⚔️ Starting unified attack animation: ${attackerPlayerId} -> ${defenderPlayerId}`);
     
     try {
       const attackerElement = document.querySelector(
-        `${this.getPlayerSelector(attackerPlayerId)} ${this.getActiveSelector(attackerPlayerId)}`
-      );
-      const defenderElement = document.querySelector(
-        `${this.getPlayerSelector(defenderPlayerId)} ${this.getActiveSelector(defenderPlayerId)}`
+        `${this.getPlayerSelector(attackerPlayerId)} ${this.getActiveSelector(attackerPlayerId)} .relative`
       );
 
-      if (!attackerElement || !defenderElement) {
-        console.warn('⚠️ Attack animation: Missing attacker or defender element');
+      if (!attackerElement) {
+        console.warn('⚠️ Attack animation: Missing attacker element');
         return;
       }
 
-      // 統一攻撃アニメーション実行
-      await animationManager.animateAttack(attackerElement, defenderElement);
-      
-      console.log(`✅ Unified attack animation completed`);
+      // 'animate-attack' クラスは index.html で @keyframes attackForward に紐付けられている
+      return new Promise(resolve => {
+          attackerElement.classList.add('animate-attack');
+          const animationDuration = 800; // 0.8s
+          setTimeout(() => {
+              attackerElement.classList.remove('animate-attack');
+              resolve();
+          }, animationDuration);
+      });
 
     } catch (error) {
       console.error('❌ Error in unified attack animation:', error);
+      throw error;
     }
   }
 
@@ -792,13 +792,26 @@ export class UnifiedAnimationManager {
         console.warn(`⚠️ Pokemon element not found for knockout: ${pokemonId}`);
         return;
       }
+      const cardInSlot = pokemonElement.querySelector('.relative');
+      if (!cardInSlot) {
+          console.warn(`⚠️ Card element inside slot not found for knockout: ${pokemonId}`);
+          return;
+      }
 
-      await animationManager.animateKnockout(pokemonElement);
-      
-      console.log(`✅ Unified knockout animation completed: ${pokemonId}`);
+      // 'animate-knockout' クラスは index.html で @keyframes knockout に紐付けられている
+      return new Promise(resolve => {
+          cardInSlot.classList.add('animate-knockout');
+          const animationDuration = 1200; // 1.2s
+          setTimeout(() => {
+              // アニメーションで非表示になるので、クラス削除は必ずしも必要ない
+              // cardInSlot.classList.remove('animate-knockout');
+              resolve();
+          }, animationDuration);
+      });
 
     } catch (error) {
       console.error('❌ Error in unified knockout animation:', error);
+      throw error;
     }
   }
 
@@ -965,6 +978,27 @@ export class UnifiedAnimationManager {
    */
   reset() {
     console.log('🔄 Unified Animation Manager reset');
+  }
+
+  /**
+   * ダメージアニメーション（統合）
+   * @param {Element} targetElement - ダメージを受ける要素
+   */
+  async animateDamage(targetElement) {
+    if (!targetElement) return;
+
+    return new Promise(resolve => {
+        // 'animate-damage' クラスは index.html で @keyframes damageShake に紐付けられている
+        targetElement.classList.add('animate-damage');
+
+        // アニメーションの持続時間（CSSで定義されたものと合わせる）
+        const animationDuration = 600; // 0.6s
+
+        setTimeout(() => {
+            targetElement.classList.remove('animate-damage');
+            resolve();
+        }, animationDuration);
+    });
   }
 }
 
