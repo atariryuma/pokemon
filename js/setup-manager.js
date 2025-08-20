@@ -770,7 +770,6 @@ export class SetupManager {
   reset() {
     this.mulliganCount = 0;
   }
-}
 
   /**
    * デッキシャッフルアニメーション

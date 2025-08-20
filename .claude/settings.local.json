@@ -19,7 +19,8 @@
       "Bash(find:*)",
       "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\cards.js\")",
       "Bash(npm start)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": [],

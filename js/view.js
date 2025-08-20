@@ -1180,7 +1180,6 @@ export class View {
             slotElement.classList.add('border-2', 'border-dashed', 'border-blue-400', 'bg-blue-50');
         }
     }
-}
 
     _clearBoard() {
         console.log('🧹 Clearing board');

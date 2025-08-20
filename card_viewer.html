@@ -154,9 +154,11 @@
   <header>
     <h1>ポケモンカード エディタ <span class="muted small">(cards-master.json / data/cards)</span></h1>
     <div class="toolbar">
+      <button class="btn" id="btn-open-drawer">カード一覧 (Ctrl+K)</button>
       <button class="btn" id="btn-connect">フォルダ接続</button>
       <button class="btn" id="btn-open-master">master読込</button>
       <button class="btn primary" id="btn-save-master">master保存</button>
+      <button class="btn warn" id="btn-validate">互換チェック</button>
       <div class="spacer"></div>
       <button class="btn" id="btn-export">バックアップ書き出し</button>
     </div>
@@ -182,7 +184,6 @@
           <div class="toolbar">
             <button class="btn" id="btn-prev">← 前へ</button>
             <button class="btn" id="btn-next">次へ →</button>
-            <button class="btn" id="btn-open-drawer">カード一覧 (Ctrl+K)</button>
           </div>
         </div>
       </div>
@@ -294,7 +295,11 @@
               <div class="field"><label>画像ファイル名 (任意)</label><input id="image_file" placeholder="例: SV1-001.webp"/></div>
               <div class="field"><label>画像アップロード</label><input id="image_upload" type="file" accept="image/*"/></div>
             </div>
-            <div class="hint">assets/cards/{pokemon|energy|trainer}/ に保存可能 (File System Access対応ブラウザ)</div>
+            <div class="flex-row" style="align-items:center; gap:8px; margin-top:6px;">
+              <button type="button" class="btn" id="btn-pick-image">画像を選ぶ</button>
+              <button type="button" class="btn" id="btn-guess-image">英名から推測</button>
+              <span class="hint">assets/cards/{pokemon|energy|trainer}/ に保存可能 (File System Access対応ブラウザ)</span>
+            </div>
           </div>
         </form>
       </div>
@@ -330,6 +335,12 @@
     </div>
     <div class="drawer-backdrop" id="drawer-backdrop"></div>
   </aside>
+
+  <!-- Modal -->
+  <div id="modal" class="invisible">
+    <div id="modal-backdrop" style="position:fixed; inset:0; background:rgba(0,0,0,.45);"></div>
+    <div id="modal-panel" style="position:fixed; top:10%; left:50%; transform:translateX(-50%); width: min(720px, 92vw); max-height: 80vh; overflow:auto; background: linear-gradient(180deg, rgba(21,25,58,.98), rgba(28,34,82,.98)); border:1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 16px;"></div>
+  </div>
 
   <script>
     // --------- 型・初期データ
@@ -843,6 +854,7 @@
       byId('btn-connect').addEventListener('click', connectFolders);
       byId('btn-open-master').addEventListener('click', openMaster);
       byId('btn-export').addEventListener('click', exportBackup);
+      byId('btn-validate').addEventListener('click', validateAllCards);
       byId('card_type').addEventListener('change', () => { onTypeChange(); updatePreview(); markUnsaved(true); });
       byId('btn-add-attack').addEventListener('click', () => {
         byId('attacks').appendChild(createAttackBox());
@@ -856,6 +868,8 @@
       // Preview controls
       byId('btn-prev').addEventListener('click', goPrev);
       byId('btn-next').addEventListener('click', goNext);
+      byId('btn-pick-image').addEventListener('click', openImagePicker);
+      byId('btn-guess-image').addEventListener('click', () => { const guess = guessImageFile(); if (guess){ byId('image_file').value = guess; updatePreview(); markUnsaved(true);} });
       byId('zoom').addEventListener('input', (e) => { zoomLevel = Number(e.target.value); applyTransform(); });
       byId('btn-zoom-in').addEventListener('click', () => { zoomLevel = Math.min(3, (zoomLevel + 0.1)); byId('zoom').value = zoomLevel.toFixed(1); applyTransform(); });
       byId('btn-zoom-out').addEventListener('click', () => { zoomLevel = Math.max(0.5, (zoomLevel - 0.1)); byId('zoom').value = zoomLevel.toFixed(1); applyTransform(); });
