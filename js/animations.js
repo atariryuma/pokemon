@@ -36,8 +36,7 @@ export class AnimationManager {
       }
     };
     
-    console.log('🎬 Animation Manager initialized');
-  }
+    }
   
   /**
    * カードディール アニメーション
@@ -45,8 +44,6 @@ export class AnimationManager {
    * @param {number} staggerDelay - 遅延時間（ミリ秒）
    */
   async animateDealCards(cardElements, staggerDelay = 100) {
-    console.log(`🎬 Starting deal animation for ${cardElements.length} cards`);
-    
     const promises = cardElements.map((element, index) => {
       return new Promise(resolve => {
         setTimeout(() => {
@@ -134,14 +131,10 @@ export class AnimationManager {
    * @param {number} staggerDelay - 遅延時間（ミリ秒）
    */
   async animateCardRevealFlash(cardElements, staggerDelay = 100) {
-    console.log(`🎬 Starting card reveal flash for ${cardElements.length} cards`);
-    
     const promises = cardElements.map((element, index) => {
       return new Promise(resolve => {
         setTimeout(() => {
           if (element) {
-            console.log(`✨ Adding flash effect to card ${index + 1}/${cardElements.length}`);
-            
             // 光エフェクト要素を作成
             const flashEffect = document.createElement('div');
             flashEffect.className = 'card-reveal-flash';
@@ -164,7 +157,6 @@ export class AnimationManager {
               if (flashEffect.parentNode) {
                 flashEffect.parentNode.removeChild(flashEffect);
               }
-              console.log(`✅ Flash effect completed for card ${index + 1}`);
               resolve();
             }, 800);
           } else {
@@ -771,10 +763,6 @@ export class AnimationManager {
     // Debug: Check if this element has damage badges before animation
     const existingDamageBadges = element.querySelectorAll('[id^="damage-badge-"]');
     if (existingDamageBadges.length > 0) {
-      console.log(`🎬 ⚠️ Animation starting on element with ${existingDamageBadges.length} damage badges. Animation: ${className}`);
-      existingDamageBadges.forEach((badge, index) => {
-        console.log(`  🏷️ Badge ${index + 1}: ${badge.id}, visibility: ${badge.style.visibility}, display: ${badge.style.display}`);
-      });
     }
     
     element.classList.add(className);
@@ -818,10 +806,6 @@ export class AnimationManager {
       // Debug: Check damage badges after animation cleanup
       const damagebadges = element.querySelectorAll('[id^="damage-badge-"]');
       if (damagebadges.length > 0) {
-        console.log(`🎬 ✅ Animation cleanup for ${animationName}. ${damagebadges.length} damage badges still present`);
-        damagebadges.forEach((badge, index) => {
-          console.log(`  🏷️ Badge ${index + 1} after cleanup: ${badge.id}, visible: ${badge.style.visibility !== 'hidden' && badge.style.display !== 'none'}`);
-        });
       }
       
       element.classList.remove(`animate-${animationName.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
@@ -885,7 +869,6 @@ export class AnimationManager {
    */
   destroy() {
     this.clearAllAnimations();
-    console.log('🎬 Animation Manager destroyed');
   }
 }
 
