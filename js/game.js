@@ -1040,40 +1040,40 @@ export class Game {
             return;
         }
 
-        const prizeCards = [];
-        
-        // プレイヤーのサイドカード要素を収集
-        playerPrizeSlots.forEach((slot, index) => {
-            // カード要素が描画されているかチェック
-            const cardElement = slot.querySelector('.relative, .card'); // より広範囲にチェック
+        const playerPrizeElements = [];
+        playerPrizeSlots.forEach((slot) => {
+            const cardElement = slot.querySelector('.relative, .card'); // Use the same selector as original
             if (cardElement) {
-                prizeCards.push(cardElement);
-                console.log(`📋 Found player prize card ${index + 1}`);
+                playerPrizeElements.push(cardElement);
             } else {
-                // カードが未描画の場合、スロット自体をアニメーション対象にする
-                console.log(`📋 Using player prize slot ${index + 1} (no card element)`);
-                prizeCards.push(slot);
-            }
-        });
-        
-        // CPUのサイドカード要素を収集
-        cpuPrizeSlots.forEach((slot, index) => {
-            const cardElement = slot.querySelector('.relative, .card');
-            if (cardElement) {
-                prizeCards.push(cardElement);
-                console.log(`📋 Found CPU prize card ${index + 1}`);
-            } else {
-                console.log(`📋 Using CPU prize slot ${index + 1} (no card element)`);
-                prizeCards.push(slot);
+                playerPrizeElements.push(slot); // Fallback to slot if card element not found
             }
         });
 
-        console.log(`🏆 Animating ${prizeCards.length} prize elements`);
-        
-        if (prizeCards.length > 0) {
-            await animationManager.animatePrizeDeal(prizeCards, 150);
+        const cpuPrizeElements = [];
+        cpuPrizeSlots.forEach((slot) => {
+            const cardElement = slot.querySelector('.relative, .card'); // Use the same selector as original
+            if (cardElement) {
+                cpuPrizeElements.push(cardElement);
+            } else {
+                cpuPrizeElements.push(slot); // Fallback to slot if card element not found
+            }
+        });
+
+        // Animate player prize cards (coming from right)
+        if (playerPrizeElements.length > 0) {
+            console.log(`🏆 Animating ${playerPrizeElements.length} player prize elements from right`);
+            await animationManager.animatePrizeDealFromSide(playerPrizeElements, 'right', 150);
         } else {
-            console.warn('⚠️ No prize elements found for animation');
+            console.warn('⚠️ No player prize elements found for animation');
+        }
+
+        // Animate CPU prize cards (coming from left)
+        if (cpuPrizeElements.length > 0) {
+            console.log(`🏆 Animating ${cpuPrizeElements.length} CPU prize elements from left`);
+            await animationManager.animatePrizeDealFromSide(cpuPrizeElements, 'left', 150);
+        } else {
+            console.warn('⚠️ No CPU prize elements found for animation');
         }
     }
 
