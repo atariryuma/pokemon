@@ -502,7 +502,11 @@ export class Game {
                 break;
 
             case GAME_PHASES.AWAITING_NEW_ACTIVE:
-                this.view.showGameMessage('新しいバトルポケモンをベンチから選んでください。');
+                if (this.state.playerToAct === 'player') {
+                    this.view.showGameMessage('新しいバトルポケモンをベンチから選んでください。');
+                } else {
+                    this.view.showGameMessage('相手が新しいバトルポケモンを選んでいます...');
+                }
                 break;
 
             case GAME_PHASES.PRIZE_SELECTION:

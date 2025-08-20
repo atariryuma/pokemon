@@ -268,18 +268,25 @@ export class TurnManager {
     }
 
     // きぜつチェックとアニメーション
-    const defenderState = newState.players[defender];
-    if (defenderState.active && defenderState.active.damage >= defenderState.active.hp) {
-      await animationManager.createUnifiedKnockoutAnimation(defender, defenderState.active.id);
+    const defenderStateBeforeKO = newState.players[defender];
+    if (defenderElement && defenderStateBeforeKO.active && defenderStateBeforeKO.active.damage >= defenderStateBeforeKO.active.hp) {
+      await animationManager.createUnifiedKnockoutAnimation(defender, defenderStateBeforeKO.active.id);
     }
     newState = Logic.checkForKnockout(newState, defender);
 
-    // きぜつによる新アクティブ選択が必要な場合は、ターン終了を延期
+    // きぜつによる新アクティブ選択が必要な場合
     if (newState.phase === GAME_PHASES.AWAITING_NEW_ACTIVE) {
       console.log('🔄 Knockout occurred, waiting for new active pokemon selection');
-      // ペンディングアクションクリア
       newState.pendingAction = null;
-      // ターン終了は新アクティブ選択完了後に実行
+
+      // CPUが選ぶ番なら、ここでCPUの選択ロジックを呼び出す
+      if (newState.playerToAct === 'cpu') {
+        console.log('🤖 CPU is selecting a new active pokemon...');
+        newState = await this.cpuPromoteToActive(newState);
+      }
+      
+      // プレイヤーが選ぶ番なら、そのままstateを返してUIの更新を待つ
+      // CPUが選んだ場合も、ここでnewStateが更新されているので、そのまま次の処理へ進む
       return newState;
     }
 
@@ -423,11 +430,23 @@ export class TurnManager {
         return newState;
       }
       
+      // 新しいポケモンがバトル場に出たので、フェーズをCPUのメインフェーズに戻す
+      newState.phase = GAME_PHASES.CPU_MAIN;
+      newState.prompt.message = '相手のターンです...';
+      newState.playerToAct = null; // 行動待ちプレイヤーをリセット
+
       newState = addLogEntry(newState, {
         type: 'pokemon_promoted',
         player: 'cpu',
         message: 'CPUがベンチポケモンをバトル場に出しました'
       });
+    } else {
+      // ベンチにポケモンがいない場合、CPUはポケモンを出せないためゲーム終了
+      newState = Logic.checkForWinner(newState); // 相手の場にポケモンがいない勝利条件をチェック
+      if (newState.phase !== GAME_PHASES.GAME_OVER) {
+          // もし勝敗が決まらないなら、CPUは行動できないのでターン終了
+          newState = await this.endCpuTurn(newState); // CPUターンを終了させる
+      }
     }
 
     return newState;

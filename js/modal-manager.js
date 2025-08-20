@@ -333,23 +333,21 @@ export class ModalManager {
         const hudContainer = this.actionHUD;
         hudContainer.innerHTML = ''; // Clear previous content
 
-        // Apply new fixed-hud styles
-        hudContainer.className = 'fixed-hud'; 
-        hudContainer.id = 'action-hud-container'; // Use ID for reliable styling
+        // スタイルをリセットし、パネル内のレイアウトに追従させる
+        hudContainer.className = 'action-hud-container w-full';
+        hudContainer.style.position = 'relative';
+        hudContainer.style.top = 'auto';
+        hudContainer.style.left = 'auto';
+        hudContainer.style.transform = 'none';
+        hudContainer.style.marginTop = 'auto'; // パネル下部に配置
+        hudContainer.style.padding = '12px 0px'; // 上下のパディング
 
         const hudContent = document.createElement('div');
-        hudContent.className = 'action-hud p-3 rounded-lg flex flex-col items-center gap-2';
-
-        if (title) {
-            const titleEl = document.createElement('h4');
-            titleEl.className = 'text-sm font-bold text-gray-300 mb-1';
-            titleEl.textContent = title;
-            hudContent.appendChild(titleEl);
-        }
+        hudContent.className = 'action-hud flex flex-col items-center gap-2';
 
         if (actions.length > 0) {
             const actionsContainer = document.createElement('div');
-            actionsContainer.className = 'flex items-center gap-2';
+            actionsContainer.className = 'flex items-center justify-center flex-wrap gap-2';
             
             actions.forEach(action => {
                 const btn = document.createElement('button');
@@ -358,7 +356,7 @@ export class ModalManager {
                 btn.onclick = (e) => {
                     e.stopPropagation();
                     if (action.callback) action.callback();
-                    // Do not auto-hide, let the game logic decide
+                    this.hideActionHUD(); // アクション実行後にHUDを隠す
                 };
                 actionsContainer.appendChild(btn);
             });
@@ -367,10 +365,15 @@ export class ModalManager {
 
         hudContainer.appendChild(hudContent);
 
-        // 画面中央より少し下、左寄りに配置
-        hudContainer.style.left = '40%'; // 画面の左から40%の位置
-        hudContainer.style.top = '65%';  // 画面の上から65%の位置
-        hudContainer.style.transform = 'translate(-50%, -50%)'; // 自身の中心が指定したtop/leftに来るように調整
+        // ステータスパネルのコンテンツエリアにHUDを追加
+        const panelContent = document.querySelector('#game-status-panel .status-panel-content');
+        if (panelContent) {
+            panelContent.appendChild(hudContainer);
+        } else {
+            console.error('Status panel content not found!');
+            // フォールバックとしてbodyに直接追加
+            document.body.appendChild(hudContainer);
+        }
 
         // Make it visible
         hudContainer.classList.remove('hidden');

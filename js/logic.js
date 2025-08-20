@@ -392,6 +392,7 @@ export function checkForKnockout(state, defendingPlayerId) {
     newState = {
         ...newState,
         phase: hasBenchPokemon ? GAME_PHASES.AWAITING_NEW_ACTIVE : newState.phase, // Only change phase if bench has pokemon
+        playerToAct: hasBenchPokemon ? defendingPlayerId : null, // 行動すべきプレイヤーを記録
         prompt: {
             message: hasBenchPokemon 
                 ? `${defendingPlayerId === 'player' ? 'あなた' : '相手'}のバトルポケモンがきぜつした。ベンチから新しいポケモンを選んでください。`

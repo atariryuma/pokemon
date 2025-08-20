@@ -289,9 +289,15 @@
         }
 
         /* --- CPUカードの反転 --- */
-        .cpu-card .card-image {
+        .cpu-card[data-zone="active"] .card-image,
+        .cpu-card[data-zone="bench"] .card-image {
             transform: rotateX(180deg);
             backface-visibility: visible; /* 裏面も表示 */
+        }
+
+        /* CPUの手札のカードは反転しない */
+        .cpu-card[data-zone="hand"] .card-image {
+            transform: none;
         }
 
         /* --- デッキの影問題とホバー問題の解決 --- */
