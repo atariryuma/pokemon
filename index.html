@@ -1382,6 +1382,7 @@
 
 
     <script>
+        const noop = () => {};
         document.addEventListener('DOMContentLoaded', async () => {
             const gameBoard = document.getElementById('game-board');
             const bgImage = document.querySelector('.board-bg');
@@ -1459,12 +1460,12 @@
                 const DEBUG_MODE = false; // 本番環境では false に設定
                 
                 if (DEBUG_MODE) {
-                    console.group('🔍 背景プレイマット状態確認');
-                    console.log('📦 game-board container:', {
+                    noop('🔍 背景プレイマット状態確認');
+                    noop('📦 game-board container:', {
                         width: containerRect.width.toFixed(0),
                         height: containerRect.height.toFixed(0)
                     });
-                    console.groupEnd();
+                    noop();
                 }
                 
                 // 完全固定サイズ：679x679px
@@ -1514,13 +1515,13 @@
                     
                     // 直接マッピングのデバッグ情報
                     if (DEBUG_MODE) {
-                        console.log(`📍 ${key}: (${coords.x},${coords.y}) → (${htmlX},${htmlY}) ${htmlWidth}x${htmlHeight} [直接マッピング]`);
+                        noop(`📍 ${key}: (${coords.x},${coords.y}) → (${htmlX},${htmlY}) ${htmlWidth}x${htmlHeight} [直接マッピング]`);
                     }
                     
                     // デバッグ情報は削除（通常のゲーム状態）
                 }
                 
-                console.log(`📊 変換完了: ${transformedCoords.length}個のスロット`);
+                noop(`📊 変換完了: ${transformedCoords.length}個のスロット`);
             }
 
             function updateDeckHeight(deckElement, cardCount) {
@@ -1555,12 +1556,12 @@
 
             // 初期化処理：背景画像とDOMの準備完了を待つ
             function initializeLayout() {
-                console.log('🚀 Initializing playmat layout...');
+                noop('🚀 Initializing playmat layout...');
                 
                 // RequestAnimationFrameで次の描画フレームを待つ（ベストプラクティス）
                 requestAnimationFrame(() => {
                     updateLayout();
-                    console.log('✅ Playmat layout initialization completed');
+                    noop('✅ Playmat layout initialization completed');
                 });
             }
 
@@ -1568,13 +1569,13 @@
             if (bgImage) {
                 if (bgImage.complete && bgImage.naturalHeight > 0) {
                     // 画像が既に読み込み済み
-                    console.log('📸 Playmat image already loaded');
+                    noop('📸 Playmat image already loaded');
                     initializeLayout();
                 } else {
                     // 画像の読み込み完了を待つ
-                    console.log('⏳ Waiting for playmat image to load...');
+                    noop('⏳ Waiting for playmat image to load...');
                     bgImage.addEventListener('load', () => {
-                        console.log('📸 Playmat image loaded successfully');
+                        noop('📸 Playmat image loaded successfully');
                         initializeLayout();
                     }, { once: true });
                     
@@ -1593,7 +1594,7 @@
             window.addEventListener('resize', () => {
                 clearTimeout(resizeTimeout);
                 resizeTimeout = setTimeout(() => {
-                    console.log('🔄 Window resized, updating layout...');
+                    noop('🔄 Window resized, updating layout...');
                     updateLayout();
                 }, 100);
             });
@@ -1618,11 +1619,11 @@
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 modalManager.init();
-                console.log('🎭 Modal Manager initialized on DOMContentLoaded');
+                noop('🎭 Modal Manager initialized on DOMContentLoaded');
             });
         } else {
             modalManager.init();
-            console.log('🎭 Modal Manager initialized immediately');
+            noop('🎭 Modal Manager initialized immediately');
         }
     </script>
     <script src="js/main.js" type="module"></script>

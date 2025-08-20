@@ -6,6 +6,8 @@
 
 import { GAME_PHASES } from './phase-manager.js';
 
+const noop = () => {};
+
 /**
  * エラータイプの定義
  */
@@ -153,7 +155,7 @@ export class ErrorHandler {
             return false;
         }
         
-        console.log(`🔄 Attempting recovery for ${errorInfo.type} (attempt ${retryCount + 1})`);
+        noop(`🔄 Attempting recovery for ${errorInfo.type} (attempt ${retryCount + 1})`);
         
         // リトライ遅延
         const delay = this.retryDelays[Math.min(retryCount, this.retryDelays.length - 1)];
@@ -204,7 +206,7 @@ export class ErrorHandler {
         // 簡単な接続テスト
         try {
             await fetch(window.location.origin, { method: 'HEAD' });
-            console.log('🔄 Network recovery successful');
+            noop('🔄 Network recovery successful');
             return true;
         } catch (error) {
             return false;
@@ -216,7 +218,7 @@ export class ErrorHandler {
      */
     async recoverFromSetupError() {
         // DOM要素の再取得を試行
-        console.log('🔄 Attempting DOM re-initialization for setup recovery');
+        noop('🔄 Attempting DOM re-initialization for setup recovery');
         try {
             // ページリロードを推奨
             if (confirm('ゲーム初期化に失敗しました。ページをリロードしますか？')) {
@@ -235,7 +237,7 @@ export class ErrorHandler {
      */
     async recoverFromAnimationError() {
         // アニメーションをスキップして続行
-        console.log('🔄 Skipping animation and continuing');
+        noop('🔄 Skipping animation and continuing');
         return true;
     }
 
@@ -333,7 +335,7 @@ export class ErrorHandler {
      */
     async retryLastAction() {
         // 実装は具体的なアクション履歴システムに依存
-        console.log('🔄 Retrying last action...');
+        noop('🔄 Retrying last action...');
         
         if (window.gameInstance?.view) {
             window.gameInstance.view.hideModal();

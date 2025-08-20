@@ -10,6 +10,8 @@ import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
 
+const noop = () => {};
+
 /**
  * セットアップ管理クラス
  */
@@ -595,7 +597,7 @@ export class SetupManager {
    * セットアップ確定処理
    */
   async confirmSetup(state) {
-    console.log('🔥 SETUP-MANAGER: confirmSetup called');
+    noop('🔥 SETUP-MANAGER: confirmSetup called');
     let newState = cloneGameState(state);
 
     // プレイヤーのセットアップ完了チェック
@@ -633,9 +635,9 @@ export class SetupManager {
     newState.setupSelection.confirmed = true;
 
     // サイドカード配布
-    console.log('🔥 SETUP-MANAGER: About to call setupPrizeCards');
+    noop('🔥 SETUP-MANAGER: About to call setupPrizeCards');
     newState = await this.setupPrizeCards(newState);
-    console.log('🔥 SETUP-MANAGER: setupPrizeCards completed');
+    noop('🔥 SETUP-MANAGER: setupPrizeCards completed');
 
     // ゲーム開始準備完了フェーズに移行
     newState.phase = GAME_PHASES.GAME_START_READY;
@@ -686,7 +688,7 @@ export class SetupManager {
    * ゲーム開始時の表向き公開処理
    */
   async startGameRevealCards(state) {
-    console.log('🔥 SETUP-MANAGER: startGameRevealCards called');
+    noop('🔥 SETUP-MANAGER: startGameRevealCards called');
     let newState = cloneGameState(state);
     
     // 全てのセットアップ用裏向きフラグを削除
@@ -760,7 +762,7 @@ export class SetupManager {
    * デッキシャッフルアニメーション
    */
   async animateDeckShuffle() {
-    console.log('🔀 Animating deck shuffle...');
+    noop('🔀 Animating deck shuffle...');
     
     const playerDeck = document.querySelector('.player-self .deck-container');
     const cpuDeck = document.querySelector('.opponent-board .deck-container');

@@ -10,6 +10,8 @@ import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
 
+const noop = () => {};
+
 /**
  * ターン管理クラス
  */
@@ -28,7 +30,7 @@ export class TurnManager {
    * @returns {object} 更新されたゲーム状態
    */
   async startPlayerTurn(state) {
-    console.log('🎯 Starting player turn...');
+    noop('🎯 Starting player turn...');
     let newState = cloneGameState(state);
 
     // ターン数増加（最初のターンは既に1なので、2ターン目から増加）
@@ -65,7 +67,7 @@ export class TurnManager {
    * プレイヤードローフェーズ処理
    */
   async handlePlayerDraw(state) {
-    console.log('🎴 Player draw phase...');
+    noop('🎴 Player draw phase...');
     let newState = cloneGameState(state);
 
     // 自動ドロー（最初のターンのみ選択制、以降は強制）
@@ -93,7 +95,7 @@ export class TurnManager {
    * プレイヤーメインフェーズ処理
    */
   handlePlayerMainPhase(state, action, actionData = {}) {
-    console.log(`🎮 Player main phase action: ${action}`, actionData);
+    noop(`🎮 Player main phase action: ${action}`, actionData);
     let newState = cloneGameState(state);
 
     this.turnActions.push({ action, data: actionData, timestamp: Date.now() });
@@ -230,7 +232,7 @@ export class TurnManager {
    * 攻撃実行処理
    */
   async executeAttack(state) {
-    console.log('⚔️ Executing attack...');
+    noop('⚔️ Executing attack...');
     let newState = cloneGameState(state);
 
     if (!newState.pendingAction || newState.pendingAction.type !== 'attack') {
@@ -242,13 +244,13 @@ export class TurnManager {
     const defenderOrientation = CardOrientationManager.getCardOrientation(defender, 'active');
     const defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defender === 'player' ? '.active-bottom' : '.active-top'}`);
 
-    console.log(`🗡️ ${attacker} attacks ${defender} with attack index ${attackIndex}`);
+    noop(`🗡️ ${attacker} attacks ${defender} with attack index ${attackIndex}`);
     
     // 攻撃前の状態ログ
     const attackerPokemon = newState.players[attacker].active;
     const defenderPokemon = newState.players[defender].active;
-    console.log(`👊 Attacker: ${attackerPokemon?.name_ja} (HP: ${attackerPokemon?.hp - (attackerPokemon?.damage || 0)}/${attackerPokemon?.hp})`);
-    console.log(`🛡️ Defender: ${defenderPokemon?.name_ja} (HP: ${defenderPokemon?.hp - (defenderPokemon?.damage || 0)}/${defenderPokemon?.hp})`);
+    noop(`👊 Attacker: ${attackerPokemon?.name_ja} (HP: ${attackerPokemon?.hp - (attackerPokemon?.damage || 0)}/${attackerPokemon?.hp})`);
+    noop(`🛡️ Defender: ${defenderPokemon?.name_ja} (HP: ${defenderPokemon?.hp - (defenderPokemon?.damage || 0)}/${defenderPokemon?.hp})`);
 
     // 攻撃実行
     newState = Logic.performAttack(newState, attacker, attackIndex);
@@ -256,7 +258,7 @@ export class TurnManager {
     // 攻撃後の状態ログ
     const defenderAfter = newState.players[defender].active;
     if (defenderAfter) {
-      console.log(`💥 After attack - Defender: ${defenderAfter.name_ja} (HP: ${defenderAfter.hp - (defenderAfter.damage || 0)}/${defenderAfter.hp}, Damage: ${defenderAfter.damage || 0})`);
+      noop(`💥 After attack - Defender: ${defenderAfter.name_ja} (HP: ${defenderAfter.hp - (defenderAfter.damage || 0)}/${defenderAfter.hp}, Damage: ${defenderAfter.damage || 0})`);
     }
 
     // 攻撃アニメーション
@@ -276,12 +278,12 @@ export class TurnManager {
 
     // きぜつによる新アクティブ選択が必要な場合
     if (newState.phase === GAME_PHASES.AWAITING_NEW_ACTIVE) {
-      console.log('🔄 Knockout occurred, waiting for new active pokemon selection');
+      noop('🔄 Knockout occurred, waiting for new active pokemon selection');
       newState.pendingAction = null;
 
       // CPUが選ぶ番なら、ここでCPUの選択ロジックを呼び出す
       if (newState.playerToAct === 'cpu') {
-        console.log('🤖 CPU is selecting a new active pokemon...');
+        noop('🤖 CPU is selecting a new active pokemon...');
         newState = await this.cpuPromoteToActive(newState);
       }
       
@@ -296,7 +298,7 @@ export class TurnManager {
     // 勝敗判定（新アクティブ選択が不要な場合のみ）
     newState = Logic.checkForWinner(newState);
     if (newState.phase === GAME_PHASES.GAME_OVER) {
-      console.log('🏆 Game ended after attack:', newState.winner, newState.gameEndReason);
+      noop('🏆 Game ended after attack:', newState.winner, newState.gameEndReason);
       return newState;
     }
 
@@ -320,7 +322,7 @@ export class TurnManager {
    * プレイヤーターン終了
    */
   endPlayerTurn(state) {
-    console.log('🔄 Ending player turn...');
+    noop('🔄 Ending player turn...');
     let newState = cloneGameState(state);
 
     newState.phase = GAME_PHASES.CPU_TURN;
@@ -340,7 +342,7 @@ export class TurnManager {
    * CPUターン開始
    */
   async startCpuTurn(state) {
-    console.log('🤖 Starting CPU turn...');
+    noop('🤖 Starting CPU turn...');
     let newState = cloneGameState(state);
 
     // ターン数増加
@@ -372,7 +374,7 @@ export class TurnManager {
    * CPU自動ターン実行
    */
   async executeCpuTurn(state) {
-    console.log('🎯 Executing CPU turn...');
+    noop('🎯 Executing CPU turn...');
     let newState = cloneGameState(state);
 
     // 1. バトルポケモンがいない場合はベンチから昇格
@@ -426,7 +428,7 @@ export class TurnManager {
       // CPU新アクティブ選択完了後の勝敗判定
       newState = Logic.checkForWinner(newState);
       if (newState.phase === GAME_PHASES.GAME_OVER) {
-        console.log('🏆 Game ended after CPU new active selection:', newState.winner, newState.gameEndReason);
+        noop('🏆 Game ended after CPU new active selection:', newState.winner, newState.gameEndReason);
         return newState;
       }
       
@@ -560,7 +562,7 @@ export class TurnManager {
    * CPUターン終了
    */
   async endCpuTurn(state) {
-    console.log('🔄 Ending CPU turn...');
+    noop('🔄 Ending CPU turn...');
     let newState = cloneGameState(state);
 
     newState = addLogEntry(newState, {
@@ -663,7 +665,7 @@ export class TurnManager {
    */
   reset() {
     this.turnActions = [];
-    console.log('🔄 Turn manager reset');
+    noop('🔄 Turn manager reset');
   }
 }
 

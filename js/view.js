@@ -6,6 +6,8 @@ import { BUTTON_IDS, CONTAINER_IDS, ACTION_BUTTON_GROUPS, CSS_CLASSES } from './
 import { errorHandler } from './error-handler.js';
 import { modalManager, MODAL_TYPES } from './modal-manager.js';
 
+const noop = () => {};
+
 export class View {
     constructor(rootEl) {
         this.rootEl = rootEl;
@@ -79,7 +81,7 @@ export class View {
                 confirmSetup: document.getElementById(BUTTON_IDS.CONFIRM_SETUP),
                 confirmInitialPokemon: document.getElementById(BUTTON_IDS.CONFIRM_INITIAL_POKEMON)
             };
-            console.log('🔍 Action buttons retrieved:', this._actionButtons);
+            noop('🔍 Action buttons retrieved:', this._actionButtons);
         }
         return this._actionButtons;
     }
@@ -308,11 +310,11 @@ export class View {
         // Deck - HTMLのクラス名に合わせて修正
         const deckSelector = playerType === 'player' ? '.bottom-right-deck' : '.top-left-deck';
         const deckSlot = boardElement.querySelector(deckSelector);
-        console.log(`🃏 Rendering deck for ${playerType}: selector=${deckSelector}, slot found=${!!deckSlot}`);
+        noop(`🃏 Rendering deck for ${playerType}: selector=${deckSelector}, slot found=${!!deckSlot}`);
         if (deckSlot) {
             deckSlot.innerHTML = '';
             const deckArr = Array.isArray(safePlayer.deck) ? safePlayer.deck : [];
-            console.log(`  📚 Deck has ${deckArr.length} cards`);
+            noop(`  📚 Deck has ${deckArr.length} cards`);
             const deckCardEl = this._createCardElement(deckArr[0] || null, playerType, 'deck', 0, true);
             deckSlot.appendChild(deckCardEl);
             if (deckArr.length > 0) {
@@ -320,7 +322,7 @@ export class View {
                 count.className = 'absolute bottom-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
                 count.textContent = deckArr.length;
                 deckSlot.appendChild(count);
-                console.log(`  🏷️ Added deck count badge: ${deckArr.length} cards`);
+                noop(`  🏷️ Added deck count badge: ${deckArr.length} cards`);
             }
             
             // Make the deck clickable for drawing
@@ -631,15 +633,15 @@ export class View {
                 overflow: `${getComputedStyle(el).overflowX}/${getComputedStyle(el).overflowY}`
             } : { label, missing: true };
 
-            console.group('Z-ORDER DEBUG');
-            console.table([
+            noop('Z-ORDER DEBUG');
+            noop([
                 info(board, '#game-board'),
                 info(hand, '#player-hand'),
                 info(handInner, '#player-hand-inner'),
                 info(sampleHandCard, '.hand-card(sample)'),
                 info(modal, '#action-modal')
             ]);
-            console.groupEnd();
+            noop();
         } catch (e) {
             console.warn('Z-ORDER DEBUG failed:', e);
         }
@@ -655,7 +657,7 @@ export class View {
             return;
         }
         
-        console.log(`🏆 Rendering ${prize.length} prize cards for ${playerType} in ${prizeContainerSelector}`);
+        noop(`🏆 Rendering ${prize.length} prize cards for ${playerType} in ${prizeContainerSelector}`);
         
         // 各カードスロットにカードを配置
         const prizeSlots = prizeContainer.querySelectorAll('.card-slot');
@@ -673,7 +675,7 @@ export class View {
                 cardEl.style.height = '100%';
                 
                 slot.appendChild(cardEl);
-                console.log(`  🃏 Prize card ${index + 1} added to slot`);
+                noop(`  🃏 Prize card ${index + 1} added to slot`);
             }
         });
     }
@@ -933,7 +935,7 @@ export class View {
         if (this.dynamicInteractiveButtonsContainer) {
             this.dynamicInteractiveButtonsContainer.innerHTML = '';
             this.dynamicInteractiveButtonsContainer.classList.add(CSS_CLASSES.HIDDEN); // ボタンがなくなったらコンテナも非表示
-            console.log('🗑️ Dynamic interactive buttons cleared');
+            noop('🗑️ Dynamic interactive buttons cleared');
         }
     }
 
@@ -1051,7 +1053,7 @@ export class View {
 
     // Action Buttons
     showActionButtons(buttonsToShow = []) {
-        console.log('📋 showActionButtons called with:', buttonsToShow);
+        noop('📋 showActionButtons called with:', buttonsToShow);
         
         // すべての静的ボタンを一度非表示にする
         const allButtonIds = [
@@ -1074,7 +1076,7 @@ export class View {
             const button = this.getButton(buttonId);
             if (button) {
                 button.classList.remove(CSS_CLASSES.HIDDEN);
-                console.log(`✅ Button shown: ${buttonId}`);
+                noop(`✅ Button shown: ${buttonId}`);
             } else {
                 errorHandler.handleError(new Error(`Button not found: ${buttonId}`), 'game_state', false);
             }
@@ -1220,7 +1222,7 @@ export class View {
     }
 
     _clearBoard() {
-        console.log('🧹 Clearing board');
+        noop('🧹 Clearing board');
         
         const allSlots = document.querySelectorAll('.card-slot');
         allSlots.forEach(slot => {
@@ -1231,7 +1233,7 @@ export class View {
         if (this.playerHand) this.playerHand.innerHTML = '';
         if (this.cpuHand) this.cpuHand.innerHTML = '';
         
-        console.log('✅ Board cleared');
+        noop('✅ Board cleared');
     }
     
 }

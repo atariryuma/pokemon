@@ -11,6 +11,8 @@ import { turnManager } from './turn-manager.js';
 import { getCardImagePath, loadCardsFromJSON } from './data-manager.js';
 import { addLogEntry } from './state.js';
 
+const noop = () => {};
+
 export class Game {
     constructor(rootEl, playmatSlotsData) {
         this.rootEl = rootEl;
@@ -41,7 +43,7 @@ export class Game {
         this.setupAnimationsExecuted = false;
         this.prizeCardAnimationExecuted = false;
         this.cardRevealAnimationExecuted = false;
-        console.log('🔄 Animation flags reset');
+        noop('🔄 Animation flags reset');
     }
 
     async init() {
@@ -68,7 +70,7 @@ export class Game {
             this._setupActionButtonHandlers();
 
             // Render the initial board state immediately after state creation
-            console.log('🎨 Rendering initial game state with deck...');
+            noop('🎨 Rendering initial game state with deck...');
             this.view.render(this.state);
 
             // Show game start message instead of auto-starting
@@ -120,7 +122,7 @@ export class Game {
      * DOM準備完了を確認してからバインドする
      */
     _setupActionButtonHandlers() {
-        console.log('🔧 Setting up action button handlers');
+        noop('🔧 Setting up action button handlers');
         
         // DOMContentLoadedまたはDOM準備完了まで待機
         const setupHandlers = () => {
@@ -130,17 +132,17 @@ export class Game {
 
             if (retreatButton) {
                 retreatButton.onclick = this._handleRetreat.bind(this);
-                console.log('✅ Retreat button handler bound');
+                noop('✅ Retreat button handler bound');
             }
 
             if (attackButton) {
                 attackButton.onclick = this._handleAttack.bind(this);
-                console.log('✅ Attack button handler bound');
+                noop('✅ Attack button handler bound');
             }
 
             if (endTurnButton) {
                 endTurnButton.onclick = this._handleEndTurn.bind(this);
-                console.log('✅ End turn button handler bound');
+                noop('✅ End turn button handler bound');
             }
         };
 
@@ -315,7 +317,7 @@ export class Game {
                 }
                 
                 // アニメーション完了後に確定HUDを再表示（確実に表示されるように）
-                console.log('🔍 Animation completed, showing confirm HUD again');
+                noop('🔍 Animation completed, showing confirm HUD again');
                 this._showConfirmHUDIfReady();
 
             } else if ((zone === 'active' || zone === 'bench') && !this.selectedCardForSetup) {
@@ -738,7 +740,7 @@ export class Game {
      * ゲーム終了処理
      */
     async _handleGameOver(winner, reason = '') {
-        console.log('🏆 Game Over:', winner, reason);
+        noop('🏆 Game Over:', winner, reason);
         
         // ゲーム終了アニメーション実行
         await this._playGameOverAnimation(winner);
@@ -812,7 +814,7 @@ export class Game {
      * 新しいゲーム開始
      */
     async _startNewGame() {
-        console.log('🎮 Starting new game...');
+        noop('🎮 Starting new game...');
         
         // モーダルを閉じる
         this.view.hideModal();
@@ -987,7 +989,7 @@ export class Game {
         // 手札エリアの上にアクションHUDを表示
         if (actions.length > 0) {
             this.view.showActionHUD({ actions });
-            console.log('🎯 Player main actions HUD displayed');
+            noop('🎯 Player main actions HUD displayed');
         }
     }
 
@@ -1039,8 +1041,8 @@ export class Game {
             return;
         }
 
-        console.log('🔥 CONFIRM BUTTON PRESSED - Starting setup confirmation flow');
-        console.log('🔥 Animation flags at confirm button press:', {
+        noop('🔥 CONFIRM BUTTON PRESSED - Starting setup confirmation flow');
+        noop('🔥 Animation flags at confirm button press:', {
             setupAnimationsExecuted: this.setupAnimationsExecuted,
             prizeCardAnimationExecuted: this.prizeCardAnimationExecuted,
             cardRevealAnimationExecuted: this.cardRevealAnimationExecuted
@@ -1056,7 +1058,7 @@ export class Game {
         this.view.showInteractiveMessage('ポケモン配置完了！サイドカードを配布しています...', [], 'panel');
         this.state = addLogEntry(this.state, { message: 'サイドカード配布開始' });
         
-        console.log('🔥 About to call setupManager.confirmSetup');
+        noop('🔥 About to call setupManager.confirmSetup');
         
         // 状態を更新して、サイドカード配布を含む完全なセットアップを実行
         let newState = await this.setupManager.confirmSetup(this.state);
@@ -1064,15 +1066,15 @@ export class Game {
         
         // サイドカード配布が完了した後でアニメーションとUI更新を順次実行
         if (newState.phase === GAME_PHASES.GAME_START_READY) {
-            console.log('🎯 Prize cards setup completed, showing animation and start button');
+            noop('🎯 Prize cards setup completed, showing animation and start button');
             
             // 1. DOM更新を少し待つ
             await this._delay(300);
             
             // 2. サイドカードアニメーション実行
-            console.log('🔥 About to call _animatePrizeCardSetup');
+            noop('🔥 About to call _animatePrizeCardSetup');
             await this._animatePrizeCardSetup();
-            console.log('✅ Prize card animation completed');
+            noop('✅ Prize card animation completed');
             
             // 3. アニメーション完了後に準備完了メッセージとスタートボタンを表示
             await this._delay(500); // アニメーション完了を待つ
@@ -1084,7 +1086,7 @@ export class Game {
                         {
                             text: 'ゲームスタート',
                             callback: () => {
-                                console.log('🔥 GAME START BUTTON CLICKED - Starting actual game');
+                                noop('🔥 GAME START BUTTON CLICKED - Starting actual game');
                                 this._startActualGame();
                             }
                         }
@@ -1101,8 +1103,8 @@ export class Game {
      * 実際のゲーム開始処理
      */
     async _startActualGame() {
-        console.log('🔥 _startActualGame() CALLED - Current phase:', this.state.phase);
-        console.log('🔥 _startActualGame() - Animation flags:', {
+        noop('🔥 _startActualGame() CALLED - Current phase:', this.state.phase);
+        noop('🔥 _startActualGame() - Animation flags:', {
             setupAnimationsExecuted: this.setupAnimationsExecuted,
             prizeCardAnimationExecuted: this.prizeCardAnimationExecuted,
             cardRevealAnimationExecuted: this.cardRevealAnimationExecuted
@@ -1110,16 +1112,16 @@ export class Game {
         
         // 重複実行を防ぐため、既にゲーム開始済みなら早期return
         if (this.state.phase === GAME_PHASES.PLAYER_MAIN || this.state.phase === GAME_PHASES.PLAYER_TURN) {
-            console.log('🔄 Game already started, skipping _startActualGame');
+            noop('🔄 Game already started, skipping _startActualGame');
             return;
         }
         
-        console.log('🎮 Starting actual game with card reveal animation');
+        noop('🎮 Starting actual game with card reveal animation');
         
         // 1. カードをめくるアニメーションを実行
-        console.log('🔥 About to call _animateCardReveal');
+        noop('🔥 About to call _animateCardReveal');
         await this._animateCardReveal();
-        console.log('🔥 _animateCardReveal completed');
+        noop('🔥 _animateCardReveal completed');
 
         // 2. カードを表向きにする (State更新)
         let newState = await this.setupManager.startGameRevealCards(this.state);
@@ -1145,12 +1147,12 @@ export class Game {
     async _animateCardReveal() {
         // 重複実行防止
         if (this.cardRevealAnimationExecuted) {
-            console.log('🔄 Card reveal animation already executed, skipping');
+            noop('🔄 Card reveal animation already executed, skipping');
             return;
         }
         
         this.cardRevealAnimationExecuted = true;
-        console.log('🃏 Starting card reveal animation');
+        noop('🃏 Starting card reveal animation');
         
         const allPokemonElements = [];
 
@@ -1179,12 +1181,12 @@ export class Game {
         });
 
         // 各ポケモンをフリップ
-        console.log(`🔥 About to flip ${allPokemonElements.length} pokemon cards`);
+        noop(`🔥 About to flip ${allPokemonElements.length} pokemon cards`);
         for (const { element, card } of allPokemonElements) {
-            console.log(`🔥 Flipping card: ${card.name_ja} (${card.name_en})`);
+            noop(`🔥 Flipping card: ${card.name_ja} (${card.name_en})`);
             await animationManager.flipCardFaceUp(element, getCardImagePath(card.name_en));
         }
-        console.log(`🔥 All ${allPokemonElements.length} pokemon cards flipped`);
+        noop(`🔥 All ${allPokemonElements.length} pokemon cards flipped`);
     }
 
     /**
@@ -1290,12 +1292,12 @@ export class Game {
     async _animatePrizeCardSetup() {
         // 重複実行防止
         if (this.prizeCardAnimationExecuted) {
-            console.log('🔄 Prize card animation already executed, skipping');
+            noop('🔄 Prize card animation already executed, skipping');
             return;
         }
         
         this.prizeCardAnimationExecuted = true;
-        console.log('🎯 Starting prize card animation');
+        noop('🎯 Starting prize card animation');
         
         // 実際にカード要素が入っているスロットの子要素を取得
         const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
