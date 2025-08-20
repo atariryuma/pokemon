@@ -360,11 +360,11 @@ export class View {
             }
             
             // 基本的な表示設定のみ（Mac Dock効果は後で追加）
-            cardEl.style.opacity = '1';
             cardEl.style.visibility = 'visible';
             cardEl.style.display = 'flex';
             cardEl.style.zIndex = '61';
             cardEl.style.position = 'relative';
+            cardEl.style.opacity = '1'; // Always visible by default
             
             handElement.appendChild(cardEl);
         });
@@ -678,6 +678,24 @@ export class View {
                 noop(`  🃏 Prize card ${index + 1} added to slot`);
             }
         });
+
+        // Add prize count badge
+        const prizeCount = prize.filter(p => p !== null).length; // Count non-null prizes
+        if (prizeCount > 0) {
+            let countBadge = prizeContainer.querySelector('.prize-count-badge');
+            if (!countBadge) {
+                countBadge = document.createElement('div');
+                countBadge.className = 'prize-count-badge absolute top-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
+                prizeContainer.appendChild(countBadge);
+            }
+            countBadge.textContent = prizeCount;
+            countBadge.style.display = 'flex'; // Ensure it's visible
+        } else {
+            const countBadge = prizeContainer.querySelector('.prize-count-badge');
+            if (countBadge) {
+                countBadge.style.display = 'none'; // Hide if no prizes left
+            }
+        }
     }
 
     _renderStadium(state) {

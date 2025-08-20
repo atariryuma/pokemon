@@ -127,6 +127,9 @@ export class UnifiedAnimationManager {
             this.addAnimationClass(target, 'animate-deal-card');
 
             this.waitForAnimation(target, 'dealCard', () => {
+              // アニメーション終了後に確実に表示状態にする
+              element.style.opacity = '1';
+              element.style.visibility = 'visible';
               resolve();
             });
           } else {
@@ -151,7 +154,14 @@ export class UnifiedAnimationManager {
         if (!el) return resolve();
         const target = el.querySelector('img') || el;
         target.classList.add('animate-deal-player-hand-card');
-        this.waitForAnimation(target, 'dealCard', resolve);
+        this.waitForAnimation(target, 'dealCard', () => {
+          // アニメーション終了後に確実に表示状態にする
+          if (el) {
+            el.style.opacity = '1';
+            el.style.visibility = 'visible';
+          }
+          resolve();
+        });
       }, i * delay);
     })));
   }

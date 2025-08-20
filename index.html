@@ -368,7 +368,7 @@
         @keyframes dealPlayerHandCard {
             0% {
                 transform: translateY(30px) scale(0.9);
-                opacity: 1;
+                opacity: 0; /* Start invisible */
             }
             100% {
                 transform: translateY(0) scale(1);
@@ -376,26 +376,26 @@
             }
         }
 
-        /* サイドカード横配布アニメーション（左から） */
-        @keyframes prizeDealLeft {
+        /* サイドカード配布アニメーション（上から） */
+        @keyframes prizeDealLeft { /* Player's side (left) */
             0% {
-                transform: translateX(-100px) rotate(-5deg) scale(0.8);
-                opacity: 1;
+                transform: translateY(-50px) rotate(-5deg) scale(0.8);
+                opacity: 0; /* Start invisible */
             }
             100% {
-                transform: translateX(0) rotate(0deg) scale(1);
+                transform: translateY(0) rotate(0deg) scale(1);
                 opacity: 1;
             }
         }
 
-        /* サイドカード横配布アニメーション（右から） */
-        @keyframes prizeDealRight {
+        /* サイドカード配布アニメーション（下から） */
+        @keyframes prizeDealRight { /* CPU's side (right) */
             0% {
-                transform: translateX(100px) rotate(5deg) scale(0.8);
-                opacity: 1;
+                transform: translateY(50px) rotate(5deg) scale(0.8);
+                opacity: 0; /* Start invisible */
             }
             100% {
-                transform: translateX(0) rotate(0deg) scale(1);
+                transform: translateY(0) rotate(0deg) scale(1);
                 opacity: 1;
             }
         }
@@ -528,12 +528,12 @@
             animation: dealCard 0.6s ease-out;
         }
 
-        .animate-deal-card-nofade {
-            animation: dealCardNoFade 0.6s ease-out;
+        .animate-deal-player-hand-card {
+            animation: dealPlayerHandCard 0.6s ease-out forwards; /* Added forwards */
         }
 
-        .animate-deal-player-hand-card {
-            animation: dealPlayerHandCard 0.6s ease-out;
+        .animate-deal-card-nofade {
+            animation: dealCardNoFade 0.6s ease-out forwards; /* Added forwards */
         }
 
         .animate-prize-deal-left {

@@ -276,6 +276,16 @@ export class TurnManager {
     }
     newState = Logic.checkForKnockout(newState, defender);
 
+    // Check for prize cards after KO (if any)
+    const attackingPlayerState = newState.players[attackingPlayerId];
+    if (attackingPlayerState.prizesToTake > 0) {
+        newState.phase = GAME_PHASES.PRIZE_SELECTION;
+        newState.playerToAct = attackingPlayerId; // The player who needs to take prizes
+        newState.prompt.message = `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドカードを選んで取ってください。`;
+        newState.pendingAction = null; // Clear any pending actions
+        return newState; // Stop further processing in this function, wait for prize selection
+    }
+
     // きぜつによる新アクティブ選択が必要な場合
     if (newState.phase === GAME_PHASES.AWAITING_NEW_ACTIVE) {
       noop('🔄 Knockout occurred, waiting for new active pokemon selection');

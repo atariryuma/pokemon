@@ -1278,6 +1278,22 @@ export class Game {
         playerHand?.classList.remove('is-preparing-animation');
         cpuHand?.classList.remove('is-preparing-animation');
 
+        // 準備クラス削除後に各カードの表示状態を復元
+        if (playerHand) {
+            const playerCards = playerHand.querySelectorAll('.relative');
+            playerCards.forEach(card => {
+                card.style.opacity = '1';
+                card.style.visibility = 'visible';
+            });
+        }
+        if (cpuHand) {
+            const cpuCards = cpuHand.querySelectorAll('.relative');
+            cpuCards.forEach(card => {
+                card.style.opacity = '1';
+                card.style.visibility = 'visible';
+            });
+        }
+
         // DOMにクラスの削除が反映されるのを待つ
         await this._delay(20); // 非常に短い遅延
 
