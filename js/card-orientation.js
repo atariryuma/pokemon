@@ -12,8 +12,10 @@
  * 
  * === ゾーン別ルール ===
  * - hand: CPU/Player問わず回転なし
- * - deck/active/bench/prize/discard: CPUのみ180度回転、Playerは回転なし
- */
+* - deck/active/bench/prize/discard: CPUのみ180度回転、Playerは回転なし
+*/
+
+const noop = () => {};
 
 /**
  * カード向き制御の統一管理クラス
@@ -33,7 +35,7 @@ export class CardOrientationManager {
     // playerId が null/undefined の場合のみ要素から判定
     if (playerId === null || playerId === undefined) {
       isCpu = element?.closest('.opponent-board');
-      console.log(`🔍 getCardOrientation: playerId was null, detected from DOM: isCpu=${isCpu}`);
+      noop(`🔍 getCardOrientation: playerId was null, detected from DOM: isCpu=${isCpu}`);
     }
     
     // ゾーン別の向き制御ルール
@@ -44,7 +46,7 @@ export class CardOrientationManager {
     }
     
     // 詳細デバッグログ
-    console.log(`🎯 getCardOrientation: playerId="${playerId}", zone="${zone}", isCpu=${isCpu}, shouldRotate=${shouldRotate}`);
+    noop(`🎯 getCardOrientation: playerId="${playerId}", zone="${zone}", isCpu=${isCpu}, shouldRotate=${shouldRotate}`);
     
     return {
       isCpu,
@@ -71,23 +73,23 @@ export class CardOrientationManager {
     const imgElement = cardElement.querySelector('img');
     const orientation = this.getCardOrientation(playerId, zone, cardElement);
     
-    console.log(`🎯 CardOrientation detected: playerId=${playerId}, zone=${zone}, isCpu=${orientation.isCpu}, shouldRotate=${orientation.shouldRotate}, transform=${orientation.transform}, hasImg=${!!imgElement}`);
+    noop(`🎯 CardOrientation detected: playerId=${playerId}, zone=${zone}, isCpu=${orientation.isCpu}, shouldRotate=${orientation.shouldRotate}, transform=${orientation.transform}, hasImg=${!!imgElement}`);
     
     // shouldRotateフラグまたは強制適用の場合のみ回転を適用
     if (orientation.shouldRotate || force) {
       cardElement.classList.add('cpu-card');
       cardElement.classList.remove('player-card');
-      console.log(`✅ Applied card rotation: CSS .cpu-card class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
+      noop(`✅ Applied card rotation: CSS .cpu-card class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
     } else {
       if (orientation.isCpu) {
         // CPU手札など回転しないCPUカード
         cardElement.classList.add('cpu-card-no-rotate');
         cardElement.classList.remove('player-card', 'cpu-card');
-        console.log(`✅ Applied CPU card (no rotation): CSS .cpu-card-no-rotate class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
+        noop(`✅ Applied CPU card (no rotation): CSS .cpu-card-no-rotate class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
       } else {
         cardElement.classList.add('player-card');
         cardElement.classList.remove('cpu-card', 'cpu-card-no-rotate');
-        console.log(`✅ Applied player card orientation: CSS .player-card class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
+        noop(`✅ Applied player card orientation: CSS .player-card class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
       }
     }
   }

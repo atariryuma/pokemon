@@ -7,6 +7,8 @@
 
 import { animationManager } from './unified-animations.js';
 
+const noop = () => {};
+
 /**
  * モーダルタイプの定義
  */
@@ -53,7 +55,7 @@ export class ModalManager {
         this.setupEventListeners();
         this.initialized = true;
         
-        console.log('🎭 ModalManager initialized');
+        noop('🎭 ModalManager initialized');
     }
 
     /**
@@ -69,7 +71,7 @@ export class ModalManager {
         // アクションHUD要素を作成
         this.actionHUD = this.createActionHUD();
 
-        console.log('📦 Modal elements created');
+        noop('📦 Modal elements created');
     }
 
     /**
@@ -264,7 +266,7 @@ export class ModalManager {
             this.removeToast(toast);
         });
 
-        console.log(`📢 Toast shown: ${message} (${type})`);
+        noop(`📢 Toast shown: ${message} (${type})`);
     }
 
     /**
@@ -451,7 +453,7 @@ export class ModalManager {
         // スタッククリア
         this.modalStack = [];
         
-        console.log('🎭 All modals closed');
+        noop('🎭 All modals closed');
     }
 
     /**

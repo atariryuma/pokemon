@@ -7,6 +7,8 @@
 
 import { CardOrientationManager } from './card-orientation.js';
 
+const noop = () => {};
+
 /**
  * アニメーション統一設定
  */
@@ -34,7 +36,7 @@ export const ANIMATION_CONFIG = {
  */
 export class UnifiedAnimationManager {
   constructor() {
-    console.log('🎬 Unified Animation Manager initialized');
+    noop('🎬 Unified Animation Manager initialized');
     this.activeAnimations = new Set();
     this.phaseTransitionQueue = [];
     
@@ -206,7 +208,7 @@ export class UnifiedAnimationManager {
    * @param {string} frontImageSrc - 表面の画像パス
    */
   async flipCardFaceUp(cardElement, frontImageSrc) {
-    console.log(`🔥 ANIMATION CALLED: flipCardFaceUp for element:`, cardElement?.dataset?.cardId || 'unknown', 'image:', frontImageSrc);
+    noop(`🔥 ANIMATION CALLED: flipCardFaceUp for element:`, cardElement?.dataset?.cardId || 'unknown', 'image:', frontImageSrc);
     
     return new Promise((resolve) => {
       if (!cardElement) return resolve();
@@ -242,7 +244,7 @@ export class UnifiedAnimationManager {
    * フェーズ間遷移アニメーション
    */
   async animatePhaseTransition(fromPhase, toPhase) {
-    console.log(`🎭 Animating phase transition: ${fromPhase} → ${toPhase}`);
+    noop(`🎭 Animating phase transition: ${fromPhase} → ${toPhase}`);
     
     // 既存のアニメーションをクリーンアップ
     await this.cleanupActiveAnimations();
@@ -464,7 +466,7 @@ export class UnifiedAnimationManager {
    * 統一カードアニメーション（手札からフィールドへ）
    */
   async createUnifiedCardAnimation(playerId, cardId, sourceZone, targetZone, targetIndex, options = {}) {
-    console.log(`🎬 Starting unified animation: ${playerId} ${cardId} ${sourceZone} -> ${targetZone}[${targetIndex}]`);
+    noop(`🎬 Starting unified animation: ${playerId} ${cardId} ${sourceZone} -> ${targetZone}[${targetIndex}]`);
     
     try {
       const {
@@ -504,7 +506,7 @@ export class UnifiedAnimationManager {
         { playerId, isSetupPhase, duration, initialSourceRect, targetZone } // ★ 追加: targetZone を渡す
       );
 
-      console.log(`✅ Unified animation completed: ${playerId} ${cardId} -> ${targetZone}[${targetIndex}]`);
+      noop(`✅ Unified animation completed: ${playerId} ${cardId} -> ${targetZone}[${targetIndex}]`);
 
     } catch (error) {
       console.error('❌ Error in unified card animation:', error);
@@ -684,7 +686,7 @@ export class UnifiedAnimationManager {
    * エネルギー付与の統一アニメーション
    */
   async createUnifiedEnergyAnimation(playerId, energyCardId, targetPokemonId) {
-    console.log(`🔋 Starting unified energy animation: ${playerId} ${energyCardId} -> ${targetPokemonId}`);
+    noop(`🔋 Starting unified energy animation: ${playerId} ${energyCardId} -> ${targetPokemonId}`);
     
     try {
       // 対象ポケモン要素を取得（アクティブまたはベンチ）
@@ -708,7 +710,7 @@ export class UnifiedAnimationManager {
           { card: energyCardData }
       );
       
-      console.log(`✅ Unified energy animation completed: ${playerId}`);
+      noop(`✅ Unified energy animation completed: ${playerId}`);
 
     } catch (error) {
       console.error('❌ Error in unified energy animation:', error);
@@ -752,7 +754,7 @@ export class UnifiedAnimationManager {
    * 攻撃アニメーションの統一処理
    */
   async createUnifiedAttackAnimation(attackerPlayerId, defenderPlayerId) {
-    console.log(`⚔️ Starting unified attack animation: ${attackerPlayerId} -> ${defenderPlayerId}`);
+    noop(`⚔️ Starting unified attack animation: ${attackerPlayerId} -> ${defenderPlayerId}`);
     
     try {
       const attackerElement = document.querySelector(
@@ -784,7 +786,7 @@ export class UnifiedAnimationManager {
    * ノックアウトアニメーションの統一処理
    */
   async createUnifiedKnockoutAnimation(playerId, pokemonId) {
-    console.log(`💀 Starting unified knockout animation: ${playerId} ${pokemonId}`);
+    noop(`💀 Starting unified knockout animation: ${playerId} ${pokemonId}`);
     
     try {
       const pokemonElement = this.findPokemonElement(playerId, pokemonId);
@@ -829,7 +831,7 @@ export class UnifiedAnimationManager {
       applyOrientation = true
     } = options;
 
-    console.log(`🎬 Starting unified card deal: ${animationType} for ${playerId}, ${cardElements.length} cards`);
+    noop(`🎬 Starting unified card deal: ${animationType} for ${playerId}, ${cardElements.length} cards`);
 
     if (!cardElements || cardElements.length === 0) {
       console.warn('⚠️ No card elements provided for animation');
@@ -957,7 +959,7 @@ export class UnifiedAnimationManager {
    * @param {Object} options - オプション
    */
   async animatePrizeDeal(cardElements, playerId, options = {}) {
-    console.log(`🔥 ANIMATION CALLED: animatePrizeDeal for ${playerId}, elements:`, cardElements.length);
+    noop(`🔥 ANIMATION CALLED: animatePrizeDeal for ${playerId}, elements:`, cardElements.length);
     
     const defaultOptions = {
       staggerDelay: 150,
@@ -977,7 +979,7 @@ export class UnifiedAnimationManager {
    * システムリセット
    */
   reset() {
-    console.log('🔄 Unified Animation Manager reset');
+    noop('🔄 Unified Animation Manager reset');
   }
 
   /**

@@ -6,6 +6,8 @@
 // カードデータ（JSONから動的読み込み）
 let cardMasterList = [];
 
+const noop = () => {};
+
 /**
  * カードデータをJSONファイルから読み込む
  * @returns {Promise<Array>} カードデータの配列
@@ -17,13 +19,13 @@ export async function loadCardsFromJSON() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         cardMasterList = await response.json();
-        console.log(`📦 Loaded ${cardMasterList.length} cards from JSON`);
+        noop(`📦 Loaded ${cardMasterList.length} cards from JSON`);
         return cardMasterList;
     } catch (error) {
         console.error('❌ Failed to load cards from JSON:', error);
         // フォールバック: 静的データ
         cardMasterList = getStaticFallbackData();
-        console.log(`🔄 Fallback: Using ${cardMasterList.length} static cards`);
+        noop(`🔄 Fallback: Using ${cardMasterList.length} static cards`);
         return cardMasterList;
     }
 }

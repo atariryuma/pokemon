@@ -32,6 +32,8 @@ export const GAME_PHASES = {
   GAME_OVER: 'gameOver'
 };
 
+const noop = () => {};
+
 /**
  * フェーズ遷移管理クラス
  */
@@ -48,7 +50,7 @@ export class PhaseManager {
    * @param {object} data - フェーズデータ
    */
   transitionTo(newPhase, data = {}) {
-    console.log(`🎭 Phase transition: ${this.currentPhase} → ${newPhase}`);
+    noop(`🎭 Phase transition: ${this.currentPhase} → ${newPhase}`);
     
     this.previousPhase = this.currentPhase;
     this.currentPhase = newPhase;
@@ -309,9 +311,9 @@ export class PhaseManager {
    * デバッグ用：フェーズ履歴を出力
    */
   logPhaseTransition() {
-    console.log(`🎭 Current Phase: ${this.currentPhase}`);
-    console.log(`🎭 Previous Phase: ${this.previousPhase}`);
-    console.log(`🎭 Phase Data:`, this.phaseData);
+    noop(`🎭 Current Phase: ${this.currentPhase}`);
+    noop(`🎭 Previous Phase: ${this.previousPhase}`);
+    noop(`🎭 Phase Data:`, this.phaseData);
   }
 }
 

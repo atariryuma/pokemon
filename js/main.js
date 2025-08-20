@@ -1,11 +1,13 @@
 import { Game } from './game.js';
 import { errorHandler } from './error-handler.js';
 
+const noop = () => {};
+
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('main.js loaded and DOMContentLoaded fired!');
+    noop('main.js loaded and DOMContentLoaded fired!');
 
     function initializeApp() {
-        console.log('initializeApp() called.');
+        noop('initializeApp() called.');
         const root = document.getElementById('game-board');
         if (!root) {
             errorHandler.handleError(new Error('ゲームボードのルート要素が見つかりません。'), 'setup_failed');
@@ -13,12 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const game = new Game(root, window.playmatSlotsData);
-        console.log('Game instance created.');
+        noop('Game instance created.');
         game.init();
-        console.log('game.init() called.');
+        noop('game.init() called.');
     }
 
-    console.log('Calling initializeApp()...');
+    noop('Calling initializeApp()...');
     initializeApp();
-    console.log('initializeApp() finished.');
+    noop('initializeApp() finished.');
 });
