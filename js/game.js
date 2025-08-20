@@ -51,10 +51,8 @@ export class Game {
             this.view.bindCardClick(this._handleCardClick.bind(this));
             this.view.setConfirmSetupButtonHandler(this._handleConfirmSetup.bind(this)); // Bind confirm button
 
-            // Bind action buttons
-            this.view.retreatButton.onclick = this._handleRetreat.bind(this);
-            this.view.attackButton.onclick = this._handleAttack.bind(this);
-            this.view.endTurnButton.onclick = this._handleEndTurn.bind(this); // Bind end turn button
+            // Bind action buttons after ensuring DOM is ready
+            this.bindActionButtons();
 
             // Render the initial board state immediately after state creation
             
@@ -95,6 +93,56 @@ export class Game {
         // Then control UI elements based on phase
         this._updateUI();
     } // End of _updateState
+
+    /**
+     * アクションボタンのイベントハンドラーを遅延バインドする
+     */
+    bindActionButtons() {
+        // より確実な方法：DOM要素の存在を確認してからバインド
+        const bindWhenReady = () => {
+            const retreatButton = document.getElementById('retreat-button');
+            const attackButton = document.getElementById('attack-button');
+            const endTurnButton = document.getElementById('end-turn-button');
+
+            let boundCount = 0;
+
+            if (retreatButton) {
+                retreatButton.onclick = this._handleRetreat.bind(this);
+                console.log('✅ Retreat button event handler bound');
+                boundCount++;
+            }
+
+            if (attackButton) {
+                attackButton.onclick = this._handleAttack.bind(this);
+                console.log('✅ Attack button event handler bound');
+                boundCount++;
+            }
+
+            if (endTurnButton) {
+                endTurnButton.onclick = this._handleEndTurn.bind(this);
+                console.log('✅ End turn button event handler bound');
+                boundCount++;
+            }
+
+            if (boundCount === 3) {
+                console.log('🎯 All action button event handlers successfully bound');
+                return true;
+            } else {
+                console.warn(`⚠️ Only ${boundCount}/3 buttons found and bound`);
+                return false;
+            }
+        };
+
+        // 即座に試行
+        if (!bindWhenReady()) {
+            // 失敗した場合は少し待ってから再試行
+            setTimeout(() => {
+                if (!bindWhenReady()) {
+                    console.error('❌ Failed to bind some action buttons after retry');
+                }
+            }, 100);
+        }
+    }
 
     async _handleCardClick(dataset) {
         const { owner, zone, cardId, index } = dataset;
