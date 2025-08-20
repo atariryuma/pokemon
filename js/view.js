@@ -934,7 +934,7 @@ export class View {
             const button = document.createElement('button');
             button.textContent = action.text;
             // Tailwind CSS クラスを適用
-            button.className = (action.className || 'px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg text-sm') + ' pokemon-action-button';
+            button.className = action.className || 'px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg text-sm';
             button.addEventListener('click', () => {
                 action.callback();
                 this.clearInteractiveButtons(); // アクション実行後にボタンをクリア
@@ -942,30 +942,18 @@ export class View {
             });
             this.playerActionButtonsContainer.appendChild(button);
         });
-
-        // 動的ボタンが追加されたのでコンテナを表示
+        
+        // アクションボタンコンテナを表示
         this.playerActionButtonsContainer.classList.remove('hidden');
-        console.log(`🎯 Added ${actions.length} dynamic action buttons`);
     }
 
     /**
      * 動的に追加されたインタラクティブボタンをクリア
-     * 静的HTML定義のボタンは保持する
      */
     clearInteractiveButtons() {
         if (this.playerActionButtonsContainer) {
-            // 動的に作成されたボタン（pokemon-action-buttonクラスを持つもの）のみを削除
-            const dynamicButtons = this.playerActionButtonsContainer.querySelectorAll('.pokemon-action-button');
-            dynamicButtons.forEach(button => button.remove());
-
-            // 静的ボタンが残っているかチェック
-            const staticButtons = this.playerActionButtonsContainer.querySelectorAll('button:not(.pokemon-action-button)');
-            if (staticButtons.length === 0) {
-                // 静的ボタンも動的ボタンもない場合のみコンテナを非表示
-                this.playerActionButtonsContainer.classList.add('hidden');
-            }
-
-            console.log(`🧹 Cleared ${dynamicButtons.length} dynamic buttons, ${staticButtons.length} static buttons remain`);
+            this.playerActionButtonsContainer.innerHTML = '';
+            this.playerActionButtonsContainer.classList.add('hidden'); // ボタンがなくなったらコンテナも非表示
         }
     }
 
@@ -1031,46 +1019,18 @@ export class View {
             this.endTurnButton,
             this.confirmSetupButton
         ];
-
-        // 全ての静的ボタンをまず隠す
         allButtons.forEach(button => {
             if (button) {
-                button.classList.add('hidden');
+                button.classList.add('hidden'); // Hide all first
             }
         });
 
-        let visibleButtonCount = 0;
         buttonsToShow.forEach(buttonId => {
-            // 直接IDから取得する代わりに、キャッシュされたボタンを使用
-            let button = null;
-            switch (buttonId) {
-                case 'retreat-button':
-                    button = this.retreatButton;
-                    break;
-                case 'attack-button':
-                    button = this.attackButton;
-                    break;
-                case 'end-turn-button':
-                    button = this.endTurnButton;
-                    break;
-                case 'confirm-setup-button':
-                    button = this.confirmSetupButton;
-                    break;
-            }
+            const button = document.getElementById(buttonId);
             if (button) {
-                console.log(`🎯 Showing button: ${buttonId}`);
                 button.classList.remove('hidden');
-                visibleButtonCount++;
-            } else {
-                console.error(`❌ Button not found: ${buttonId}`);
             }
         });
-
-        // 静的ボタンが表示される場合は、コンテナも表示
-        if (visibleButtonCount > 0) {
-            this.playerActionButtonsContainer.classList.remove('hidden');
-            console.log(`✅ Showing action button container with ${visibleButtonCount} static buttons`);
-        }
     }
 
     hideActionButtons() {
@@ -1080,23 +1040,11 @@ export class View {
             this.endTurnButton,
             this.confirmSetupButton
         ];
-
         allButtons.forEach(button => {
             if (button) {
                 button.classList.add('hidden');
             }
         });
-
-        // 全ての静的ボタンが隠された後、動的ボタンがあるかチェック
-        if (this.playerActionButtonsContainer) {
-            const dynamicButtons = this.playerActionButtonsContainer.querySelectorAll('.pokemon-action-button');
-            if (dynamicButtons.length === 0) {
-                // 動的ボタンもない場合はコンテナを隠す
-                this.playerActionButtonsContainer.classList.add('hidden');
-                console.log('🙈 Hiding action button container - no buttons visible');
-            }
-        }
-
         this.hideInitialPokemonSelectionUI();
     }
 
@@ -2002,7 +1950,7 @@ export class View {
             const button = document.createElement('button');
             button.textContent = action.text;
             // Tailwind CSS クラスを適用
-            button.className = (action.className || 'px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg text-sm') + ' pokemon-action-button';
+            button.className = action.className || 'px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg text-sm';
             button.addEventListener('click', () => {
                 action.callback();
                 this.clearInteractiveButtons(); // アクション実行後にボタンをクリア
@@ -2010,30 +1958,18 @@ export class View {
             });
             this.playerActionButtonsContainer.appendChild(button);
         });
-
-        // 動的ボタンが追加されたのでコンテナを表示
+        
+        // アクションボタンコンテナを表示
         this.playerActionButtonsContainer.classList.remove('hidden');
-        console.log(`🎯 Added ${actions.length} dynamic action buttons`);
     }
 
     /**
      * 動的に追加されたインタラクティブボタンをクリア
-     * 静的HTML定義のボタンは保持する
      */
     clearInteractiveButtons() {
         if (this.playerActionButtonsContainer) {
-            // 動的に作成されたボタン（pokemon-action-buttonクラスを持つもの）のみを削除
-            const dynamicButtons = this.playerActionButtonsContainer.querySelectorAll('.pokemon-action-button');
-            dynamicButtons.forEach(button => button.remove());
-
-            // 静的ボタンが残っているかチェック
-            const staticButtons = this.playerActionButtonsContainer.querySelectorAll('button:not(.pokemon-action-button)');
-            if (staticButtons.length === 0) {
-                // 静的ボタンも動的ボタンもない場合のみコンテナを非表示
-                this.playerActionButtonsContainer.classList.add('hidden');
-            }
-
-            console.log(`🧹 Cleared ${dynamicButtons.length} dynamic buttons, ${staticButtons.length} static buttons remain`);
+            this.playerActionButtonsContainer.innerHTML = '';
+            this.playerActionButtonsContainer.classList.add('hidden'); // ボタンがなくなったらコンテナも非表示
         }
     }
 
@@ -2119,46 +2055,18 @@ export class View {
             this.endTurnButton,
             this.confirmSetupButton
         ];
-
-        // 全ての静的ボタンをまず隠す
         allButtons.forEach(button => {
             if (button) {
-                button.classList.add('hidden');
+                button.classList.add('hidden'); // Hide all first
             }
         });
 
-        let visibleButtonCount = 0;
         buttonsToShow.forEach(buttonId => {
-            // 直接IDから取得する代わりに、キャッシュされたボタンを使用
-            let button = null;
-            switch (buttonId) {
-                case 'retreat-button':
-                    button = this.retreatButton;
-                    break;
-                case 'attack-button':
-                    button = this.attackButton;
-                    break;
-                case 'end-turn-button':
-                    button = this.endTurnButton;
-                    break;
-                case 'confirm-setup-button':
-                    button = this.confirmSetupButton;
-                    break;
-            }
+            const button = document.getElementById(buttonId);
             if (button) {
-                console.log(`🎯 Showing button: ${buttonId}`);
                 button.classList.remove('hidden');
-                visibleButtonCount++;
-            } else {
-                console.error(`❌ Button not found: ${buttonId}`);
             }
         });
-
-        // 静的ボタンが表示される場合は、コンテナも表示
-        if (visibleButtonCount > 0) {
-            this.playerActionButtonsContainer.classList.remove('hidden');
-            console.log(`✅ Showing action button container with ${visibleButtonCount} static buttons`);
-        }
     }
 
     hideActionButtons() {
@@ -2168,23 +2076,11 @@ export class View {
             this.endTurnButton,
             this.confirmSetupButton
         ];
-
         allButtons.forEach(button => {
             if (button) {
                 button.classList.add('hidden');
             }
         });
-
-        // 全ての静的ボタンが隠された後、動的ボタンがあるかチェック
-        if (this.playerActionButtonsContainer) {
-            const dynamicButtons = this.playerActionButtonsContainer.querySelectorAll('.pokemon-action-button');
-            if (dynamicButtons.length === 0) {
-                // 動的ボタンもない場合はコンテナを隠す
-                this.playerActionButtonsContainer.classList.add('hidden');
-                console.log('🙈 Hiding action button container - no buttons visible');
-            }
-        }
-
         this.hideInitialPokemonSelectionUI();
     }
 
