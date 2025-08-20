@@ -217,14 +217,14 @@ export function retreat(state, player, fromActiveId, toBenchIndex) {
     const benchPokemon = playerState.bench[toBenchIndex];
 
     if (!active || active.id !== fromActiveId || !benchPokemon) {
-        return state;
+        return { newState: state, discardedEnergy: [] };
     }
 
     const retreatCost = active.retreat_cost || 0;
     const attached = [...(active.attached_energy || [])];
     if (attached.length < retreatCost) {
         let newState = addLogEntry(state, { message: `${player === 'player' ? 'あなた' : '相手'}は${active.name_ja}をにがすためのエネルギーが足りない。` });
-        return newState;
+        return { newState: newState, discardedEnergy: [] };
     }
 
     const energyToDiscard = attached.slice(0, retreatCost);
@@ -246,7 +246,7 @@ export function retreat(state, player, fromActiveId, toBenchIndex) {
         }
     };
     newState = addLogEntry(newState, { message: `${player === 'player' ? 'あなた' : '相手'}は${active.name_ja}をにがし、${benchPokemon.name_ja}をバトル場に出した。` });
-    return newState;
+    return { newState: newState, discardedEnergy: energyToDiscard };
 }
 
 /**

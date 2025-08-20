@@ -6,6 +6,7 @@
  */
 
 import { CardOrientationManager } from './card-orientation.js';
+import { getCardImagePath } from './data-manager.js'; // Added import
 
 const noop = () => {};
 
@@ -42,6 +43,32 @@ export class UnifiedAnimationManager {
     
     // animations.jsの機能統合
     this.animationMap = new Map();
+  }
+
+  /**
+   * ベンチ/アクティブなどのスロットを視覚的にハイライト（後方互換）
+   * @param {Element} slotElement - スロット要素
+   * @param {string} [type='bench'] - 種別（bench|active|hand など）
+   */
+  highlightSlot(slotElement, type = 'bench') {
+    if (!slotElement) return;
+    try {
+      slotElement.classList.add('slot-highlight');
+      // 種別により軽い装飾差分（必要なら拡張）
+      slotElement.dataset.highlightType = type;
+    } catch (_) { /* no-op */ }
+  }
+
+  /**
+   * スロットハイライト解除（後方互換）
+   * @param {Element} slotElement - スロット要素
+   */
+  unhighlightSlot(slotElement) {
+    if (!slotElement) return;
+    try {
+      slotElement.classList.remove('slot-highlight');
+      delete slotElement.dataset.highlightType;
+    } catch (_) { /* no-op */ }
   }
 
   /**
@@ -113,6 +140,33 @@ export class UnifiedAnimationManager {
   }
 
   /**
+   * 手札入場アニメーション（後方互換: animateHandEntry）
+   * @param {Array<Element>} cardElements
+   */
+  async animateHandEntry(cardElements = []) {
+    if (!Array.isArray(cardElements) || cardElements.length === 0) return;
+    const delay = 60;
+    await Promise.all(cardElements.map((el, i) => new Promise(resolve => {
+      setTimeout(() => {
+        if (!el) return resolve();
+        const target = el.querySelector('img') || el;
+        target.classList.add('animate-deal-player-hand-card');
+        this.waitForAnimation(target, 'dealCard', resolve);
+      }, i * delay);
+    })));
+  }
+
+  /**
+   * 手札配布アニメーション（後方互換: animateHandDeal）
+   * @param {Array<Element>} cardElements
+   * @param {'player'|'cpu'} owner
+   */
+  async animateHandDeal(cardElements = [], owner = 'player') {
+    // 所有者に関係なく均一なディール演出
+    return this.animateDealCards(cardElements, 80);
+  }
+
+  /**
    * カードドロー アニメーション（animations.jsより統合）
    * @param {Element} cardElement - カード要素
    */
@@ -167,6 +221,49 @@ export class UnifiedAnimationManager {
     setTimeout(() => {
       messageElement.style.animation = '';
     }, 500);
+  }
+
+  /**
+   * エネルギー付与演出（後方互換）
+   * @param {Element} energyCardElement - 手札のエネルギーカード要素
+   * @param {Element} pokemonElement - 対象ポケモンの要素
+   */
+  async animateEnergyAttach(energyCardElement, pokemonElement) {
+    return new Promise(resolve => {
+      if (!energyCardElement || !pokemonElement) return resolve();
+      // 手札カードを縮める演出
+      const img = energyCardElement.querySelector('img') || energyCardElement;
+      img.classList.add('animate-energy-attach');
+      // 対象側に軽いハイライト
+      pokemonElement.classList.add('slot-highlight');
+      setTimeout(() => {
+        img.classList.remove('animate-energy-attach');
+        pokemonElement.classList.remove('slot-highlight');
+        resolve();
+      }, 700);
+    });
+  }
+
+  /**
+   * 攻撃演出（後方互換）
+   * @param {Element} attackerElement
+   * @param {Element} defenderElement
+   */
+  async animateAttack(attackerElement, defenderElement) {
+    return new Promise(resolve => {
+      if (!attackerElement || !defenderElement) return resolve();
+      const atk = attackerElement.querySelector('.relative') || attackerElement;
+      const def = defenderElement.querySelector('.relative') || defenderElement;
+      atk.classList.add('animate-attack');
+      setTimeout(() => {
+        def.classList.add('animate-damage');
+        setTimeout(() => {
+          atk.classList.remove('animate-attack');
+          def.classList.remove('animate-damage');
+          resolve();
+        }, 600);
+      }, 400);
+    });
   }
 
   /**
@@ -272,8 +369,7 @@ export class UnifiedAnimationManager {
       default:
         await this.animateGenericTransition();
     }
-  }
-
+  }
   /**
    * アクティブなアニメーションのクリーンアップ
    */
@@ -398,7 +494,7 @@ export class UnifiedAnimationManager {
       
       setTimeout(() => {
         cardElement.style.transform = 'rotateY(0deg)';
-        setTimeout(resolve, ANIMATION_CONFIG.durations.normal);
+        setTimeout(resolve, 300);
       }, ANIMATION_CONFIG.durations.normal);
     });
   }
@@ -703,7 +799,7 @@ export class UnifiedAnimationManager {
       // 汎用カード移動アニメーションを実行
       await this.createUnifiedCardAnimation(
           playerId,
-          energyCardId,
+          energyCardData.id,
           'hand',
           pokemonElement.dataset.zone,
           parseInt(pokemonElement.dataset.index, 10),

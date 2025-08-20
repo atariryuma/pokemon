@@ -760,58 +760,30 @@ export class View {
     showCardInfo(card, targetElement) {
         if (!card) return;
 
-        const panel = document.getElementById('card-info-panel');
-        if (!panel) return;
+        // 新モーダルシステムで中央に表示（左画像 / 右情報）
+        const imageHtml = `
+          <div class="flex-shrink-0 w-56">
+            <img src="${getCardImagePath(card.name_en)}" alt="${card.name_ja}" class="w-full h-auto rounded-md border border-gray-700" />
+          </div>
+        `;
+        const detailsHtml = `
+          <div class="flex-grow text-left text-[13px] leading-snug space-y-3">${this._generateCardInfoHtml(card)}</div>
+        `;
+        const contentHtml = `
+          <div class="flex flex-row gap-5 items-start">
+            ${imageHtml}
+            ${detailsHtml}
+          </div>
+        `;
 
-        // Clear previous content and add base classes
-        panel.innerHTML = '';
-        panel.className = 'fixed z-50 p-4 rounded-lg shadow-xl transition-all duration-300 ease-out transform scale-95 opacity-0'; // Base classes for animation and styling
-
-        // Create the close button
-        const closeButton = document.createElement('button');
-        closeButton.className = 'absolute top-2 right-2 text-gray-400 hover:text-white text-2xl font-bold leading-none focus:outline-none';
-        closeButton.innerHTML = '&times;'; // '×' character
-        closeButton.onclick = () => this.hideCardInfo();
-        panel.appendChild(closeButton);
-
-        // Create the main content container with two columns
-        const contentContainer = document.createElement('div');
-        contentContainer.className = 'flex flex-row gap-4 items-start'; // Use flexbox for two columns
-
-        // Left column: Card Image (increased width)
-        const imageColumn = document.createElement('div');
-        imageColumn.className = 'flex-shrink-0 w-64 h-auto'; // Increased width for image
-        const cardImage = document.createElement('img');
-        cardImage.src = getCardImagePath(card.name_en);
-        cardImage.alt = card.name_ja;
-        cardImage.className = 'w-full h-auto rounded-md border border-gray-700';
-        imageColumn.appendChild(cardImage);
-        contentContainer.appendChild(imageColumn);
-
-        // Right column: Card Details
-        const detailsColumn = document.createElement('div');
-        detailsColumn.className = 'flex-grow text-left text-sm space-y-2';
-        detailsColumn.innerHTML = this._generateCardInfoHtml(card);
-        contentContainer.appendChild(detailsColumn);
-
-        panel.appendChild(contentContainer);
-
-        // Always center the panel
-        panel.style.left = '50%';
-        panel.style.top = '50%';
-        panel.style.transform = 'translate(-50%, -50%)';
-        panel.style.width = '600px'; // Set a fixed width for the modal
-
-        // Apply "e-sports" styling
-        panel.style.background = 'linear-gradient(135deg, rgba(20, 20, 40, 0.98), rgba(10, 10, 20, 0.98))';
-        panel.style.borderColor = '#4dd0fd'; // Accent color
-        panel.style.boxShadow = '0 0 30px rgba(77, 208, 253, 0.6)'; // Glow effect
-        panel.style.color = '#e0e0e0'; // Light gray text
-        panel.style.fontFamily = '"Inter", sans-serif'; // Modern font
-
-        // Show with animation
-        panel.classList.remove('opacity-0', 'scale-95');
-        panel.classList.add('opacity-100', 'scale-100');
+        modalManager.showCentralModal({
+            title: null,
+            message: contentHtml,
+            allowHtml: true,
+            actions: [
+              { text: '閉じる', callback: () => {}, className: 'px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg' }
+            ]
+        });
     }
 
     hideCardInfo() {
@@ -828,54 +800,185 @@ export class View {
     }
 
     _generateCardInfoHtml(card) {
-        let html = `<h3 class="text-xl font-bold text-white mb-2">${card.name_ja} <span class="text-gray-400 text-sm">(${card.name_en})</span></h3>`;
-        html += `<p class="text-gray-300 mb-3">カードタイプ: <span class="font-semibold text-blue-300">${card.card_type}</span></p>`;
+        // 正規化
+        const typeRaw = (card.card_type || '').toString();
+        const typeNorm = typeRaw
+            .toLowerCase()
+            .replace('é', 'e')      // Pokémon → Pokemon
+            .replace('ポケモン', 'pokemon');
+        const isPokemon = typeNorm.includes('pokemon');
+        const isEnergy = typeNorm.includes('energy');
+        const isTrainer = typeNorm.includes('trainer');
 
-        if (card.card_type === 'Pokemon') {
-            html += `<div class="grid grid-cols-2 gap-2 mb-3">`;
-            if (card.hp !== undefined) html += `<p><span class="font-bold text-red-400">HP:</span> ${card.hp}</p>`;
-            if (card.types) html += `<p><span class="font-bold text-green-400">属性:</span> ${card.types.join(', ')}</p>`;
-            if (card.stage) html += `<p><span class="font-bold text-purple-400">進化:</span> ${card.stage}</p>`;
-            if (card.evolves_from) html += `<p><span class="font-bold text-purple-400">進化元:</span> ${card.evolves_from}</p>`;
-            if (card.retreat_cost !== undefined) html += `<p><span class="font-bold text-yellow-400">にげる:</span> ${'⚪'.repeat(card.retreat_cost)}</p>`;
-            html += `</div>`;
+        // 見出し
+        const nameLine = `
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-xl font-bold text-white">${card.name_ja || '-'}</h3>
+            ${card.name_en ? `<span class="text-gray-400 text-xs">(${card.name_en})</span>` : ''}
+          </div>
+        `;
 
-            if (card.ability) {
-                html += `<div class="bg-gray-800 p-3 rounded-md mb-3 border border-gray-700">`;
-                html += `<h4 class="font-bold text-lg text-yellow-300 mb-1">特性: ${card.ability.name_ja}</h4>`;
-                html += `<p class="text-gray-300 whitespace-pre-wrap text-sm">${card.ability.text_ja}</p>`;
-                html += `</div>`;
-            }
-            if (card.attacks && card.attacks.length > 0) {
-                html += `<div class="bg-gray-800 p-3 rounded-md border border-gray-700">`;
-                html += `<h4 class="font-bold text-lg text-red-300 mb-2">ワザ:</h4>`;
-                card.attacks.forEach(atk => {
-                    const cost = atk.cost ? atk.cost.map(c => `<span class="inline-block w-4 h-4 rounded-full bg-gray-600 text-xs text-center leading-4 mr-1">${c.charAt(0)}</span>`).join('') : ''; // Simple icon placeholder
-                    const damage = atk.damage !== undefined ? `<span class="font-bold text-orange-300">${atk.damage}</span>` : '';
-                    html += `<div class="mb-2 pb-2 border-b border-gray-700 last:border-b-0">`;
-                    html += `<p class="font-bold text-white">${atk.name_ja} <span class="text-gray-400 text-xs">(${atk.name_en})</span></p>`;
-                    if (atk.text_ja) html += `<p class="text-gray-400 whitespace-pre-wrap text-sm">${atk.text_ja}</p>`;
-                    html += `</div>`;
-                });
-                html += `</div>`;
-            }
-            if (card.weakness && card.weakness.length > 0) {
-                html += `<p class="mt-3"><span class="font-bold text-purple-300">弱点:</span> ${card.weakness.map(w => `${w.type} ${w.value}`).join(', ')}</p>`;
-            }
-            if (card.resistance && card.resistance.length > 0) {
-                html += `<p><span class="font-bold text-cyan-300">抵抗力:</span> ${card.resistance.map(r => `${r.type} ${r.value}`).join(', ')}</p>`;
-            }
+        // ルールボックス
+        const rule = card.rule_box ? `<span class="ml-2 inline-block text-[10px] px-2 py-0.5 rounded bg-indigo-600 text-white font-bold align-middle">${card.rule_box}</span>` : '';
 
-        } else if (card.card_type === 'Energy') {
-            if (card.energy_type) html += `<p><span class="font-bold text-yellow-300">エネルギータイプ:</span> ${card.energy_type}</p>`;
-            if (card.is_basic !== undefined) html += `<p><span class="font-bold text-gray-300">基本エネルギー:</span> ${card.is_basic ? 'はい' : 'いいえ'}</p>`;
-            if (card.text_ja) html += `<div class="bg-gray-800 p-3 rounded-md mt-3 border border-gray-700"><p class="text-gray-300 whitespace-pre-wrap text-sm">${card.text_ja}</p></div>`;
-        } else if (card.card_type === 'Trainer') {
-            if (card.trainer_type) html += `<p><span class="font-bold text-orange-300">トレーナータイプ:</span> ${card.trainer_type}</p>`;
-            if (card.text_ja) html += `<div class="bg-gray-800 p-3 rounded-md mt-3 border border-gray-700"><p class="text-gray-300 whitespace-pre-wrap text-sm">${card.text_ja}</p></div>`;
-        }
+        // HPなど（ダメージ未設定なら0）
+        const damage = Number(card.damage || 0);
+        const hp = Number(card.hp || 0);
+        const hpRemain = Math.max(0, hp - damage);
+        const hpPct = hp > 0 ? Math.max(0, Math.min(100, Math.round((hpRemain / hp) * 100))) : 0;
+        const hpBar = isPokemon ? `
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-red-300 font-semibold">HP ${hpRemain}/${hp}</span>
+              <span class="text-gray-400 text-xs">${hpPct}%</span>
+            </div>
+            <div class="w-full h-2 bg-gray-700 rounded">
+              <div class="h-2 rounded" style="width:${hpPct}%; background: linear-gradient(90deg,#22c55e,#ef4444);"></div>
+            </div>
+          </div>
+        ` : '';
+
+        // 属性・進化・にげる
+        const typeBadges = (card.types || []).map(t => this._energyBadge(t)).join('');
+        const stageLabel = (card.stage || '-')
+          .toString()
+          .replace(/^basic$/i, 'Basic')
+          .replace(/^stage\s*1$/i, 'Stage 1')
+          .replace(/^stage\s*2$/i, 'Stage 2')
+          .replace(/^stage1$/i, 'Stage 1')
+          .replace(/^stage2$/i, 'Stage 2')
+          .replace(/^ＢＡＳＩＣ$/i, 'Basic')
+          .replace(/^ＢＡＳＩＣ$/i, 'Basic');
+        const stageLine = isPokemon ? `
+          <div class="flex flex-wrap items-center gap-2 text-gray-300">
+            <span><span class="text-purple-300 font-semibold">進化:</span> ${stageLabel}</span>
+            ${card.evolves_from ? `<span><span class="text-purple-300 font-semibold">進化元:</span> ${card.evolves_from}</span>` : ''}
+            <span class="flex items-center gap-1"><span class="text-green-300 font-semibold">タイプ:</span> ${typeBadges || '-'}</span>
+            ${card.retreat_cost !== undefined ? `<span><span class="text-yellow-300 font-semibold">にげる:</span> ${this._colorlessCost(card.retreat_cost)}</span>` : ''}
+            ${rule}
+          </div>
+        ` : '';
+
+        // 付いているエネルギー
+        const attachedList = Array.isArray(card.attached_energy) ? card.attached_energy
+                            : Array.isArray(card.attachedEnergy) ? card.attachedEnergy
+                            : [];
+        const energyCounts = this._groupEnergy(attachedList);
+        const attachedEnergyHtml = isPokemon ? `
+          <div class="bg-gray-800/60 border border-gray-700 rounded-md p-2">
+            <div class="text-yellow-200 font-semibold mb-1">付いているエネルギー</div>
+            ${energyCounts.length === 0 ? '<div class="text-gray-400 text-xs">なし</div>' : `
+              <div class="flex flex-wrap gap-2">
+                ${energyCounts.map(({type, count}) => `
+                  <div class="flex items-center gap-1 bg-gray-700 rounded px-2 py-1">
+                    ${this._energyBadge(type)}
+                    <span class="text-white text-sm font-semibold">×${count}</span>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        ` : '';
+
+        // 特性
+        const abilityHtml = isPokemon && card.ability ? `
+          <div class="bg-gray-800/60 border border-gray-700 rounded-md p-3">
+            <div class="text-yellow-300 font-bold mb-1">特性：${card.ability.name_ja || ''}</div>
+            <div class="text-gray-300 whitespace-pre-wrap text-[13px]">${card.ability.text_ja || ''}</div>
+          </div>
+        ` : '';
+
+        // ワザ
+        const attacksHtml = isPokemon && Array.isArray(card.attacks) && card.attacks.length > 0 ? `
+          <div class="bg-gray-800/60 border border-gray-700 rounded-md p-3">
+            <div class="text-red-300 font-bold mb-2">ワザ</div>
+            <div class="space-y-2">
+              ${card.attacks.map(atk => `
+                <div class="pb-2 border-b border-gray-700 last:border-b-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-1">${(atk.cost||[]).map(c => this._energyBadge(c)).join('')}</div>
+                      <div class="text-white font-semibold">${atk.name_ja || ''}</div>
+                    </div>
+                    <div class="text-orange-300 font-bold">${atk.damage ?? ''}</div>
+                  </div>
+                  ${atk.text_ja ? `<div class="text-gray-400 text-[12px] mt-1 whitespace-pre-wrap">${atk.text_ja}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : '';
+
+        // 弱点・抵抗
+        const weakHtml = isPokemon && Array.isArray(card.weakness) && card.weakness.length > 0 ? `
+          <div class="text-gray-300"><span class="text-purple-300 font-semibold">弱点:</span> ${card.weakness.map(w => `${w.type} ${w.value}`).join(', ')}</div>
+        ` : '';
+        const resistHtml = isPokemon && Array.isArray(card.resistance) && card.resistance.length > 0 ? `
+          <div class="text-gray-300"><span class="text-cyan-300 font-semibold">抵抗力:</span> ${card.resistance.map(r => `${r.type} ${r.value}`).join(', ')}</div>
+        ` : '';
+
+        // 特殊状態
+        const condHtml = isPokemon && Array.isArray(card.special_conditions) && card.special_conditions.length > 0 ? `
+          <div class="text-gray-300"><span class="text-pink-300 font-semibold">特殊状態:</span> ${card.special_conditions.join(' / ')}</div>
+        ` : '';
+
+        // エネルギー / トレーナー
+        const nonPokemonHtml = isEnergy
+          ? `
+              <div class="flex items-center gap-2">
+                <span class="text-yellow-300 font-semibold">エネルギー:</span>
+                ${this._energyBadge(card.energy_type || 'Colorless')}
+                <span class="text-gray-300 text-xs">${card.is_basic ? '基本' : '特殊'}</span>
+              </div>
+              ${card.text_ja ? `<div class="text-gray-300 whitespace-pre-wrap">${card.text_ja}</div>` : ''}
+            `
+          : isTrainer
+          ? `
+              <div class="flex items-center gap-2">
+                <span class="text-orange-300 font-semibold">トレーナー:</span>
+                <span class="text-gray-200">${card.trainer_type || '-'}</span>
+              </div>
+              ${card.text_ja ? `<div class="text-gray-300 whitespace-pre-wrap">${card.text_ja}</div>` : ''}
+            `
+          : '';
+
+        // 組み立て
+        let html = nameLine;
+        html += isPokemon
+          ? `<div class="space-y-3">${hpBar}${stageLine}${abilityHtml}${attacksHtml}${weakHtml}${resistHtml}${condHtml}${attachedEnergyHtml}</div>`
+          : `<div class="space-y-3">${nonPokemonHtml}</div>`;
 
         return html;
+    }
+
+    // エネルギーバッジ（小さい丸 + 文字）
+    _energyBadge(type) {
+        const t = (type || 'Colorless');
+        const colors = {
+            Grass: '#22c55e', Fire: '#ef4444', Water: '#3b82f6', Lightning: '#f59e0b',
+            Psychic: '#a855f7', Fighting: '#ea580c', Darkness: '#374151', Metal: '#9ca3af',
+            Fairy: '#ec4899', Dragon: '#22d3ee', Colorless: '#e5e7eb'
+        };
+        const label = ('' + t).charAt(0);
+        const bg = colors[t] || '#9ca3af';
+        const fg = t === 'Darkness' ? '#e5e7eb' : '#111827';
+        return `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold" style="background:${bg};color:${fg}">${label}</span>`;
+    }
+
+    // にげるコスト（無色シンボル）
+    _colorlessCost(n = 0) {
+        const k = Math.max(0, Number(n) || 0);
+        return new Array(k).fill(0).map(() => this._energyBadge('Colorless')).join('');
+    }
+
+    // 付いているエネルギーを種類ごとに集計
+    _groupEnergy(list) {
+        const map = new Map();
+        list.forEach(e => {
+            const t = typeof e === 'string' ? e : (e?.energy_type || e?.type || 'Colorless');
+            map.set(t, (map.get(t) || 0) + 1);
+        });
+        return Array.from(map.entries()).map(([type, count]) => ({ type, count }));
     }
 
 

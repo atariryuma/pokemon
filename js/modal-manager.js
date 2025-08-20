@@ -84,7 +84,8 @@ export class ModalManager {
         modal.style.zIndex = MODAL_PRIORITY.CENTRAL;
         
         const content = document.createElement('div');
-        content.className = 'central-modal-content rounded-lg shadow-2xl p-6 w-full max-w-md m-4 transform transition-all duration-300 ease-out scale-95 opacity-0';
+        // widen modal for rich card details layout (image + info)
+        content.className = 'central-modal-content rounded-lg shadow-2xl p-6 w-full max-w-2xl m-4 transform transition-all duration-300 ease-out scale-95 opacity-0';
         
         modal.appendChild(content);
         document.body.appendChild(modal);
@@ -144,7 +145,8 @@ export class ModalManager {
         actions = [],
         closable = false,
         priority = MODAL_PRIORITY.CENTRAL,
-        cardData = null
+        cardData = null,
+        allowHtml = false
     }) {
         if (!this.centralModal) return;
 
@@ -163,11 +165,17 @@ export class ModalManager {
         if (message) {
             const messageEl = document.createElement('div');
             messageEl.className = 'text-gray-300 mb-6';
-            
+            // Support rich HTML strings and element nodes
             if (typeof message === 'string') {
-                messageEl.textContent = message;
+                if (allowHtml) {
+                    messageEl.innerHTML = message;
+                } else {
+                    messageEl.textContent = message;
+                }
+            } else if (message instanceof HTMLElement) {
+                messageEl.appendChild(message);
             } else {
-                messageEl.innerHTML = message;
+                messageEl.textContent = String(message);
             }
             content.appendChild(messageEl);
         }

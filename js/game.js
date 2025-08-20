@@ -401,8 +401,15 @@ export class Game {
         if (this.state.turnPlayer === 'player') {
             newState.phase = GAME_PHASES.PLAYER_MAIN;
             newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
-        } else {
+        } else if (newState.playerToAct === 'cpu') { // CPUが新しいポケモンを選ぶ番の場合
             newState.phase = GAME_PHASES.CPU_TURN;
+            newState.prompt.message = '相手が新しいバトルポケモンを選んでいます...';
+            await this._updateState(newState);
+            await this._executeCpuTurn(); // CPUのターンを再開
+            return; // ここで処理を終了
+        } else {
+            // それ以外のケース（例：CPUがKOされ、プレイヤーが新しいポケモンを選んだ後）
+            newState.phase = GAME_PHASES.CPU_TURN; // CPUのターンに戻す
             newState.prompt.message = '相手のターンです...';
         }
         
@@ -640,12 +647,26 @@ export class Game {
         const active = this.state.players.player.active;
         if (!active) return;
 
-        let newState = this.turnManager.handlePlayerMainPhase(this.state, 'retreat_pokemon', {
+        // Get the active Pokémon's DOM element before the state update
+        const activePokemonElement = document.querySelector(`.player-self .active-bottom .relative[data-card-id="${active.id}"]`);
+        // Get the discard pile's DOM element
+        const discardPileElement = document.querySelector(`.player-self .discard-container`);
+
+        const { newState, discardedEnergy } = this.turnManager.handlePlayerMainPhase(this.state, 'retreat_pokemon', {
             fromActiveId: active.id,
             toBenchIndex: benchIndex
         });
 
         if (newState !== this.state) {
+            // Animate discarded energy cards
+            if (discardedEnergy && discardedEnergy.length > 0 && activePokemonElement && discardPileElement) {
+                await unifiedAnimationManager.animateDiscardedEnergy(
+                    'player',
+                    discardedEnergy,
+                    activePokemonElement,
+                    discardPileElement
+                );
+            }
             
             newState.pendingAction = null;
             newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
