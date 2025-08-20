@@ -6,6 +6,7 @@
 
 import { animationManager } from './animations.js';
 import { unifiedAnimationManager } from './unified-animations.js';
+import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
@@ -239,9 +240,8 @@ export class TurnManager {
 
     const { attackIndex, attacker } = newState.pendingAction;
     const defender = attacker === 'player' ? 'cpu' : 'player';
-    const defenderElement = attacker === 'player'
-      ? document.querySelector('.opponent-board .active-top')
-      : document.querySelector('.player-self .active-bottom');
+    const defenderOrientation = CardOrientationManager.getCardOrientation(defender, 'active');
+    const defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defender === 'player' ? '.active-bottom' : '.active-top'}`);
 
     console.log(`🗡️ ${attacker} attacks ${defender} with attack index ${attackIndex}`);
     
@@ -621,13 +621,12 @@ export class TurnManager {
    * 攻撃アニメーション
    */
   async animateAttack(attackerId, state) {
-    const attackerElement = attackerId === 'player' 
-      ? document.querySelector('.player-self .active-bottom')
-      : document.querySelector('.opponent-board .active-top');
-
-    const defenderElement = attackerId === 'player' 
-      ? document.querySelector('.opponent-board .active-top')
-      : document.querySelector('.player-self .active-bottom');
+    const attackerOrientation = CardOrientationManager.getCardOrientation(attackerId, 'active');
+    const defenderId = attackerId === 'player' ? 'cpu' : 'player';
+    const defenderOrientation = CardOrientationManager.getCardOrientation(defenderId, 'active');
+    
+    const attackerElement = document.querySelector(`${attackerOrientation.playerSelector} ${attackerId === 'player' ? '.active-bottom' : '.active-top'}`);
+    const defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defenderId === 'player' ? '.active-bottom' : '.active-top'}`);
 
     if (attackerElement && defenderElement) {
       await animationManager.animateAttack(attackerElement, defenderElement);

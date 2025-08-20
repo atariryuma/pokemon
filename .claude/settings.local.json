@@ -17,7 +17,9 @@
       "Bash(cp:*)",
       "Bash(mv:*)",
       "Bash(find:*)",
-      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\cards.js\")"
+      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\cards.js\")",
+      "Bash(npm start)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": [],

@@ -722,6 +722,32 @@
             position: absolute;
         }
 
+        /* CPU カード向き制御（回転あり） */
+        .cpu-card {
+            transform: rotateX(180deg);
+        }
+        
+        .cpu-card img {
+            transform: rotateX(180deg);
+        }
+        
+        /* CPU カード向き制御（回転なし・手札用） */
+        .cpu-card-no-rotate {
+            transform: none;
+        }
+        
+        .cpu-card-no-rotate img {
+            transform: none;
+        }
+        
+        /* プレイヤーカード（明示的に正常向き） */
+        .player-card {
+            transform: none;
+        }
+        
+        .player-card img {
+            transform: none;
+        }
 
     </style>
 </head>

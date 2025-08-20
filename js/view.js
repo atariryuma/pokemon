@@ -1,6 +1,7 @@
 import { getCardImagePath } from './data-manager.js';
 import { animationManager } from './animations.js';
 import { GAME_PHASES } from './phase-manager.js';
+import { CardOrientationManager } from './card-orientation.js';
 
 export class View {
     constructor(rootEl) {
@@ -251,6 +252,20 @@ export class View {
                 count.className = 'absolute bottom-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
                 count.textContent = deckArr.length;
                 deckSlot.appendChild(count);
+            }
+            // Make the deck clickable for drawing
+            if (playerType === 'player' && this.cardClickHandler) {
+                deckSlot.classList.add('cursor-pointer');
+                deckSlot.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    this.cardClickHandler({
+                        owner: 'player',
+                        zone: 'deck',
+                        index: '0',
+                        cardId: null
+                    });
+                });
             }
         }
 
@@ -626,6 +641,12 @@ export class View {
 
         if (!card) {
             container.classList.add('card-placeholder');
+            console.log(`🏷️ Creating placeholder for ${playerType} ${zone}${index !== undefined ? `[${index}]` : ''} - card was null/undefined`);
+            
+            // プレースホルダーでもCPU向き処理を適用
+            console.log(`🔄 Applying placeholder orientation: ${playerType} ${zone}`);
+            CardOrientationManager.applyCardOrientation(container, playerType, zone);
+            
             return container;
         }
 
@@ -651,9 +672,10 @@ export class View {
         img.src = isFaceDown ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = isFaceDown ? 'Card Back' : card.name_ja;
         
-        // CPUカードの向きを反転（手札とモーダル表示時以外）
-        if (playerType === 'cpu' && zone !== 'hand' && zone !== 'modal') {
-            img.style.transform = 'rotateX(180deg)';
+        // 統一されたカード向き制御システムを使用（ゾーン情報を含めて判定）
+        console.log(`🔄 Applying card orientation: ${playerType} ${zone} - ${card.name_ja}`);
+        CardOrientationManager.applyCardOrientation(container, playerType, zone);
+        if (playerType === 'cpu') {
             img.style.pointerEvents = 'none'; // ホバーイベントを親要素(スロット)に透過させる
             img.style.backfaceVisibility = 'visible'; // 裏返っても表示を保証
         }

@@ -6,6 +6,7 @@
  */
 
 import { animationManager } from './animations.js';
+import { CardOrientationManager } from './card-orientation.js';
 
 /**
  * 統一アニメーションマネージャー
@@ -19,7 +20,8 @@ export class UnifiedAnimationManager {
    * プレイヤー判定とセレクタ生成の統一
    */
   getPlayerSelector(playerId) {
-    return playerId === 'player' ? '.player-self' : '.opponent-board';
+    const orientation = CardOrientationManager.getCardOrientation(playerId, null);
+    return orientation.playerSelector;
   }
 
   getActiveSelector(playerId) {
@@ -32,7 +34,8 @@ export class UnifiedAnimationManager {
   }
 
   getHandSelector(playerId) {
-    return `#${playerId}-hand`;
+    const orientation = CardOrientationManager.getCardOrientation(playerId, 'hand');
+    return orientation.handSelector;
   }
 
   /**
@@ -112,7 +115,7 @@ export class UnifiedAnimationManager {
         targetElement, 
         placedCardElement, 
         card, 
-        { playerId, isSetupPhase, duration, initialSourceRect } // ★ 追加: initialSourceRect を渡す
+        { playerId, isSetupPhase, duration, initialSourceRect, targetZone } // ★ 追加: targetZone を渡す
       );
 
       console.log(`✅ Unified animation completed: ${playerId} ${cardId} -> ${targetZone}[${targetIndex}]`);
@@ -162,7 +165,7 @@ export class UnifiedAnimationManager {
    * カード移動アニメーションの実行
    */
   async executeCardMoveAnimation(sourceElement, targetElement, placedCardElement, card, options) {
-    const { playerId, isSetupPhase, duration, initialSourceRect } = options; // ★ 変更: initialSourceRect を受け取る
+    const { playerId, isSetupPhase, duration, initialSourceRect, targetZone } = options; // ★ 追加: targetZone を受け取る
 
     // 位置情報取得
     // ★ 変更: initialSourceRect があればそれを使用、なければ手札コンテナの位置を使用
@@ -182,7 +185,7 @@ export class UnifiedAnimationManager {
     }
 
     // アニメーション用のクローン要素を作成
-    const animCard = this.createAnimationCard(placedCardElement, imageInfo, sourceRect, playerId, options);
+    const animCard = this.createAnimationCard(placedCardElement, imageInfo, sourceRect, playerId, targetZone, options);
     
     // 元のカードを一時的に隠す
     placedCardElement.style.opacity = '0';
@@ -203,7 +206,7 @@ export class UnifiedAnimationManager {
   /**
    * アニメーション用カード要素の作成
    */
-  createAnimationCard(originalCard, imageInfo, sourceRect, playerId, options) {
+  createAnimationCard(originalCard, imageInfo, sourceRect, playerId, targetZone, options) {
     const animCard = originalCard.cloneNode(true);
     
     // 画像の正確な設定
@@ -216,13 +219,10 @@ export class UnifiedAnimationManager {
       animImg.style.objectFit = 'cover';
     }
 
-    // アニメーション用スタイル設定
-    const handOffset = playerId === 'cpu' ? 20 : 50;
+    // 統一された向き制御を適用（アニメーション中は移動先ゾーンに応じて判定）
+    CardOrientationManager.applyCardOrientation(animCard, playerId, targetZone);
     
     // アニメーション用スタイル設定
-    // ★ 変更: handOffset の適用方法を調整 (initialSourceRect があれば不要な場合も)
-    // sourceRect がすでにカードの正確な位置であれば、handOffset は不要か、
-    // 微調整用として小さくする
     const finalSourceLeft = sourceRect.left + (options.initialSourceRect ? 0 : (playerId === 'cpu' ? 20 : 50));
     const finalSourceTop = sourceRect.top + (options.initialSourceRect ? 0 : 20);
     
@@ -414,6 +414,162 @@ export class UnifiedAnimationManager {
     } catch (error) {
       console.error('❌ Error in unified knockout animation:', error);
     }
+  }
+
+  /**
+   * 統一カード配布アニメーション
+   * @param {Array<Element>} cardElements - カード要素配列
+   * @param {string} animationType - アニメーションタイプ ('hand'|'prize'|'deck'|'initial')
+   * @param {string} playerId - プレイヤーID ('player'|'cpu')
+   * @param {Object} options - オプション
+   */
+  async createUnifiedCardDeal(cardElements, animationType, playerId, options = {}) {
+    const {
+      staggerDelay = 150,
+      direction = 'normal',
+      applyOrientation = true
+    } = options;
+
+    console.log(`🎬 Starting unified card deal: ${animationType} for ${playerId}, ${cardElements.length} cards`);
+
+    if (!cardElements || cardElements.length === 0) {
+      console.warn('⚠️ No card elements provided for animation');
+      return;
+    }
+
+    const promises = cardElements.map((element, index) => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          if (element) {
+            const target = element.querySelector('img') || element;
+            
+            // 統一された向き制御を適用
+            if (applyOrientation) {
+              // アニメーションタイプからゾーンを推定
+              const zone = this._getZoneFromAnimationType(animationType);
+              CardOrientationManager.applyCardOrientation(element, playerId, zone);
+            }
+
+            // 表示状態にしてからアニメーション開始
+            element.style.opacity = '1';
+
+            // 強制リフロー
+            element.offsetHeight;
+
+            // アニメーションタイプに応じてクラスを適用
+            let animationClass = 'animate-deal-card';
+            switch (animationType) {
+              case 'initial':
+                animationClass = 'animate-deal-card-nofade';
+                break;
+              case 'hand':
+                animationClass = playerId === 'player' ? 'animate-deal-player-hand-card' : 'animate-deal-card-nofade';
+                break;
+              case 'prize':
+                animationClass = `animate-prize-deal-${direction}`;
+                break;
+              case 'deck':
+                animationClass = 'animate-draw-card';
+                break;
+            }
+
+            animationManager.addAnimationClass(target, animationClass);
+            animationManager.waitForAnimation(target, this._getAnimationName(animationType, direction), () => {
+              // 最終的な向きを確定
+              if (applyOrientation) {
+                const zone = this._getZoneFromAnimationType(animationType);
+                CardOrientationManager.finalizeCardOrientation(element, playerId, zone);
+              }
+              resolve();
+            });
+          } else {
+            resolve();
+          }
+        }, index * staggerDelay);
+      });
+    });
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * アニメーション名を取得
+   * @private
+   */
+  _getAnimationName(animationType, direction) {
+    switch (animationType) {
+      case 'initial':
+        return 'dealCardNoFade';
+      case 'hand':
+        return 'dealPlayerHandCard';
+      case 'prize':
+        return direction === 'left' ? 'prizeDealLeft' : 'prizeDealRight';
+      case 'deck':
+        return 'drawCard';
+      default:
+        return 'dealCard';
+    }
+  }
+
+  /**
+   * アニメーションタイプからゾーンを推定
+   * @private
+   */
+  _getZoneFromAnimationType(animationType) {
+    switch (animationType) {
+      case 'hand':
+        return 'hand';
+      case 'prize':
+        return 'prize';
+      case 'deck':
+        return 'deck';
+      case 'initial':
+        return 'deck'; // 初期配布は主にデッキから
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * 手札配布の統一アニメーション
+   * @param {Array<Element>} cardElements - カード要素配列
+   * @param {string} playerId - プレイヤーID
+   * @param {Object} options - オプション
+   */
+  async animateHandDeal(cardElements, playerId, options = {}) {
+    const defaultOptions = {
+      staggerDelay: playerId === 'player' ? 200 : 200,
+      direction: 'normal',
+      applyOrientation: false // 二重適用防止: view.js で既に適用済み
+    };
+    
+    return this.createUnifiedCardDeal(
+      cardElements, 
+      playerId === 'player' ? 'hand' : 'initial', 
+      playerId, 
+      { ...defaultOptions, ...options }
+    );
+  }
+
+  /**
+   * サイドカード配布の統一アニメーション
+   * @param {Array<Element>} cardElements - カード要素配列
+   * @param {string} playerId - プレイヤーID
+   * @param {Object} options - オプション
+   */
+  async animatePrizeDeal(cardElements, playerId, options = {}) {
+    const defaultOptions = {
+      staggerDelay: 150,
+      direction: playerId === 'player' ? 'right' : 'left',
+      applyOrientation: false // 二重適用防止: view.js で既に適用済み
+    };
+    
+    return this.createUnifiedCardDeal(
+      cardElements, 
+      'prize', 
+      playerId, 
+      { ...defaultOptions, ...options }
+    );
   }
 
   /**

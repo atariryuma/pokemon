@@ -3,6 +3,7 @@ import { View } from './view.js';
 import * as Logic from './logic.js';
 import { animationManager } from './animations.js';
 import { unifiedAnimationManager } from './unified-animations.js';
+import { CardOrientationManager } from './card-orientation.js';
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
@@ -1012,7 +1013,7 @@ export class Game {
             });
             
             if (playerCards.length > 0) {
-                promises.push(animationManager.animateInitialPlayerHandDeal(playerCards, 200));
+                promises.push(unifiedAnimationManager.animateHandDeal(playerCards, 'player'));
             }
         }
 
@@ -1027,7 +1028,7 @@ export class Game {
             });
             
             if (cpuCards.length > 0) {
-                promises.push(animationManager.animateInitialHandDeal(cpuCards, 200));
+                promises.push(unifiedAnimationManager.animateHandDeal(cpuCards, 'cpu'));
             }
         }
 
@@ -1072,20 +1073,26 @@ export class Game {
             }
         });
 
-        // Animate player prize cards (coming from right)
+        // Animate prize cards using unified system
+        const allPrizePromises = [];
+        
         if (playerPrizeElements.length > 0) {
-            console.log(`🏆 Animating ${playerPrizeElements.length} player prize elements from right`);
-            await animationManager.animatePrizeDealFromSide(playerPrizeElements, 'right', 150);
+            console.log(`🏆 Animating ${playerPrizeElements.length} player prize elements`);
+            allPrizePromises.push(unifiedAnimationManager.animatePrizeDeal(playerPrizeElements, 'player'));
         } else {
             console.warn('⚠️ No player prize elements found for animation');
         }
 
-        // Animate CPU prize cards (coming from left)
         if (cpuPrizeElements.length > 0) {
-            console.log(`🏆 Animating ${cpuPrizeElements.length} CPU prize elements from left`);
-            await animationManager.animatePrizeDealFromSide(cpuPrizeElements, 'left', 150);
+            console.log(`🏆 Animating ${cpuPrizeElements.length} CPU prize elements`);
+            allPrizePromises.push(unifiedAnimationManager.animatePrizeDeal(cpuPrizeElements, 'cpu'));
         } else {
             console.warn('⚠️ No CPU prize elements found for animation');
+        }
+
+        // Run prize animations in parallel
+        if (allPrizePromises.length > 0) {
+            await Promise.all(allPrizePromises);
         }
     }
 
@@ -1143,7 +1150,8 @@ export class Game {
      */
     async _animatePokemonPromotion(playerId, benchIndex) {
         // 統一システムを使用（既存のアニメーションマネージャーのsmoothCardMoveを活用）
-        const playerClass = playerId === 'player' ? '.player-self' : '.opponent-board';
+        const orientation = CardOrientationManager.getCardOrientation(playerId, 'bench');
+        const playerClass = orientation.playerSelector;
         const benchSelector = playerId === 'player' ? `.bottom-bench-${benchIndex + 1}` : `.top-bench-${benchIndex + 1}`;
         const activeSelector = playerId === 'player' ? '.active-bottom' : '.active-top';
         
@@ -1172,7 +1180,8 @@ export class Game {
      * サイドカード取得アニメーション
      */
     async _animatePrizeTake(playerId, prizeIndex) {
-        const playerClass = playerId === 'player' ? '.player-self' : '.opponent-board';
+        const orientation = CardOrientationManager.getCardOrientation(playerId, 'prize');
+        const playerClass = orientation.playerSelector;
         const sideClass = playerId === 'player' ? '.side-left' : '.side-right';
         const prizeElement = document.querySelector(`${playerClass} ${sideClass} .card-slot:nth-child(${prizeIndex + 1})`);
         const handElement = document.getElementById(`${playerId}-hand`);

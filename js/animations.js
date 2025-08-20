@@ -4,6 +4,8 @@
  * CSSアニメーションの管理とゲームイベントとの統合
  */
 
+import { CardOrientationManager } from './card-orientation.js';
+
 /**
  * アニメーション管理クラス
  */
@@ -57,8 +59,8 @@ export class AnimationManager {
             this.addAnimationClass(target, 'animate-deal-card');
 
             this.waitForAnimation(target, 'dealCard', () => {
-              const isCpuCard = element.closest('.opponent-board');
-              target.style.transform = isCpuCard ? 'rotateX(180deg)' : 'none';
+              // 統一された向き制御を適用は view.js で既に実行済みのため削除
+              // （二重適用を防ぐため、初期カード作成時のみ適用する方針）
               resolve();
             });
           } else {
@@ -105,18 +107,14 @@ export class AnimationManager {
             // JSで表示状態にしてからアニメーション開始
             element.style.opacity = '1';
 
-            const isCpuCard = element.closest('.opponent-board');
-            if (isCpuCard) {
-                target.style.transform = 'rotateX(180deg)';
-            } else {
-                target.style.transform = 'none';
-            }
+            // 統一された向き制御を適用は view.js で既に実行済みのため削除
+            // （二重適用を防ぐため、初期カード作成時のみ適用する方針）
 
             element.offsetHeight;
 
             this.addAnimationClass(target, 'animate-deal-card-nofade');
             this.waitForAnimation(target, 'dealCardNoFade', () => {
-              target.style.transform = isCpuCard ? 'rotateX(180deg)' : 'none';
+              // 向き制御の最終確定も削除（view.js で完了済み）
               resolve();
             });
           } else {
@@ -129,89 +127,6 @@ export class AnimationManager {
     return Promise.all(promises);
   }
 
-  /**
-   * Wrapper: initial hand deal
-   */
-  async animateInitialHandDeal(cardElements, staggerDelay = 100) {
-    // 初回配布はフェードさせず、移動のみ
-    return this.animateDealCardsNoFade(cardElements, staggerDelay);
-  }
-
-  /**
-   * プレイヤー手札専用の初回配布アニメーション
-   */
-  async animateInitialPlayerHandDeal(cardElements, staggerDelay = 100) {
-    console.log(`🎬 Starting player hand deal animation for ${cardElements.length} cards`);
-    
-    const promises = cardElements.map((element, index) => {
-      return new Promise(resolve => {
-        setTimeout(() => {
-          if (element) {
-            const target = element.querySelector('img') || element;
-
-            // JSで表示状態にしてからアニメーション開始
-            element.style.opacity = '1';
-            target.style.transform = 'none';
-
-            element.offsetHeight;
-
-            console.log(`🎴 Starting player hand animation for card ${index + 1}/${cardElements.length}`);
-            this.addAnimationClass(target, 'animate-deal-player-hand-card');
-            this.waitForAnimation(target, 'dealPlayerHandCard', () => {
-              target.style.transform = 'none';
-              console.log(`✅ Player hand animation completed for card ${index + 1}`);
-              resolve();
-            });
-          } else {
-            resolve();
-          }
-        }, index * staggerDelay);
-      });
-    });
-
-    return Promise.all(promises);
-  }
-
-  /**
-   * Wrapper: prize deal
-   */
-  async animatePrizeDeal(elements, staggerDelay = 100) {
-    return this.animateDealCards(elements, staggerDelay);
-  }
-
-  /**
-   * サイドカード横配布アニメーション（山札から横向きに配布）
-   * @param {Array<Element>} cardElements - カード要素の配列
-   * @param {string} direction - 配布方向 ('left' | 'right')
-   * @param {number} staggerDelay - 遅延時間（ミリ秒）
-   */
-  async animatePrizeDealFromSide(cardElements, direction = 'left', staggerDelay = 150) {
-    console.log(`🎬 Starting prize deal from ${direction} for ${cardElements.length} cards`);
-    
-    const promises = cardElements.map((element, index) => {
-      return new Promise(resolve => {
-        setTimeout(() => {
-          if (element) {
-            const target = element.querySelector('img') || element;
-
-            element.offsetHeight;
-
-            console.log(`🎴 Starting prize animation for card ${index + 1}/${cardElements.length} from ${direction}`);
-            this.addAnimationClass(target, `animate-prize-deal-${direction}`);
-            this.waitForAnimation(target, `prizeDeal${direction === 'left' ? 'Left' : 'Right'}`, () => {
-              target.style.transform = 'none';
-              console.log(`✅ Prize animation completed for card ${index + 1}`);
-              resolve();
-            });
-          } else {
-            resolve();
-          }
-        }, index * staggerDelay);
-      });
-    });
-
-    return Promise.all(promises);
-  }
 
   /**
    * カード公開用光エフェクトアニメーション
@@ -679,8 +594,9 @@ export class AnimationManager {
    * カードを裏面から表面にフリップするアニメーション
    * @param {Element} cardElement - カード要素
    * @param {string} newImageSrc - 表面の画像パス
+   * @param {string} playerId - プレイヤーID (オプション)
    */
-  async flipCardFaceUp(cardElement, newImageSrc) {
+  async flipCardFaceUp(cardElement, newImageSrc, playerId = null) {
     return new Promise(resolve => {
       if (!cardElement || !newImageSrc) {
         console.warn('flipCardFaceUp: Missing cardElement or newImageSrc');
@@ -693,8 +609,8 @@ export class AnimationManager {
         return resolve();
       }
 
-      // CPUカードかプレイヤーカードかを判定
-      const isCpuCard = cardElement.closest('.opponent-board');
+      // 統一された向き制御システムを使用（カードフリップは一般的にプレイマットで発生）
+      const orientation = CardOrientationManager.getCardOrientation(playerId, 'active', cardElement);
       
       // 最初の半分のアニメーション（裏面が見えなくなるまで）
       imgElement.style.transition = 'transform 0.3s ease-in';
@@ -708,23 +624,16 @@ export class AnimationManager {
         // 後半のアニメーション（表面が見えるように）
         imgElement.style.transition = 'transform 0.3s ease-out';
         
-        // CPUカードは上下逆向きに表示（プレイヤーから見て正しい向き）
-        if (isCpuCard) {
-          imgElement.style.transform = 'rotateY(0deg) rotateX(180deg)';
-        } else {
-          imgElement.style.transform = 'rotateY(0deg)';
-        }
+        // 統一されたCardOrientationManagerを使用（CSS クラスに統一）
+        // フリップアニメーション後にCSS クラスで向きを制御
+        imgElement.style.transform = 'rotateY(0deg)';
+        CardOrientationManager.applyCardOrientation(cardElement, orientation.playerId, 'active');
 
         // アニメーション完了後にスタイルをリセット
         imgElement.addEventListener('transitionend', function handler() {
           imgElement.removeEventListener('transitionend', handler);
-          imgElement.style.transition = '';
-          // CPUカードは最終状態も上下逆向きを維持
-          if (isCpuCard) {
-            imgElement.style.transform = 'rotateX(180deg)';
-          } else {
-            imgElement.style.transform = '';
-          }
+          // 統一されたカード向き制御で最終状態を設定
+          CardOrientationManager.finalizeCardOrientation(cardElement, orientation.playerId, 'active');
           resolve();
         }, { once: true });
       }, 300); // 0.3s後に画像を切り替え

@@ -6,6 +6,7 @@
 
 import { animationManager } from './animations.js';
 import { unifiedAnimationManager } from './unified-animations.js';
+import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
@@ -153,14 +154,14 @@ export class SetupManager {
     if (playerHand) {
       const playerCards = Array.from(playerHand.querySelectorAll('.relative'));
       if (playerCards.length > 0) {
-        await animationManager.animateInitialPlayerHandDeal(playerCards, 200);
+        await unifiedAnimationManager.animateHandDeal(playerCards, 'player');
       }
     }
 
     if (cpuHand) {
       const cpuCards = Array.from(cpuHand.querySelectorAll('.relative'));
       if (cpuCards.length > 0) {
-        await animationManager.animateInitialHandDeal(cpuCards, 200);
+        await unifiedAnimationManager.animateHandDeal(cpuCards, 'cpu');
       }
     }
   }
@@ -317,13 +318,20 @@ export class SetupManager {
    * サイドカード配置アニメーション
    */
   async animatePrizeCardSetup() {
-    const playerPrizes = document.querySelectorAll('.player-self .side-left .card-slot');
-    const cpuPrizes = document.querySelectorAll('.opponent-board .side-right .card-slot');
+    // Use unified system with proper player identification for each prize set
+    const playerPrizeElements = Array.from(document.querySelectorAll('.player-self .side-left .card-slot .relative, .player-self .side-left .card-slot .card'));
+    const cpuPrizeElements = Array.from(document.querySelectorAll('.opponent-board .side-right .card-slot .relative, .opponent-board .side-right .card-slot .card'));
 
-    const allPrizes = [...Array.from(playerPrizes), ...Array.from(cpuPrizes)];
-    
-    if (allPrizes.length > 0) {
-      await animationManager.animatePrizeDeal(allPrizes, 150);
+    const prizePromises = [];
+    if (playerPrizeElements.length > 0) {
+      prizePromises.push(unifiedAnimationManager.animatePrizeDeal(playerPrizeElements, 'player'));
+    }
+    if (cpuPrizeElements.length > 0) {
+      prizePromises.push(unifiedAnimationManager.animatePrizeDeal(cpuPrizeElements, 'cpu'));
+    }
+
+    if (prizePromises.length > 0) {
+      await Promise.all(prizePromises);
     }
   }
 
