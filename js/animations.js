@@ -193,17 +193,7 @@ export class AnimationManager {
         setTimeout(() => {
           if (element) {
             const target = element.querySelector('img') || element;
-            // アニメーション開始前に要素を表示状態にする（CSSで初期非表示を制御）
-            // element.style.opacity = '1'; // CSSのkeyframesで制御するため削除
-            // element.style.visibility = 'visible'; // CSSのkeyframesで制御するため削除
-            // element.style.display = 'flex'; // CSSのkeyframesで制御するため削除
-            // if (target) {
-            //   target.style.opacity = '1'; // CSSのkeyframesで制御するため削除
-            //   target.style.visibility = 'visible'; // CSSのkeyframesで制御するため削除
-            //   target.style.display = 'block'; // CSSのkeyframesで制御するため削除
-            // }
 
-            // 強制リフロー
             element.offsetHeight;
 
             console.log(`🎴 Starting prize animation for card ${index + 1}/${cardElements.length} from ${direction}`);
