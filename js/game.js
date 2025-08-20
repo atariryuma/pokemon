@@ -54,6 +54,9 @@ export class Game {
         this.view.attackButton.onclick = this._handleAttack.bind(this);
         this.view.endTurnButton.onclick = this._handleEndTurn.bind(this); // Bind end turn button
 
+        // Render the initial board state immediately after state creation
+        this._updateState(this.state); // <--- ADD THIS LINE
+
         // Show game start modal instead of auto-starting
         this.setupManager.showGameStartModal();
         
@@ -854,18 +857,14 @@ export class Game {
         // 2. カードを表向きにする (State更新)
         let newState = await this.setupManager.startGameRevealCards(this.state);
         
-        // 3. 先攻プレイヤーが1枚ドローする
-        console.log('✍️ First player draws a card...');
-        newState = await this.turnManager.handlePlayerDraw(newState);
-
-        // 4. ターン制約をリセット (ドロー以外のもの)
+        // 3. ターン制約をリセット (ドロー以外のもの)
         newState.hasAttachedEnergyThisTurn = false;
         newState.canRetreat = true;
         newState.canPlaySupporter = true;
 
-        // 5. メインフェーズに移行
-        newState.phase = GAME_PHASES.PLAYER_MAIN;
-        newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+        // 4. ドローフェーズに移行
+        newState.phase = GAME_PHASES.PLAYER_DRAW;
+        newState.prompt.message = '山札をクリックしてカードを引いてください。';
 
         this._updateState(newState);
 

@@ -1082,11 +1082,14 @@ export class View {
             e.stopPropagation();
             e.preventDefault();
             
+            const cardInSlot = slotElement.querySelector('[data-card-id]');
+            const cardId = cardInSlot ? cardInSlot.dataset.cardId : null;
+
             const dataset = {
                 owner: 'player',
                 zone: zone,
                 index: index.toString(),
-                cardId: null // スロットクリックの場合は空
+                cardId: cardId // スロット内の要素から cardId を取得
             };
             
             console.log(`🎯 Slot clicked: ${zone}[${index}]`);
