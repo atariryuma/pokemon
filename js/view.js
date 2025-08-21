@@ -1,8 +1,7 @@
-import { getCardImagePath } from './state.js';
-// animationManagerを削除 - animations.jsは存在せず
-import { unifiedAnimationManager } from './simple-animations.js';
+import { getCardImagePath } from './data-manager.js';
+import { animationManager } from './unified-animations.js';
 import { GAME_PHASES } from './phase-manager.js';
-// CardOrientationManagerを削除 - シンプル化
+import { CardOrientationManager } from './card-orientation.js';
 import { BUTTON_IDS, CONTAINER_IDS, ACTION_BUTTON_GROUPS, CSS_CLASSES } from './ui-constants.js';
 import { errorHandler } from './error-handler.js';
 import { modalManager, MODAL_TYPES } from './modal-manager.js';
@@ -276,8 +275,9 @@ export class View {
             const isFaceDown = activePokemon && activePokemon.setupFaceDown;
             const cardEl = this._createCardElement(activePokemon, playerType, 'active', 0, isFaceDown);
             activeSlot.appendChild(cardEl);
-            // スロットクリック有効化（プレイヤー・CPU両方）
-            this._makeSlotClickable(activeSlot, playerType, 'active', 0);
+            if (playerType === 'player') {
+                this._makeSlotClickable(activeSlot, playerType, 'active', 0);
+            }
         }
 
         // Bench
@@ -290,8 +290,9 @@ export class View {
             const isFaceDown = benchPokemon && benchPokemon.setupFaceDown;
             const cardEl = this._createCardElement(benchPokemon, playerType, 'bench', i, isFaceDown);
             benchSlot.appendChild(cardEl);
-            // ベンチスロットクリック有効化（プレイヤー・CPU両方）
-            this._makeSlotClickable(benchSlot, playerType, 'bench', i);
+            if (playerType === 'player') {
+                this._makeSlotClickable(benchSlot, playerType, 'bench', i);
+            }
         }
 
         // Discard - HTMLのクラス名に合わせて修正
@@ -684,13 +685,11 @@ export class View {
             let countBadge = prizeContainer.querySelector('.prize-count-badge');
             if (!countBadge) {
                 countBadge = document.createElement('div');
-                countBadge.className = 'prize-count-badge absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white';
+                countBadge.className = 'prize-count-badge absolute top-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
                 prizeContainer.appendChild(countBadge);
             }
             countBadge.textContent = prizeCount;
             countBadge.style.display = 'flex'; // Ensure it's visible
-            countBadge.style.transform = 'translate(50%, -50%)';
-            countBadge.style.zIndex = '40'; // Ensure it's above cards
         } else {
             const countBadge = prizeContainer.querySelector('.prize-count-badge');
             if (countBadge) {
@@ -744,7 +743,6 @@ export class View {
 
         const img = document.createElement('img');
         img.className = 'card-image w-full h-full object-contain rounded-lg';
-        img.style.position = 'relative'; // バッジ配置の基準点にする
         const shouldShowBack = isFaceDown || card.isPrizeCard;
         img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
@@ -754,33 +752,18 @@ export class View {
         // 表向きのカードなら誰のでも詳細表示リスナーを追加
         if (!isFaceDown) {
             container.classList.add('cursor-pointer');
-            
-            // 右クリックで詳細表示
             container.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 this.showCardInfo(card, e.currentTarget);
             });
-            
-            // CPUカードでも通常クリックで情報表示可能にする
-            if (playerType === 'cpu' && zone !== 'hand') {
-                container.addEventListener('click', (e) => {
-                    // カード選択処理と競合しないよう、Altキー押下時のみ有効
-                    if (e.altKey || e.ctrlKey) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.showCardInfo(card, e.currentTarget);
-                    }
-                });
-            }
         }
 
-        // ダメージバッジ（ポケモンカードのみ、ダメージがある場合）
-        const dmgValue = Number(card.damage || 0);
-        if (card.card_type === 'Pokemon' && dmgValue > 0) {
+        if (card.damage > 0) {
             const damageCounter = document.createElement('div');
-            damageCounter.className = 'damage-counter absolute top-0 right-0 bg-red-600 text-white text-sm font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-lg border-2 border-white';
-            damageCounter.textContent = dmgValue;
+            damageCounter.className = 'absolute top-1 right-1 bg-red-600 text-white text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center';
+            damageCounter.textContent = card.damage;
             damageCounter.style.pointerEvents = 'none';
+            damageCounter.style.zIndex = '30';
             container.appendChild(damageCounter);
         }
 
@@ -1054,8 +1037,7 @@ export class View {
         // メッセージを表示（ボタンは表示しない）
         this.gameMessageDisplay.textContent = message;
         this.gameMessageDisplay.classList.remove('hidden');
-        unifiedAnimationManager.animateMessage(this.gameMessageDisplay, 
-          { personality: 'informative', spectacle: 'subtle' });
+        animationManager.animateMessage(this.gameMessageDisplay);
 
         // ボタンがある場合は警告を出す（開発者向け）
         if (actions.length > 0) {
@@ -1078,13 +1060,8 @@ export class View {
         }
     }
 
-    // ===== メッセージングシステム（責任分離） =====
-    
-    /**
-     * ステータスパネルメッセージ表示（情報のみ、ボタンなし）
-     * バトル進行情報、ターン情報、ゲーム状況を表示
-     */
-    showStatusMessage(message) {
+    // Game Message Display
+    showGameMessage(message) {
         if (this.gameMessageDisplay && message) {
             // 重複チェック - 同じメッセージは再表示しない
             if (this.gameMessageDisplay.textContent === message) {
@@ -1094,42 +1071,9 @@ export class View {
             this.gameMessageDisplay.textContent = message;
             this.gameMessageDisplay.classList.remove('hidden');
             
-            // ステータス用アニメーション（控えめ）
-            unifiedAnimationManager.animateMessage(this.gameMessageDisplay, 
-                { personality: 'informative', spectacle: 'subtle' });
+            // メッセージアニメーション
+            animationManager.animateMessage(this.gameMessageDisplay);
         }
-    }
-    
-    /**
-     * 後方互換性のため showGameMessage を showStatusMessage のエイリアスとして保持
-     */
-    showGameMessage(message) {
-        this.showStatusMessage(message);
-    }
-    
-    /**
-     * 中央モーダル表示（手を止める重要な意思決定用）
-     * ゲーム開始確認、エラー、重要な選択に使用
-     */
-    showCentralModal({ title, message, actions = [], closable = false }) {
-        modalManager.showCentralModal({
-            title,
-            message,
-            actions,
-            closable
-        });
-    }
-    
-    /**
-     * トースト通知表示（システム的な通知用）
-     * 自動消失、操作を妨げない一時的な情報表示
-     */
-    showToast(message, type = 'info', duration = 3000) {
-        modalManager.showToast({
-            message,
-            type,
-            duration
-        });
     }
 
     hideGameMessage() {
@@ -1166,8 +1110,7 @@ export class View {
         if (this.gameMessageDisplay) {
             this.gameMessageDisplay.textContent = message;
             this.gameMessageDisplay.classList.remove('hidden');
-            unifiedAnimationManager.animateError(this.gameMessageDisplay,
-              { personality: 'urgent', spectacle: 'attention' });
+            animationManager.animateError(this.gameMessageDisplay);
         }
     }
 

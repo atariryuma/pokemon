@@ -1,112 +1,5 @@
+import { getCardMasterList } from './data-manager.js';
 import { GAME_PHASES } from './phase-manager.js';
-
-// ===== カードデータ管理（data-manager.jsから統合）=====
-let cardMasterList = [];
-
-/**
- * カードデータをJSONファイルから読み込む
- */
-export async function loadCardsFromJSON() {
-    try {
-        const response = await fetch('./data/cards-master.json');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        cardMasterList = await response.json();
-        console.log(`📦 Loaded ${cardMasterList.length} cards from JSON`);
-        return cardMasterList;
-    } catch (error) {
-        console.error('❌ Failed to load cards from JSON:', error);
-        cardMasterList = getStaticFallbackData();
-        console.log(`🔄 Fallback: Using ${cardMasterList.length} static cards`);
-        return cardMasterList;
-    }
-}
-
-/**
- * 現在のカードリストを取得
- */
-export function getCardMasterList() {
-    return cardMasterList;
-}
-
-/**
- * カード画像パスを取得
- */
-export function getCardImagePath(cardNameEn) {
-    const specialNames = {
-        "Glasswing Butterfly Larva": "Glasswing_Butterfly_Larva1",
-        "Cat exv": "Neko_exv",
-        "Grey Dagger Moth Larva": "Haiirohitori_Larva",
-        "Short-horned Grasshopper": "Shouyou_Batta",
-        "Tateha Butterfly": "Tateha",
-        "Caterpillar exz": "Kemushi_exz",
-        "Taiwan Clouded Yellow": "Taiwan_Clouded_Yellow",
-        "Kurohime Crane Fly": "Kurohime_Ganbo",
-        "Bee ex": "Bee_ex",
-        "Hosohari Stinkbug ex": "Hosohari_Stinkbug_ex",
-        "Tonosama Grasshopper": "Tonosama_Batta",
-        "Rainbow Skink": "Rainbow_Skink",
-        "Longhorn Beetle": "Longhorn_Beetle",
-        "Tsumamurasaki Madara": "Tsumamura_Sakimadara",
-        "Kobane Inago": "Koban_Inago",
-        "Orange Spider": "Orange_Spider"
-    };
-
-    if (cardNameEn.includes("Energy")) {
-        const energyType = cardNameEn.split(" ")[0];
-        const energyImageMap = {
-            "Colorless": "Energy_Colorless",
-            "Grass": "Energy_Grass",
-            "Fire": "Energy_Fire",
-            "Water": "Energy_Water",
-            "Lightning": "Energy_Lightning",
-            "Psychic": "Energy_Psychic",
-            "Fighting": "Energy_Fighting",
-            "Darkness": "Energy_Darkness",
-            "Metal": "Energy_Colorless"
-        };
-        const imageName = energyImageMap[energyType] || "Energy_Colorless";
-        return `assets/cards/energy/${imageName}.webp`;
-    }
-
-    const fileName = specialNames[cardNameEn] || cardNameEn.replace(/ /g, '_');
-    return `assets/cards/pokemon/${fileName}.webp`;
-}
-
-/**
- * 静的フォールバックデータ
- */
-function getStaticFallbackData() {
-    return [
-        {
-            "id": "akamayabato",
-            "name_en": "Akamayabato",
-            "name_ja": "アカメバト",
-            "card_type": "Pokémon",
-            "stage": "Basic",
-            "hp": 60,
-            "types": ["Colorless"],
-            "attacks": [{
-                "name_en": "Peck",
-                "name_ja": "つつく",
-                "cost": ["Colorless"],
-                "damage": 20
-            }],
-            "retreat_cost": 1
-        },
-        {
-            "id": "colorless_energy",
-            "name_en": "Colorless Energy",
-            "name_ja": "無色エネルギー",
-            "card_type": "Basic Energy",
-            "energy_type": "Colorless",
-            "is_basic": true
-        }
-    ];
-}
-
-// ===== ゲーム状態管理 =====
 
 // Fisher-Yates shuffle algorithm
 function shuffle(array) {
@@ -121,7 +14,7 @@ function createDeck() {
     const deck = [];
     let cardId = 0;
     
-    // cardMasterListは上記で取得済み
+    const cardMasterList = getCardMasterList();
 
     // Add Pokémon
     const pokemon = cardMasterList.filter(c => c.card_type === 'Pokémon');

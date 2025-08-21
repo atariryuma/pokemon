@@ -5,7 +5,7 @@
  * 4つのモーダルタイプを管理：中央モーダル、通知トースト、アクションHUD、状況パネル
  */
 
-// animationManagerを削除 - シンプル化
+import { animationManager } from './unified-animations.js';
 
 const noop = () => {};
 
@@ -487,31 +487,6 @@ export class ModalManager {
      */
     isModalActive(type) {
         return this.activeModals.has(type);
-    }
-
-    /**
-     * レガシー互換性のためのdisplayModalメソッド
-     * 古いsystem（じゃんけん結果、ダメージ表示等）との互換性を保つ
-     * @param {Object} options - モーダル設定 {title, message, actions}
-     */
-    displayModal({ title, message, actions = [] }) {
-        return this.showCentralModal({
-            title,
-            message,
-            actions: actions.map(action => ({
-                text: action.text,
-                callback: action.callback,
-                className: action.className || 'px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg text-sm'
-            })),
-            allowHtml: false
-        });
-    }
-
-    /**
-     * 中央モーダルを隠すメソッド（レガシー互換性）
-     */
-    hideModal() {
-        return this.closeCentralModal();
     }
 }
 

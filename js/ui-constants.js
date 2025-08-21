@@ -9,7 +9,6 @@ export const BUTTON_IDS = {
     RETREAT: 'retreat-button',
     ATTACK: 'attack-button',
     END_TURN: 'end-turn-button',
-    DRAW_CARD: 'draw-card-button',
     
     // セットアップフェーズボタン
     CONFIRM_SETUP: 'confirm-setup-button',
