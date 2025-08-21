@@ -1,5 +1,6 @@
 import { getCardImagePath } from './data-manager.js';
-import { animationManager } from './unified-animations.js';
+import { animationManager } from './animations.js';
+import { unifiedAnimationManager } from './unified-animations.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { BUTTON_IDS, CONTAINER_IDS, ACTION_BUTTON_GROUPS, CSS_CLASSES } from './ui-constants.js';
@@ -275,9 +276,8 @@ export class View {
             const isFaceDown = activePokemon && activePokemon.setupFaceDown;
             const cardEl = this._createCardElement(activePokemon, playerType, 'active', 0, isFaceDown);
             activeSlot.appendChild(cardEl);
-            if (playerType === 'player') {
-                this._makeSlotClickable(activeSlot, playerType, 'active', 0);
-            }
+            // スロットクリック有効化（プレイヤー・CPU両方）
+            this._makeSlotClickable(activeSlot, playerType, 'active', 0);
         }
 
         // Bench
@@ -290,9 +290,8 @@ export class View {
             const isFaceDown = benchPokemon && benchPokemon.setupFaceDown;
             const cardEl = this._createCardElement(benchPokemon, playerType, 'bench', i, isFaceDown);
             benchSlot.appendChild(cardEl);
-            if (playerType === 'player') {
-                this._makeSlotClickable(benchSlot, playerType, 'bench', i);
-            }
+            // ベンチスロットクリック有効化（プレイヤー・CPU両方）
+            this._makeSlotClickable(benchSlot, playerType, 'bench', i);
         }
 
         // Discard - HTMLのクラス名に合わせて修正
@@ -1055,7 +1054,8 @@ export class View {
         // メッセージを表示（ボタンは表示しない）
         this.gameMessageDisplay.textContent = message;
         this.gameMessageDisplay.classList.remove('hidden');
-        animationManager.animateMessage(this.gameMessageDisplay);
+        unifiedAnimationManager.animateMessage(this.gameMessageDisplay, 
+          { personality: 'informative', spectacle: 'subtle' });
 
         // ボタンがある場合は警告を出す（開発者向け）
         if (actions.length > 0) {
@@ -1078,8 +1078,13 @@ export class View {
         }
     }
 
-    // Game Message Display
-    showGameMessage(message) {
+    // ===== メッセージングシステム（責任分離） =====
+    
+    /**
+     * ステータスパネルメッセージ表示（情報のみ、ボタンなし）
+     * バトル進行情報、ターン情報、ゲーム状況を表示
+     */
+    showStatusMessage(message) {
         if (this.gameMessageDisplay && message) {
             // 重複チェック - 同じメッセージは再表示しない
             if (this.gameMessageDisplay.textContent === message) {
@@ -1089,9 +1094,42 @@ export class View {
             this.gameMessageDisplay.textContent = message;
             this.gameMessageDisplay.classList.remove('hidden');
             
-            // メッセージアニメーション
-            animationManager.animateMessage(this.gameMessageDisplay);
+            // ステータス用アニメーション（控えめ）
+            unifiedAnimationManager.animateMessage(this.gameMessageDisplay, 
+                { personality: 'informative', spectacle: 'subtle' });
         }
+    }
+    
+    /**
+     * 後方互換性のため showGameMessage を showStatusMessage のエイリアスとして保持
+     */
+    showGameMessage(message) {
+        this.showStatusMessage(message);
+    }
+    
+    /**
+     * 中央モーダル表示（手を止める重要な意思決定用）
+     * ゲーム開始確認、エラー、重要な選択に使用
+     */
+    showCentralModal({ title, message, actions = [], closable = false }) {
+        modalManager.showCentralModal({
+            title,
+            message,
+            actions,
+            closable
+        });
+    }
+    
+    /**
+     * トースト通知表示（システム的な通知用）
+     * 自動消失、操作を妨げない一時的な情報表示
+     */
+    showToast(message, type = 'info', duration = 3000) {
+        modalManager.showToast({
+            message,
+            type,
+            duration
+        });
     }
 
     hideGameMessage() {
@@ -1128,7 +1166,8 @@ export class View {
         if (this.gameMessageDisplay) {
             this.gameMessageDisplay.textContent = message;
             this.gameMessageDisplay.classList.remove('hidden');
-            animationManager.animateError(this.gameMessageDisplay);
+            unifiedAnimationManager.animateError(this.gameMessageDisplay,
+              { personality: 'urgent', spectacle: 'attention' });
         }
     }
 

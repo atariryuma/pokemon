@@ -22,7 +22,11 @@
       "Bash(npm run:*)",
       "Bash(git checkout:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\animations.js\")"
+      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\animations.js\")",
+      "Bash(git log:*)",
+      "Bash(move:*)",
+      "Bash(del:*)",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "ask": [],

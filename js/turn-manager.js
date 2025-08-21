@@ -4,7 +4,8 @@
  * プレイヤーとCPUのターン進行、制約管理、自動処理を統括
  */
 
-import { animationManager, unifiedAnimationManager } from './unified-animations.js';
+import { animationManager } from './animations.js';
+import { unifiedAnimationManager } from './unified-animations.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
@@ -75,11 +76,12 @@ export class TurnManager {
       newState = Logic.drawCard(newState, 'player');
       newState.hasDrawnThisTurn = true;
 
-      // ドローアニメーション
+      // ドローアニメーション（統合アニメーション使用）
       await this.animateCardDraw('player');
 
       // メインフェーズに自動移行
-      
+      newState.phase = GAME_PHASES.PLAYER_MAIN;
+      newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
 
       newState = addLogEntry(newState, {
         type: 'card_draw',
@@ -267,7 +269,8 @@ export class TurnManager {
     // きぜつチェックとアニメーション
     const defenderStateBeforeKO = newState.players[defender];
     if (defenderElement && defenderStateBeforeKO.active && defenderStateBeforeKO.active.damage >= defenderStateBeforeKO.active.hp) {
-      await animationManager.createUnifiedKnockoutAnimation(defender, defenderStateBeforeKO.active.id);
+      await unifiedAnimationManager.animateKnockout(defender, defenderStateBeforeKO.active, 
+        { personality: 'dramatic', spectacle: 'intense' });
     }
     newState = Logic.checkForKnockout(newState, defender);
 
@@ -791,7 +794,8 @@ export class TurnManager {
       const cards = handElement.querySelectorAll('.relative');
       const lastCard = cards.length ? cards[cards.length - 1] : null;
       if (lastCard) {
-        await animationManager.animateDrawCard(lastCard);
+        await unifiedAnimationManager.animateCardDraw(playerId, lastCard, 
+          { personality: 'focused', spectacle: 'gentle' });
       }
     }
   }
@@ -801,7 +805,8 @@ export class TurnManager {
    */
   async animateAttack(attackerId, state) {
     const defenderId = attackerId === 'player' ? 'cpu' : 'player';
-    await animationManager.createUnifiedAttackAnimation(attackerId, defenderId);
+    await unifiedAnimationManager.animateAttack(attackerId, defenderId, 
+      { personality: 'fierce', spectacle: 'spectacular' });
   }
 
 
