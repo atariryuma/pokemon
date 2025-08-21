@@ -306,13 +306,46 @@ export function performAttack(state, attackingPlayerId, attackIndex) {
     }
 
     // --- Damage Calculation ---
-    // For now, just base damage.
-    // TODO: Implement weakness and resistance.
-    const damage = attack.damage || 0;
+    let baseDamage = attack.damage || 0;
+    
+    // 弱点計算
+    if (defender.weakness && defender.weakness.length > 0) {
+        const weakness = defender.weakness.find(w => 
+            attacker.types && attacker.types.includes(w.type)
+        );
+        if (weakness) {
+            if (weakness.value === '×2') {
+                baseDamage *= 2;
+            } else if (weakness.value.startsWith('+')) {
+                baseDamage += parseInt(weakness.value.substring(1)) || 20;
+            }
+        }
+    }
+    
+    // 抵抗力計算
+    if (defender.resistance && defender.resistance.length > 0) {
+        const resistance = defender.resistance.find(r => 
+            attacker.types && attacker.types.includes(r.type)
+        );
+        if (resistance) {
+            const resistValue = parseInt(resistance.value) || -20;
+            baseDamage = Math.max(0, baseDamage + resistValue);
+        }
+    }
+    
+    const finalDamage = Math.max(0, baseDamage);
     const previousDamage = defender.damage || 0;
-    const newDamage = previousDamage + damage;
+    const newDamage = previousDamage + finalDamage;
 
-    let newState = addLogEntry(state, { message: `${attacker.name_ja}の${attack.name_ja}！${defender.name_ja}に${damage}ダメージ！` });
+    // ダメージ計算結果のメッセージ
+    let damageMessage = `${attacker.name_ja}の${attack.name_ja}！${defender.name_ja}に${finalDamage}ダメージ！`;
+    if (finalDamage > (attack.damage || 0)) {
+        damageMessage += ' (弱点)';
+    } else if (finalDamage < (attack.damage || 0)) {
+        damageMessage += ' (抵抗力)';
+    }
+    
+    let newState = addLogEntry(state, { message: damageMessage });
 
     const updatedDefender = {
         ...defender,
@@ -407,12 +440,13 @@ export function checkForKnockout(state, defendingPlayerId) {
             },
             [attackingPlayerId]: {
                 ...attackerState,
-                prizeRemaining: attackerState.prizeRemaining - 1,
-                prizesToTake: (attackerState.prizesToTake || 0) + 1, // Add a prize to take
+                prizeRemaining: attackerState.prizeRemaining - (defender.rule_box === 'ex' || defender.rule_box === 'V' || defender.rule_box === 'VMAX' ? 2 : 1),
+                prizesToTake: (attackerState.prizesToTake || 0) + (defender.rule_box === 'ex' || defender.rule_box === 'V' || defender.rule_box === 'VMAX' ? 2 : 1),
             },
         },
     };
-    newState = addLogEntry(newState, { message: `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドを1枚とった！` });
+    const prizeCount = defender.rule_box === 'ex' || defender.rule_box === 'V' || defender.rule_box === 'VMAX' ? 2 : 1;
+    newState = addLogEntry(newState, { message: `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドを${prizeCount}枚とった！` });
     return newState;
 }
 

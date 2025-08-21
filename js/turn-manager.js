@@ -261,12 +261,24 @@ export class TurnManager {
       noop(`💥 After attack - Defender: ${defenderAfter.name_ja} (HP: ${defenderAfter.hp - (defenderAfter.damage || 0)}/${defenderAfter.hp}, Damage: ${defenderAfter.damage || 0})`);
     }
 
-    // 攻撃アニメーション
+    // 攻撃アニメーション（タイプ別エフェクト付き）
+    const attackerElement = document.querySelector(`${this.getPlayerSelector(attacker)} ${this.getActiveSelector(attacker)}`);
+    const attackerAfter = newState.players[attacker].active;
+    const attack = attackerAfter.attacks[attackIndex];
+    const primaryType = attackerAfter.types && attackerAfter.types[0] ? attackerAfter.types[0] : 'Colorless';
+    
+    // タイプ別攻撃エフェクト
+    await unifiedAnimationManager.animateTypeBasedAttack(attackerElement, defenderElement, primaryType);
+    
+    // 基本攻撃アニメーション
     await this.animateAttack(attacker, newState);
 
-    // ダメージアニメーションを実行
+    // ダメージアニメーションとシェイク
+    const finalDamage = defenderAfter ? (defenderAfter.damage - (defenderPokemon?.damage || 0)) : 0;
     if (defenderElement) {
         await animationManager.animateDamage(defenderElement);
+        // 画面シェイクエフェクト（ダメージ量に応じて）
+        await unifiedAnimationManager.animateScreenShake(finalDamage);
     }
 
     // きぜつチェックとアニメーション
@@ -277,11 +289,11 @@ export class TurnManager {
     newState = Logic.checkForKnockout(newState, defender);
 
     // Check for prize cards after KO (if any)
-    const attackingPlayerState = newState.players[attackingPlayerId];
+    const attackingPlayerState = newState.players[attacker];
     if (attackingPlayerState.prizesToTake > 0) {
         newState.phase = GAME_PHASES.PRIZE_SELECTION;
-        newState.playerToAct = attackingPlayerId; // The player who needs to take prizes
-        newState.prompt.message = `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドカードを選んで取ってください。`;
+        newState.playerToAct = attacker; // The player who needs to take prizes
+        newState.prompt.message = `${attacker === 'player' ? 'あなた' : '相手'}はサイドカードを選んで取ってください。`;
         newState.pendingAction = null; // Clear any pending actions
         return newState; // Stop further processing in this function, wait for prize selection
     }
@@ -548,10 +560,8 @@ export class TurnManager {
       .filter(attack => Logic.hasEnoughEnergy(activePokemon, attack));
 
     if (usableAttacks.length > 0) {
-      // 簡単なAI: 最もダメージの高い攻撃を選択
-      const bestAttack = usableAttacks.reduce((best, current) => 
-        (current.damage || 0) > (best.damage || 0) ? current : best
-      );
+      // 戦略的AI: 相手を倒せる攻撃を優先、次に高ダメージ攻撃を選択
+      const bestAttack = this._selectBestAttack(newState, usableAttacks, activePokemon);
 
       newState.phase = GAME_PHASES.CPU_ATTACK;
       newState.pendingAction = {
@@ -566,6 +576,43 @@ export class TurnManager {
     }
 
     return newState;
+  }
+
+  /**
+   * CPU戦略的攻撃選択
+   */
+  _selectBestAttack(state, usableAttacks, attacker) {
+    const defender = state.players.player.active;
+    if (!defender) return usableAttacks[0];
+
+    const attackScores = usableAttacks.map(attack => {
+      let score = attack.damage || 0;
+      const remainingHP = defender.hp - (defender.damage || 0);
+      
+      // 相手を倒せる攻撃に高い優先度
+      if (score >= remainingHP) {
+        score += 100; // KOボーナス
+      }
+      
+      // 弱点を突ける場合の追加スコア
+      if (defender.weakness && defender.weakness.some(w => 
+        attacker.types && attacker.types.includes(w.type)
+      )) {
+        score += 50; // 弱点ボーナス
+      }
+      
+      return { ...attack, score };
+    });
+
+    // スコア順にソート
+    attackScores.sort((a, b) => b.score - a.score);
+    
+    // 上位攻撃からランダム選択（完全に予測可能にしない）
+    const topAttacks = attackScores.filter(attack => 
+      attack.score >= attackScores[0].score - 10
+    );
+    
+    return topAttacks[Math.floor(Math.random() * topAttacks.length)];
   }
 
   /**
@@ -660,6 +707,20 @@ export class TurnManager {
     );
     
     await new Promise(resolve => setTimeout(resolve, thinkTime));
+  }
+
+  /**
+   * プレイヤーセレクタを取得
+   */
+  getPlayerSelector(playerId) {
+    return playerId === 'player' ? '.player-board:not(.opponent-board)' : '.opponent-board';
+  }
+
+  /**
+   * アクティブエリアセレクタを取得
+   */
+  getActiveSelector(playerId) {
+    return playerId === 'player' ? '.active-bottom' : '.active-top';
   }
 
   /**

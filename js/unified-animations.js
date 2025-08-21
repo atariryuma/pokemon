@@ -548,6 +548,86 @@ export class UnifiedAnimationManager {
   }
 
   /**
+   * 画面シェイクエフェクト（ダメージ量に応じて強度可変）
+   */
+  async animateScreenShake(damage = 0) {
+    // ダメージ量に応じてシェイク強度を計算
+    const intensity = Math.min(Math.max(damage / 20, 1), 8); // 1-8の範囲
+    const duration = Math.min(300 + damage * 2, 800); // 300-800msの範囲
+    
+    const gameBoard = document.getElementById('game-board') || document.body;
+    const originalTransform = gameBoard.style.transform || '';
+    
+    return new Promise(resolve => {
+      let shakeCount = 0;
+      const maxShakes = Math.floor(duration / 50);
+      
+      const shakeInterval = setInterval(() => {
+        if (shakeCount >= maxShakes) {
+          gameBoard.style.transform = originalTransform;
+          clearInterval(shakeInterval);
+          resolve();
+          return;
+        }
+        
+        const offsetX = (Math.random() - 0.5) * intensity;
+        const offsetY = (Math.random() - 0.5) * intensity;
+        gameBoard.style.transform = `${originalTransform} translate(${offsetX}px, ${offsetY}px)`;
+        
+        shakeCount++;
+      }, 50);
+    });
+  }
+
+  /**
+   * タイプ別攻撃エフェクト
+   */
+  async animateTypeBasedAttack(attackerElement, defenderElement, energyType = 'Colorless') {
+    const effects = {
+      Fire: { color: '#ff4444', effect: 'flame' },
+      Water: { color: '#4488ff', effect: 'water' },
+      Lightning: { color: '#ffff44', effect: 'electric' },
+      Grass: { color: '#44ff44', effect: 'leaf' },
+      Psychic: { color: '#ff44ff', effect: 'psychic' },
+      Fighting: { color: '#ff8844', effect: 'fighting' },
+      Darkness: { color: '#444444', effect: 'dark' },
+      Metal: { color: '#888888', effect: 'metal' },
+      Fairy: { color: '#ffaaff', effect: 'fairy' },
+      Dragon: { color: '#4444ff', effect: 'dragon' },
+      Colorless: { color: '#ffffff', effect: 'normal' }
+    };
+    
+    const effect = effects[energyType] || effects.Colorless;
+    
+    // 攻撃者にタイプカラーのグロー効果
+    if (attackerElement) {
+      attackerElement.style.boxShadow = `0 0 20px ${effect.color}`;
+      attackerElement.style.transition = 'box-shadow 0.3s ease';
+      
+      setTimeout(() => {
+        attackerElement.style.boxShadow = '';
+      }, 600);
+    }
+    
+    // 守備側にタイプエフェクト
+    if (defenderElement) {
+      const overlay = document.createElement('div');
+      overlay.className = 'absolute inset-0 pointer-events-none';
+      overlay.style.background = `radial-gradient(circle, ${effect.color}33 0%, transparent 70%)`;
+      overlay.style.animation = 'pulse 0.5s ease-in-out';
+      
+      defenderElement.style.position = 'relative';
+      defenderElement.appendChild(overlay);
+      
+      setTimeout(() => {
+        overlay.remove();
+      }, 500);
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+
+  /**
    * カードの正確な画像情報を取得
    */
   getCardImageInfo(cardElement, card, isSetupPhase = false) {

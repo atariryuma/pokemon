@@ -64,6 +64,7 @@ export class Game {
             // Initialize view
             this.view = new View(this.rootEl);
             this.view.bindCardClick(this._handleCardClick.bind(this));
+            this.view.bindDragAndDrop(this._handleDragDrop.bind(this));
             this.view.setConfirmSetupButtonHandler(this._handleConfirmSetup.bind(this)); // Bind confirm button
 
             // Setup action button event handlers
@@ -193,6 +194,97 @@ export class Game {
                 break;
         }
     } // End of _handleCardClick
+
+    /**
+     * ドラッグ&ドロップ処理
+     */
+    async _handleDragDrop({ dragData, dropTarget }) {
+        if (this.state.phase !== GAME_PHASES.PLAYER_MAIN) return;
+        if (this.state.isProcessing) return;
+
+        const { cardId, cardType } = dragData;
+        const { zone: targetZone, index: targetIndex } = dropTarget;
+
+        try {
+            this.state.isProcessing = true;
+
+            // カードタイプに応じた処理
+            switch (cardType) {
+                case 'Pokémon':
+                    await this._handlePokemonDrop(cardId, targetZone, targetIndex);
+                    break;
+                case 'Energy':
+                    await this._handleEnergyDrop(cardId, targetZone, targetIndex);
+                    break;
+                case 'Trainer':
+                    this.view.showInfoMessage('トレーナーカードはクリックで使用してください');
+                    break;
+            }
+        } catch (error) {
+            console.error('Drag drop error:', error);
+            this.view.showErrorMessage('カードの配置に失敗しました');
+        } finally {
+            this.state.isProcessing = false;
+        }
+    }
+
+    /**
+     * ポケモンカードのドロップ処理
+     */
+    async _handlePokemonDrop(cardId, targetZone, targetIndex) {
+        const card = this.state.players.player.hand.find(c => c.id === cardId);
+        if (!card) return;
+
+        if (targetZone === 'bench' && card.stage === 'BASIC') {
+            const newState = this.turnManager.handlePlayerMainPhase(this.state, 'place_basic', {
+                cardId,
+                benchIndex: parseInt(targetIndex, 10)
+            });
+            this._updateState(newState);
+            this.view.showSuccessMessage(`${card.name_ja}をベンチに配置しました`);
+        } else if (targetZone === 'active' && card.stage === 'BASIC' && !this.state.players.player.active) {
+            const newState = this.turnManager.handlePlayerMainPhase(this.state, 'place_active', {
+                cardId
+            });
+            this._updateState(newState);
+            this.view.showSuccessMessage(`${card.name_ja}をバトル場に配置しました`);
+        } else {
+            this.view.showErrorMessage('そこには配置できません');
+        }
+    }
+
+    /**
+     * エネルギーカードのドロップ処理
+     */
+    async _handleEnergyDrop(cardId, targetZone, targetIndex) {
+        if (this.state.hasAttachedEnergyThisTurn) {
+            this.view.showErrorMessage('このターンはすでにエネルギーを付けています', 'warning');
+            return;
+        }
+
+        let targetPokemonId = null;
+        if (targetZone === 'active' && this.state.players.player.active) {
+            targetPokemonId = this.state.players.player.active.id;
+        } else if (targetZone === 'bench') {
+            const benchPokemon = this.state.players.player.bench[parseInt(targetIndex, 10)];
+            if (benchPokemon) {
+                targetPokemonId = benchPokemon.id;
+            }
+        }
+
+        if (targetPokemonId) {
+            const newState = this.turnManager.handlePlayerMainPhase(this.state, 'attach_energy', {
+                energyId: cardId,
+                pokemonId: targetPokemonId
+            });
+            this._updateState(newState);
+            
+            const energyCard = this.state.players.player.hand.find(c => c.id === cardId);
+            this.view.showSuccessMessage(`エネルギーを付けました`);
+        } else {
+            this.view.showErrorMessage('エネルギーはポケモンにのみ付けられます');
+        }
+    }
 
     /**
      * ゲームセットアップ開始
@@ -437,6 +529,67 @@ export class Game {
         this._updateState(newState);
     }
 
+    /**
+     * 複数サイド選択UI表示
+     */
+    _showMultiplePrizeSelection(prizesToTake) {
+        const availablePrizes = this.state.players.player.prize
+            .map((prize, index) => ({ prize, index }))
+            .filter(({ prize }) => prize !== null);
+        
+        this.view.displayModal({
+            title: `サイドカード選択 (${prizesToTake}枚)`,
+            message: `
+                <div class="text-center p-4">
+                    <p class="text-lg mb-4">取得するサイドカードを${prizesToTake}枚選んでください</p>
+                    <div class="grid grid-cols-3 gap-4">
+                        ${availablePrizes.map(({ prize, index }) => `
+                            <div class="prize-card cursor-pointer hover:ring-2 hover:ring-blue-400 rounded-lg p-2" 
+                                 data-prize-index="${index}">
+                                <img src="assets/ui/card_back.webp" alt="サイドカード" 
+                                     class="w-full h-auto rounded">
+                                <p class="text-xs mt-1">サイド ${index + 1}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+            actions: []
+        });
+
+        // サイドカードクリックイベントを追加
+        setTimeout(() => {
+            const prizeCards = document.querySelectorAll('.prize-card');
+            let selectedPrizes = [];
+
+            prizeCards.forEach(card => {
+                card.addEventListener('click', async () => {
+                    const prizeIndex = parseInt(card.dataset.prizeIndex);
+                    
+                    if (selectedPrizes.includes(prizeIndex)) {
+                        // 選択解除
+                        selectedPrizes = selectedPrizes.filter(p => p !== prizeIndex);
+                        card.classList.remove('ring-2', 'ring-green-400');
+                    } else if (selectedPrizes.length < prizesToTake) {
+                        // 選択追加
+                        selectedPrizes.push(prizeIndex);
+                        card.classList.add('ring-2', 'ring-green-400');
+                    }
+
+                    // 必要な枚数選択したら自動実行
+                    if (selectedPrizes.length === prizesToTake) {
+                        this.view.hideModal();
+                        
+                        // 選択したサイドを順次取得
+                        for (const index of selectedPrizes) {
+                            await this._handlePrizeSelection(index);
+                        }
+                    }
+                });
+            });
+        }, 100);
+    }
+
     _placeOnBench(cardId) {
         const emptyIndex = this.state.players.player.bench.findIndex(slot => slot === null);
         if (emptyIndex !== -1) {
@@ -519,7 +672,16 @@ export class Game {
                 break;
 
             case GAME_PHASES.PRIZE_SELECTION:
-                this.view.showGameMessage('サイドカードを選んで取ってください。');
+                const prizesToTake = this.state.players.player.prizesToTake || 0;
+                const prizeMessage = prizesToTake > 1 
+                    ? `サイドカードを${prizesToTake}枚選んで取ってください。`
+                    : 'サイドカードを選んで取ってください。';
+                this.view.showGameMessage(prizeMessage);
+                
+                // 複数枚選択の場合は選択画面を表示
+                if (prizesToTake > 1) {
+                    this._showMultiplePrizeSelection(prizesToTake);
+                }
                 break;
 
             case GAME_PHASES.GAME_OVER:
@@ -768,9 +930,9 @@ export class Game {
         
         // 勝敗理由の詳細メッセージ
         const reasonMessages = {
-            'prizes': 'サイドカードを全て取得',
-            'no_pokemon': '場のポケモンが全滅',
-            'deck_out': '山札が尽きた'
+            'prizes': 'すべてのサイドカードを獲得しました！',
+            'no_pokemon': '相手のポケモンがいなくなりました！',
+            'deck_out': '相手の山札がなくなりました！'
         };
         
         const winnerText = winner === 'player' ? '🎉 あなたの勝利！' : '😢 相手の勝利！';
@@ -803,18 +965,64 @@ export class Game {
      * ゲーム終了アニメーション
      */
     async _playGameOverAnimation(winner) {
-        // 勝者側のカードを光らせる
-        const winnerSide = winner === 'player' ? 'player' : 'cpu';
-        const cards = document.querySelectorAll(`[data-owner="${winnerSide}"] .card`);
+        if (winner === 'player') {
+            // プレイヤー勝利時の演出
+            await this._playVictoryAnimation();
+        } else {
+            // プレイヤー敗北時の演出
+            await this._playDefeatAnimation();
+        }
+    }
+
+    /**
+     * 勝利アニメーション
+     */
+    async _playVictoryAnimation() {
+        // プレイヤーのカードを光らせる
+        const playerCards = document.querySelectorAll('[data-owner="player"]');
         
-        // カード光らせアニメーション
-        cards.forEach((card, index) => {
+        // 段階的にカードを光らせる
+        playerCards.forEach((card, index) => {
             setTimeout(() => {
                 card.classList.add('animate-pulse', 'ring-4', 'ring-yellow-400');
+                // パルス効果とリング効果を追加
+                card.style.boxShadow = '0 0 20px gold, 0 0 40px gold';
+                card.style.transform = 'scale(1.05)';
+                card.style.transition = 'all 0.5s ease';
             }, index * 100);
         });
         
-        // 勝利演出の遅延
+        // 勝利サウンド再生（実装時）
+        // this._playVictorySound();
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    /**
+     * 敗北アニメーション
+     */
+    async _playDefeatAnimation() {
+        // CPUのカードを光らせる
+        const cpuCards = document.querySelectorAll('[data-owner="cpu"]');
+        
+        // プレイヤーのカードを暗くする
+        const playerCards = document.querySelectorAll('[data-owner="player"]');
+        playerCards.forEach(card => {
+            card.style.filter = 'grayscale(50%) brightness(0.7)';
+            card.style.transition = 'filter 1s ease';
+        });
+        
+        // CPUのカードを強調
+        cpuCards.forEach((card, index) => {
+            setTimeout(() => {
+                card.classList.add('animate-pulse', 'ring-4', 'ring-red-400');
+                card.style.boxShadow = '0 0 20px red';
+            }, index * 100);
+        });
+        
+        // 敗北サウンド再生（実装時）
+        // this._playDefeatSound();
+        
         await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
@@ -1152,10 +1360,9 @@ export class Game {
         newState.canRetreat = true;
         newState.canPlaySupporter = true;
 
-        // 4. プレイヤーの初手ドローを自動で実行しメインフェーズへ
-        newState = await this.turnManager.handlePlayerDraw(newState);
-        newState.phase = GAME_PHASES.PLAYER_MAIN;
-        newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+        // 4. プレイヤーのドローフェーズに移行（手動ドロー）
+        newState.phase = GAME_PHASES.PLAYER_DRAW;
+        newState.prompt.message = '山札をクリックしてカードを1枚ドローしてください。';
 
         this._updateState(newState);
 

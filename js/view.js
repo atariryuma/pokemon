@@ -226,6 +226,13 @@ export class View {
         this.cardClickHandler = handler;
     }
 
+    /**
+     * ドラッグ&ドロップハンドラーをバインド
+     */
+    bindDragAndDrop(handler) {
+        this.dragDropHandler = handler;
+    }
+
     // All messages will now go through showGameMessage or showErrorMessage
 
     render(state) {
@@ -749,13 +756,47 @@ export class View {
         container.appendChild(img);
 
         // --- イベントリスナー ---
+        // プレイヤーの手札カードにドラッグ機能を追加
+        if (playerType === 'player' && zone === 'hand' && !isFaceDown) {
+            container.draggable = true;
+            container.classList.add('cursor-grab');
+            
+            container.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({
+                    cardId: card.id,
+                    zone: zone,
+                    owner: playerType,
+                    cardType: card.card_type
+                }));
+                container.classList.add('dragging');
+            });
+            
+            container.addEventListener('dragend', () => {
+                container.classList.remove('dragging');
+            });
+        }
+        
         // 表向きのカードなら誰のでも詳細表示リスナーを追加
         if (!isFaceDown) {
             container.classList.add('cursor-pointer');
+            
+            // 右クリックで詳細表示
             container.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 this.showCardInfo(card, e.currentTarget);
             });
+            
+            // CPUカードでも通常クリックで情報表示可能にする
+            if (playerType === 'cpu' && zone !== 'hand') {
+                container.addEventListener('click', (e) => {
+                    // カード選択処理と競合しないよう、Altキー押下時のみ有効
+                    if (e.altKey || e.ctrlKey) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showCardInfo(card, e.currentTarget);
+                    }
+                });
+            }
         }
 
         if (card.damage > 0) {
@@ -1324,6 +1365,7 @@ export class View {
 
         slotElement.style.cursor = 'pointer';
 
+        // クリック処理
         slotElement.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -1340,6 +1382,39 @@ export class View {
             
             this.cardClickHandler(dataset);
         });
+
+        // ドロップ処理（プレイヤー側のスロットのみ）
+        if (owner === 'player' && this.dragDropHandler) {
+            slotElement.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                slotElement.classList.add('drag-over');
+            });
+
+            slotElement.addEventListener('dragleave', (e) => {
+                if (!slotElement.contains(e.relatedTarget)) {
+                    slotElement.classList.remove('drag-over');
+                }
+            });
+
+            slotElement.addEventListener('drop', (e) => {
+                e.preventDefault();
+                slotElement.classList.remove('drag-over');
+                
+                try {
+                    const dragData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    this.dragDropHandler({
+                        dragData,
+                        dropTarget: {
+                            owner,
+                            zone,
+                            index: index.toString()
+                        }
+                    });
+                } catch (error) {
+                    console.error('Drop data parsing error:', error);
+                }
+            });
+        }
     }
 
     _clearBoard() {
