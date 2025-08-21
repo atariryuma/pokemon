@@ -35,10 +35,13 @@ export class SetupManager {
     // 2. 初期手札をドロー（7枚）
     newState = await this.drawInitialHands(newState);
 
-    // 3. マリガンチェックと処理
+    // 3. サイドカード配布（6枚）
+    newState = await this.dealPrizeCards(newState);
+
+    // 4. マリガンチェックと処理
     newState = await this.handleMulligans(newState);
 
-    // 4. 初期ポケモン選択フェーズに移行（サイドカードは後で配布）
+    // 5. 初期ポケモン選択フェーズに移行
     newState.phase = GAME_PHASES.INITIAL_POKEMON_SELECTION;
     newState.prompt.message = 'まず手札のたねポケモンをクリックして選択し、次にバトル場またはベンチをクリックして配置してください。';
 
@@ -125,6 +128,43 @@ export class SetupManager {
     return newState;
   }
 
+  /**
+   * サイドカード配布
+   * 各プレイヤーのデッキから6枚をサイドカードとして配布
+   */
+  async dealPrizeCards(state) {
+    let newState = cloneGameState(state);
+
+    // プレイヤーのサイドカード配布
+    const playerPrizeCards = [];
+    for (let i = 0; i < 6; i++) {
+      if (newState.players.player.deck.length > 0) {
+        const card = newState.players.player.deck.shift();
+        playerPrizeCards.push(card);
+      }
+    }
+    newState.players.player.prize = playerPrizeCards;
+    newState.players.player.prizeRemaining = playerPrizeCards.length;
+
+    // CPUのサイドカード配布
+    const cpuPrizeCards = [];
+    for (let i = 0; i < 6; i++) {
+      if (newState.players.cpu.deck.length > 0) {
+        const card = newState.players.cpu.deck.shift();
+        cpuPrizeCards.push(card);
+      }
+    }
+    newState.players.cpu.prize = cpuPrizeCards;
+    newState.players.cpu.prizeRemaining = cpuPrizeCards.length;
+
+    newState = addLogEntry(newState, {
+      type: 'prize_cards_dealt',
+      message: '両プレイヤーがサイドカード6枚を受け取りました。'
+    });
+
+    // アニメーションはGame.jsで実行される
+    return newState;
+  }
 
   /**
    * 初期ドローアニメーション

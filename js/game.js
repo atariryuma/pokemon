@@ -336,10 +336,12 @@ export class Game {
                     this._highlightCard(cardId, true);
                     this.state.prompt.message = `「${card.name_ja}」をバトル場かベンチに配置してください。`;
                     this.view.updateStatusMessage(this.state.prompt.message);
-                } else {
+                } else if (card && card.card_type === 'Pokémon') {
+                    // Only show warning for Pokemon cards that aren't BASIC
                     this.view.showGameMessage('たねポケモンのみ選択できます。', 'warning');
                     console.warn('⚠️ Invalid card selection:', card?.name_ja || 'Unknown card');
                 }
+                // Silently ignore Energy and Trainer cards during setup
             } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
                 // 配置先を選択
                 const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
@@ -512,7 +514,26 @@ export class Game {
      * サイドカード選択処理
      */
     async _handlePrizeSelection(prizeIndex) {
+        console.log(`🎯 Prize selection attempt: index ${prizeIndex}, prizesToTake: ${this.state.players.player.prizesToTake}`);
+        
+        // Validate the selection
+        if (this.state.players.player.prizesToTake === 0) {
+            console.warn('⚠️ No prizes available to take');
+            return;
+        }
+        
+        if (!this.state.players.player.prize[prizeIndex]) {
+            console.warn('⚠️ No prize card at index:', prizeIndex);
+            return;
+        }
+        
         let newState = Logic.takePrizeCard(this.state, 'player', prizeIndex);
+        
+        // Check if state actually changed
+        if (newState === this.state) {
+            console.warn('⚠️ Prize card selection failed - state unchanged');
+            return;
+        }
         
         // アニメーション
         await this._animatePrizeTake('player', prizeIndex);
@@ -526,6 +547,7 @@ export class Game {
             }
         }
         
+        console.log('✅ Prize card taken successfully, remaining:', newState.players.player.prizesToTake);
         this._updateState(newState);
     }
 
@@ -1450,8 +1472,10 @@ export class Game {
             // 手札のアニメーション
             await this._animateInitialHandDraw();
             
+            // サイドカードアニメーション
+            await this._animatePrizeCardSetup();
+            
             // Note: CPUの初期ポケモン配置はプレイヤーの操作後に実行
-            // サイドカードアニメーションは配布後に実行（重複防止）
         } catch (error) {
             errorHandler.handleError(error, ERROR_TYPES.ANIMATION_FAILED, false);
         }

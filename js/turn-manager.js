@@ -491,12 +491,17 @@ export class TurnManager {
       const emptyBenchIndex = cpuState.bench.findIndex(slot => slot === null);
       if (emptyBenchIndex !== -1) {
         const selectedPokemon = basicPokemon[0];
+        
+        // キャプチャソース位置（状態更新前）
+        const sourceElement = document.querySelector(`[data-card-id="${selectedPokemon.id}"]`);
+        const initialSourceRect = sourceElement ? unifiedAnimationManager.getElementRect(sourceElement) : null;
+        
         newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
         
         // 統一アニメーション実行
         await unifiedAnimationManager.createUnifiedCardAnimation(
           'cpu', selectedPokemon.id, 'hand', 'bench', emptyBenchIndex, 
-          { isSetupPhase: false, card: selectedPokemon }
+          { isSetupPhase: false, card: selectedPokemon, initialSourceRect }
         );
         
         newState = addLogEntry(newState, {
@@ -524,12 +529,18 @@ export class TurnManager {
     const energyCards = cpuState.hand.filter(card => card.card_type === 'Basic Energy');
     
     if (energyCards.length > 0 && cpuState.active) {
-      newState = Logic.attachEnergy(newState, 'cpu', energyCards[0].id, cpuState.active.id);
+      const selectedEnergy = energyCards[0];
+      
+      // キャプチャソース位置（状態更新前）
+      const sourceElement = document.querySelector(`[data-card-id="${selectedEnergy.id}"]`);
+      const initialSourceRect = sourceElement ? unifiedAnimationManager.getElementRect(sourceElement) : null;
+      
+      newState = Logic.attachEnergy(newState, 'cpu', selectedEnergy.id, cpuState.active.id);
       
       if (newState !== state) {
-        await unifiedAnimationManager.createUnifiedEnergyAnimation('cpu', energyCards[0].id, cpuState.active.id);
-        
-        
+        await unifiedAnimationManager.createUnifiedEnergyAnimation('cpu', selectedEnergy.id, cpuState.active.id, {
+          initialSourceRect
+        });
       }
     }
 
@@ -595,10 +606,19 @@ export class TurnManager {
       }
       
       // 弱点を突ける場合の追加スコア
-      if (defender.weakness && defender.weakness.some(w => 
-        attacker.types && attacker.types.includes(w.type)
-      )) {
-        score += 50; // 弱点ボーナス
+      if (defender.weakness && attacker.types) {
+        // weakness is an object with {type: string, value: string}
+        if (typeof defender.weakness === 'object' && defender.weakness.type) {
+          if (attacker.types.includes(defender.weakness.type)) {
+            score += 50; // 弱点ボーナス
+          }
+        }
+        // fallback for array format
+        else if (Array.isArray(defender.weakness)) {
+          if (defender.weakness.some(w => attacker.types.includes(w.type))) {
+            score += 50; // 弱点ボーナス
+          }
+        }
       }
       
       return { ...attack, score };

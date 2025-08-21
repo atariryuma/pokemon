@@ -631,19 +631,37 @@ export class UnifiedAnimationManager {
    * カードの正確な画像情報を取得
    */
   getCardImageInfo(cardElement, card, isSetupPhase = false) {
-    if (!cardElement || !card) return null;
-
-    const imgElement = cardElement.querySelector('img');
-    if (!imgElement) return null;
+    if (!card) return null;
 
     // セットアップ中は裏向き、ゲーム中は表向き
     // サイドカードは常に裏向き（プライズカードフラグをチェック）
     const shouldShowBack = (isSetupPhase && card.setupFaceDown) || card.isPrizeCard;
     
+    let imgElement = null;
+    let imageSrc = null;
+
+    // Try to get image element if cardElement exists
+    if (cardElement) {
+      imgElement = cardElement.querySelector('img');
+      if (imgElement) {
+        imageSrc = imgElement.src;
+      }
+    }
+
+    // Fallback: generate image path from card data
+    if (!imageSrc && card.name_en) {
+      imageSrc = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
+    }
+
+    // Final fallback
+    if (!imageSrc) {
+      imageSrc = shouldShowBack ? 'assets/ui/card_back.webp' : 'assets/ui/card_back.webp';
+    }
+    
     return {
       element: imgElement,
-      src: shouldShowBack ? 'assets/ui/card_back.webp' : imgElement.src,
-      alt: shouldShowBack ? 'Card Back' : imgElement.alt || card.name_ja,
+      src: imageSrc,
+      alt: shouldShowBack ? 'Card Back' : (imgElement?.alt || card.name_ja || 'Card'),
       shouldShowBack
     };
   }
@@ -672,8 +690,9 @@ export class UnifiedAnimationManager {
       // 移動先要素の取得
       const targetElement = this.getTargetElement(playerId, targetZone, targetIndex);
       if (!targetElement) {
-        console.warn(`⚠️ Target element not found: ${playerId} ${targetZone}[${targetIndex}]`);
-        return;
+        console.warn(`⚠️ Target element not found: ${playerId} ${targetZone}[${targetIndex}] - Animation skipped safely`);
+        // アニメーション失敗時もPromiseを正常解決
+        return Promise.resolve();
       }
 
       // 移動先に配置されたカード要素を取得
@@ -722,12 +741,16 @@ export class UnifiedAnimationManager {
     
     switch (targetZone) {
       case 'active':
+      case 'Active':  // 大文字ケースも対応
         return document.querySelector(`${playerSelector} ${this.getActiveSelector(playerId)}`);
       case 'bench':
+      case 'Bench':   // 大文字ケースも対応
         return document.querySelector(`${playerSelector} ${this.getBenchSelector(playerId, targetIndex)}`);
       case 'hand':
+      case 'Hand':    // 大文字ケースも対応
         return document.querySelector(this.getHandSelector(playerId));
       case 'discard':
+      case 'Discard': // 大文字ケースも対応
         return document.querySelector(`${playerSelector} .discard-container`);
       default:
         console.warn(`Unknown target zone: ${targetZone}`);
@@ -746,15 +769,48 @@ export class UnifiedAnimationManager {
     const sourceRect = initialSourceRect || this.getElementRect(sourceElement);
     const targetRect = this.getElementRect(targetElement);
     
-    if (!sourceRect || !targetRect) {
-      console.warn('⚠️ Could not get element positions for animation');
+    if (!sourceRect) {
+      console.warn('⚠️ Could not get source element position for animation', {
+        playerId,
+        cardId: card?.id,
+        sourceElement: sourceElement?.tagName,
+        hasInitialSourceRect: !!initialSourceRect
+      });
+      return;
+    }
+    
+    if (!targetRect) {
+      console.warn('⚠️ Could not get target element position for animation', {
+        playerId,
+        cardId: card?.id,
+        targetZone,
+        targetElement: targetElement?.tagName
+      });
       return;
     }
 
     // カード画像情報取得
     const imageInfo = this.getCardImageInfo(placedCardElement, card, isSetupPhase);
     if (!imageInfo) {
-      console.warn('⚠️ Could not get card image info');
+      console.warn('⚠️ Could not get card image info - using fallback', {
+        playerId,
+        cardId: card?.id,
+        cardName: card?.name_en,
+        hasCardElement: !!placedCardElement
+      });
+      // Fallback: continue with basic animation without proper image
+      const fallbackImageInfo = {
+        element: null,
+        src: card?.name_en ? getCardImagePath(card.name_en) : 'assets/ui/card_back.webp',
+        alt: card?.name_ja || 'Card',
+        shouldShowBack: false
+      };
+      const animCard = this.createAnimationCard(placedCardElement, fallbackImageInfo, sourceRect, playerId, targetZone, options);
+      document.body.appendChild(animCard);
+      animCard.offsetHeight;
+      await this.performCardTransition(animCard, targetRect, duration);
+      document.body.removeChild(animCard);
+      if (placedCardElement) placedCardElement.style.opacity = '1';
       return;
     }
 
@@ -871,29 +927,36 @@ export class UnifiedAnimationManager {
   /**
    * エネルギー付与の統一アニメーション
    */
-  async createUnifiedEnergyAnimation(playerId, energyCardId, targetPokemonId) {
+  async createUnifiedEnergyAnimation(playerId, energyCardId, targetPokemonId, options = {}) {
     noop(`🔋 Starting unified energy animation: ${playerId} ${energyCardId} -> ${targetPokemonId}`);
     
     try {
       // 対象ポケモン要素を取得（アクティブまたはベンチ）
       const pokemonElement = this.findPokemonElement(playerId, targetPokemonId);
       if (!pokemonElement) {
-        console.warn(`⚠️ Pokemon element not found: ${targetPokemonId}`);
-        return;
+        console.warn(`⚠️ Pokemon element not found: ${targetPokemonId} - Energy animation skipped safely`);
+        return Promise.resolve();
       }
 
       // エネルギーカードのデータを取得（これは本来Gameクラスが持つべき情報）
       // ここでは仮のデータを生成
       const energyCardData = { id: energyCardId, name_ja: 'エネルギー', name_en: 'Energy' };
 
+      // ゾーン名を正規化（小文字に統一）
+      const targetZone = pokemonElement.dataset.zone ? pokemonElement.dataset.zone.toLowerCase() : 'active';
+      const targetIndex = pokemonElement.dataset.index ? parseInt(pokemonElement.dataset.index, 10) : 0;
+      
       // 汎用カード移動アニメーションを実行
       await this.createUnifiedCardAnimation(
           playerId,
           energyCardData.id,
           'hand',
-          pokemonElement.dataset.zone,
-          parseInt(pokemonElement.dataset.index, 10),
-          { card: energyCardData }
+          targetZone,
+          targetIndex,
+          { 
+            card: energyCardData,
+            initialSourceRect: options.initialSourceRect
+          }
       );
       
       noop(`✅ Unified energy animation completed: ${playerId}`);
@@ -911,18 +974,34 @@ export class UnifiedAnimationManager {
   findPokemonElement(playerId, pokemonId) {
     const playerSelector = this.getPlayerSelector(playerId);
     
-    // アクティブポケモンをチェック
-    const activeElement = document.querySelector(`${playerSelector} ${this.getActiveSelector(playerId)}`);
-    if (activeElement && this.isPokemonInElement(activeElement, pokemonId)) {
-      return activeElement;
-    }
-
-    // ベンチポケモンをチェック
-    for (let i = 0; i < 5; i++) {
-      const benchElement = document.querySelector(`${playerSelector} ${this.getBenchSelector(playerId, i)}`);
-      if (benchElement && this.isPokemonInElement(benchElement, pokemonId)) {
-        return benchElement;
+    try {
+      // アクティブポケモンをチェック
+      const activeElement = document.querySelector(`${playerSelector} ${this.getActiveSelector(playerId)}`);
+      if (activeElement && this.isPokemonInElement(activeElement, pokemonId)) {
+        // dataset情報を確実に設定
+        const cardElement = activeElement.querySelector('[data-card-id]');
+        if (cardElement) {
+          cardElement.dataset.zone = cardElement.dataset.zone || 'active';
+          cardElement.dataset.index = cardElement.dataset.index || '0';
+        }
+        return activeElement;
       }
+
+      // ベンチポケモンをチェック
+      for (let i = 0; i < 5; i++) {
+        const benchElement = document.querySelector(`${playerSelector} ${this.getBenchSelector(playerId, i)}`);
+        if (benchElement && this.isPokemonInElement(benchElement, pokemonId)) {
+          // dataset情報を確実に設定
+          const cardElement = benchElement.querySelector('[data-card-id]');
+          if (cardElement) {
+            cardElement.dataset.zone = cardElement.dataset.zone || 'bench';
+            cardElement.dataset.index = cardElement.dataset.index || i.toString();
+          }
+          return benchElement;
+        }
+      }
+    } catch (error) {
+      console.warn(`Error searching for pokemon element ${pokemonId}:`, error);
     }
 
     return null;

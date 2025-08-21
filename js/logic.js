@@ -309,10 +309,20 @@ export function performAttack(state, attackingPlayerId, attackIndex) {
     let baseDamage = attack.damage || 0;
     
     // 弱点計算
-    if (defender.weakness && defender.weakness.length > 0) {
-        const weakness = defender.weakness.find(w => 
-            attacker.types && attacker.types.includes(w.type)
-        );
+    if (defender.weakness && attacker.types) {
+        let weakness = null;
+        if (typeof defender.weakness === 'object' && defender.weakness.type) {
+            // weakness is an object
+            if (attacker.types.includes(defender.weakness.type)) {
+                weakness = defender.weakness;
+            }
+        } else if (Array.isArray(defender.weakness)) {
+            // weakness is an array (fallback)
+            weakness = defender.weakness.find(w => 
+                attacker.types.includes(w.type)
+            );
+        }
+        
         if (weakness) {
             if (weakness.value === '×2') {
                 baseDamage *= 2;
@@ -323,10 +333,20 @@ export function performAttack(state, attackingPlayerId, attackIndex) {
     }
     
     // 抵抗力計算
-    if (defender.resistance && defender.resistance.length > 0) {
-        const resistance = defender.resistance.find(r => 
-            attacker.types && attacker.types.includes(r.type)
-        );
+    if (defender.resistance && attacker.types) {
+        let resistance = null;
+        if (typeof defender.resistance === 'object' && defender.resistance.type) {
+            // resistance is an object
+            if (attacker.types.includes(defender.resistance.type)) {
+                resistance = defender.resistance;
+            }
+        } else if (Array.isArray(defender.resistance)) {
+            // resistance is an array (fallback)
+            resistance = defender.resistance.find(r => 
+                attacker.types.includes(r.type)
+            );
+        }
+        
         if (resistance) {
             const resistValue = parseInt(resistance.value) || -20;
             baseDamage = Math.max(0, baseDamage + resistValue);

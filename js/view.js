@@ -21,13 +21,7 @@ export class View {
         this.playerHand = document.getElementById('player-hand');
         this.cpuHand = document.getElementById('cpu-hand');
 
-        // ★追加: 手札コンテナにイベントデリゲーション用のリスナーを付与
-        if (this.playerHand) {
-            this.playerHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
-        }
-        if (this.cpuHand) {
-            this.cpuHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
-        }
+        // 手札クリックは個別カード要素で処理（デリゲーション削除）
 
         // Modal elements
         // Modal elements removed - showInteractiveMessageシステムに統一済み
@@ -120,16 +114,6 @@ export class View {
         return this.getButton(BUTTON_IDS.CONFIRM_INITIAL_POKEMON);
     }
 
-    // ★ここに移動
-    _handleHandClickDelegation(e) {
-        const cardElement = e.target.closest('[data-card-id]');
-        if (cardElement && this.cardClickHandler) {
-            // HUDとの競合を避けるためイベント伝播を停止
-            e.stopPropagation();
-            e.preventDefault();
-            this.cardClickHandler(cardElement.dataset);
-        }
-    }
 
     /**
      * 汎用モーダルを表示し、内容を設定します。
@@ -500,8 +484,8 @@ export class View {
             });
         };
 
-        container.addEventListener('mousemove', onMove);
-        container.addEventListener('mouseleave', resetAll);
+        container.addEventListener('mousemove', onMove, { passive: true });
+        container.addEventListener('mouseleave', resetAll, { passive: true });
         
         // Touch support: tap to center magnify under finger, then reset on end
         container.addEventListener('touchmove', (e) => {
@@ -692,7 +676,7 @@ export class View {
             let countBadge = prizeContainer.querySelector('.prize-count-badge');
             if (!countBadge) {
                 countBadge = document.createElement('div');
-                countBadge.className = 'prize-count-badge absolute top-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
+                countBadge.className = 'prize-count-badge absolute top-2 right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-lg z-10';
                 prizeContainer.appendChild(countBadge);
             }
             countBadge.textContent = prizeCount;
@@ -756,11 +740,12 @@ export class View {
         container.appendChild(img);
 
         // --- イベントリスナー ---
-        // プレイヤーの手札カードにドラッグ機能を追加
+        // プレイヤーの手札カードにドラッグ機能とクリック機能を追加
         if (playerType === 'player' && zone === 'hand' && !isFaceDown) {
             container.draggable = true;
             container.classList.add('cursor-grab');
             
+            // ドラッグ処理
             container.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('text/plain', JSON.stringify({
                     cardId: card.id,
@@ -774,6 +759,28 @@ export class View {
             container.addEventListener('dragend', () => {
                 container.classList.remove('dragging');
             });
+
+            // 直接クリック処理（最優先）
+            container.addEventListener('click', (e) => {
+                // イベント競合を完全に防止
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                
+                // クリック時のz-index上昇
+                container.style.zIndex = '100';
+                setTimeout(() => {
+                    container.style.zIndex = '61';
+                }, 200);
+                
+                if (this.cardClickHandler) {
+                    this.cardClickHandler({
+                        cardId: card.id,
+                        owner: playerType,
+                        zone: zone,
+                        index: index.toString()
+                    });
+                }
+            }, { capture: true }); // キャプチャフェーズで最優先処理
         }
         
         // 表向きのカードなら誰のでも詳細表示リスナーを追加
@@ -969,12 +976,25 @@ export class View {
         ` : '';
 
         // 弱点・抵抗
-        const weakHtml = isPokemon && Array.isArray(card.weakness) && card.weakness.length > 0 ? `
-          <div class="text-gray-300"><span class="text-purple-300 font-semibold">弱点:</span> ${card.weakness.map(w => `${w.type} ${w.value}`).join(', ')}</div>
-        ` : '';
-        const resistHtml = isPokemon && Array.isArray(card.resistance) && card.resistance.length > 0 ? `
-          <div class="text-gray-300"><span class="text-cyan-300 font-semibold">抵抗力:</span> ${card.resistance.map(r => `${r.type} ${r.value}`).join(', ')}</div>
-        ` : '';
+        // Handle weakness as object or array
+        let weakHtml = '';
+        if (isPokemon && card.weakness) {
+          if (typeof card.weakness === 'object' && card.weakness.type) {
+            weakHtml = `<div class="text-gray-300"><span class="text-purple-300 font-semibold">弱点:</span> ${card.weakness.type} ${card.weakness.value}</div>`;
+          } else if (Array.isArray(card.weakness) && card.weakness.length > 0) {
+            weakHtml = `<div class="text-gray-300"><span class="text-purple-300 font-semibold">弱点:</span> ${card.weakness.map(w => `${w.type} ${w.value}`).join(', ')}</div>`;
+          }
+        }
+        
+        // Handle resistance as object or array  
+        let resistHtml = '';
+        if (isPokemon && card.resistance) {
+          if (typeof card.resistance === 'object' && card.resistance.type) {
+            resistHtml = `<div class="text-gray-300"><span class="text-cyan-300 font-semibold">抵抗力:</span> ${card.resistance.type} ${card.resistance.value}</div>`;
+          } else if (Array.isArray(card.resistance) && card.resistance.length > 0) {
+            resistHtml = `<div class="text-gray-300"><span class="text-cyan-300 font-semibold">抵抗力:</span> ${card.resistance.map(r => `${r.type} ${r.value}`).join(', ')}</div>`;
+          }
+        }
 
         // 特殊状態
         const condHtml = isPokemon && Array.isArray(card.special_conditions) && card.special_conditions.length > 0 ? `

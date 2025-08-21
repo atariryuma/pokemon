@@ -4,7 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ポケモンカードバトルフィールド</title>
+    <!-- Development only: Tailwind CDN for prototyping -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Suppress Tailwind CDN production warning for development environment
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            const message = args.join(' ');
+            // Filter out Tailwind CDN production warnings
+            if (message.includes('cdn.tailwindcss.com should not be used in production')) {
+                console.info('🎨 Tailwind CSS loaded via CDN (development mode)');
+                return;
+            }
+            originalWarn.apply(console, args);
+        };
+        
+        // Log successful loading
+        setTimeout(() => {
+            if (typeof tailwind !== 'undefined') {
+                console.info('✅ Tailwind CSS development environment ready');
+            }
+        }, 100);
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -187,6 +208,11 @@
         .side-cards-container {
             position: static;
         }
+        
+        /* Prize container positioning for badges */
+        .side-left, .side-right {
+            position: relative !important;
+        }
 
         .side-cards-container .card-slot {
             position: absolute;
@@ -317,6 +343,17 @@
         /* --- CPUの裏向きカードの操作を無効化 --- */
         .is-cpu-facedown {
             pointer-events: none;
+        }
+        
+        /* Allow hover on CPU placeholder slots (empty slots should be hoverable) */
+        .card-slot.placeholder {
+            pointer-events: auto !important;
+        }
+        
+        /* CPU placeholders during setup should be hoverable */
+        .opponent-board .card-slot:empty,
+        .opponent-board .card-slot.placeholder {
+            pointer-events: auto !important;
         }
 
         /* Enhanced hover effects for stacked cards */
