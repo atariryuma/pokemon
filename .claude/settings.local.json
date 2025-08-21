@@ -26,7 +26,11 @@
       "Bash(git log:*)",
       "Bash(move:*)",
       "Bash(del:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(for file in *.js)",
+      "Bash(do echo \"Checking $file...\")",
+      "Bash(echo:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": [],

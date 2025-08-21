@@ -1,8 +1,8 @@
-import { getCardImagePath } from './data-manager.js';
-import { animationManager } from './animations.js';
-import { unifiedAnimationManager } from './unified-animations.js';
+import { getCardImagePath } from './state.js';
+// animationManagerを削除 - animations.jsは存在せず
+import { unifiedAnimationManager } from './simple-animations.js';
 import { GAME_PHASES } from './phase-manager.js';
-import { CardOrientationManager } from './card-orientation.js';
+// CardOrientationManagerを削除 - シンプル化
 import { BUTTON_IDS, CONTAINER_IDS, ACTION_BUTTON_GROUPS, CSS_CLASSES } from './ui-constants.js';
 import { errorHandler } from './error-handler.js';
 import { modalManager, MODAL_TYPES } from './modal-manager.js';

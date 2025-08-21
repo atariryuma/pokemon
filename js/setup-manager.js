@@ -4,14 +4,15 @@
  * 初期ポケモン選択、マリガン、サイドカード配置などを管理
  */
 
-import { animationManager } from './animations.js';
-import { unifiedAnimationManager } from './unified-animations.js';
-import { CardOrientationManager } from './card-orientation.js';
+// animationManagerを削除 - animations.jsは存在せず
+import { unifiedAnimationManager } from './simple-animations.js';
+// CardOrientationManagerを削除 - シンプル化
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
-import { soundManager } from './sound-manager.js';
-import { visualEffectsManager } from './visual-effects.js';
+// soundManagerを削除 - シンプル化
+// visualEffectsManagerを削除 - シンプル化
+import { modalManager } from './modal-manager.js';
 
 const noop = () => {};
 
@@ -216,20 +217,45 @@ export class SetupManager {
   /**
    * 初期手札配布アニメーション - 新統一システム使用
    */
-  async animateInitialHandDeal() {
-    // 新しい統一アニメーションシステムを使用
+  async animateInitialHandDeal(state = null) {
+    // 一括手札出現アニメーション（シンプル化）
     await Promise.all([
-      unifiedAnimationManager.animateHandDealCards('player', 7),
-      unifiedAnimationManager.animateHandDealCards('cpu', 7)
+      this.createBulkHandAppearAnimation('player'),
+      this.createBulkHandAppearAnimation('cpu')
     ]);
   }
 
   /**
-   * 手札配布アニメーション（プレイヤー別） - 統一システム使用
+   * 一括手札出現アニメーション（シンプル版）
+   */
+  async createBulkHandAppearAnimation(playerId) {
+    return new Promise(resolve => {
+      const handSelector = playerId === 'player' ? '#player-hand' : '#cpu-hand';
+      const handContainer = document.querySelector(handSelector);
+      
+      if (handContainer) {
+        // 手札全体を一度に表示
+        handContainer.style.opacity = '0';
+        handContainer.style.transform = 'scale(0.8)';
+        handContainer.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        
+        setTimeout(() => {
+          handContainer.style.opacity = '1';
+          handContainer.style.transform = 'scale(1)';
+          setTimeout(resolve, 500);
+        }, 100);
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  /**
+   * 手札配布アニメーション（プレイヤー別） - 一括表示版
    */
   async animateHandDeal(playerId) {
-    // 新しい統一アニメーションシステムを使用
-    await unifiedAnimationManager.animateHandEntry(playerId);
+    // 一括手札出現アニメーションを使用
+    return await this.createBulkHandAppearAnimation(playerId);
   }
 
   /**
@@ -848,17 +874,16 @@ export class SetupManager {
     // 1. デッキシャッフルアニメーション（プレイヤー側のみ） - 統一システム使用
     await unifiedAnimationManager.animateDeckShuffle(['player']);
 
-    // 2. 初期手札をドロー（7枚）
+    // 2. 初期手札をドロー（7枚一括）
     for (let i = 0; i < 7; i++) {
       if (newState.players.player.deck.length > 0) {
         const playerCard = newState.players.player.deck.shift();
         newState.players.player.hand.push(playerCard);
-        
-        // 手札配布アニメーション
-        await this.animateHandDeal('player', i);
-        await new Promise(resolve => setTimeout(resolve, 150)); // 150ms間隔
       }
     }
+    
+    // 手札一括出現アニメーション
+    await this.animateHandDeal('player');
 
     // 3. マリガンチェック（簡略化）
     const needsMulligan = !this.hasBasicPokemon(newState.players.player);
@@ -878,17 +903,16 @@ export class SetupManager {
     // 1. CPUデッキシャッフル - 統一システム使用
     await unifiedAnimationManager.animateDeckShuffle(['cpu']);
 
-    // 2. CPU手札配布（7枚）
+    // 2. CPU手札配布（7枚一括）
     for (let i = 0; i < 7; i++) {
       if (newState.players.cpu.deck.length > 0) {
         const cpuCard = newState.players.cpu.deck.shift();
         newState.players.cpu.hand.push(cpuCard);
-        
-        // CPU手札配布アニメーション
-        await this.animateHandDeal('cpu', i);
-        await new Promise(resolve => setTimeout(resolve, 120)); // 120ms間隔（CPU高速）
       }
     }
+    
+    // CPU手札一括出現アニメーション
+    await this.animateHandDeal('cpu');
 
     // 3. CPUマリガンチェック
     const needsMulligan = !this.hasBasicPokemon(newState.players.cpu);
@@ -1043,7 +1067,7 @@ export class SetupManager {
     let newState = cloneGameState(state);
 
     // 選択サウンド再生
-    soundManager.playRockPaperScissorsChoice();
+    // じゃんけん選択音を削除
 
     const choices = ['rock', 'paper', 'scissors'];
     const cpuChoice = choices[Math.floor(Math.random() * 3)];
@@ -1057,13 +1081,24 @@ export class SetupManager {
         message: `あいこ！ プレイヤー: ${this.getRpsEmoji(playerChoice)}, CPU: ${this.getRpsEmoji(cpuChoice)}`
       });
       
-      // あいこの視覚エフェクト
-      visualEffectsManager.createFloatingText('あいこ！もう一度！', {
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-        fontSize: '32px',
-        color: '#FFA500',
-        duration: 2500
+      // あいこの結果を中央モーダルで表示
+      await modalManager.showCentralModal({
+        title: '🤝 あいこ！',
+        message: `
+          <div class="text-center">
+            <div class="text-6xl mb-4">${this.getRpsEmoji(playerChoice)} vs ${this.getRpsEmoji(cpuChoice)}</div>
+            <h3 class="text-xl font-bold mb-2">引き分けです！</h3>
+            <p class="text-gray-300">もう一度じゃんけんしましょう！</p>
+          </div>
+        `,
+        actions: [
+          {
+            text: 'もう一度じゃんけん！',
+            callback: () => modalManager.closeCentralModal(),
+            className: 'px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-lg text-lg'
+          }
+        ],
+        allowHtml: true
       });
       
       // じゃんけんフェーズを維持してHUD再表示要求
@@ -1089,16 +1124,38 @@ export class SetupManager {
     newState.setupProgress.rpsWinner = winner;
     
     // 勝敗結果のサウンドと視覚エフェクト
-    soundManager.playRockPaperScissorsResult(winner === 'player');
-    visualEffectsManager.playRockPaperScissorsEffect(playerChoice, winner === 'player');
+    // じゃんけん結果エフェクトを削除
     
     newState = addLogEntry(newState, {
       type: 'rps_result',
       message: `じゃんけん結果: プレイヤー ${this.getRpsEmoji(playerChoice)} vs CPU ${this.getRpsEmoji(cpuChoice)} - ${winner === 'player' ? 'プレイヤー' : 'CPU'}の勝ち！`
     });
 
-    // 勝敗結果を表示する時間
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    // じゃんけん結果を中央モーダルで表示
+    const isPlayerWin = winner === 'player';
+    const resultEmoji = isPlayerWin ? '🎉' : '😔';
+    const resultColor = isPlayerWin ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
+    
+    await modalManager.showCentralModal({
+      title: `${resultEmoji} じゃんけん結果`,
+      message: `
+        <div class="text-center">
+          <div class="text-6xl mb-4">${this.getRpsEmoji(playerChoice)} vs ${this.getRpsEmoji(cpuChoice)}</div>
+          <h3 class="text-2xl font-bold mb-2">${isPlayerWin ? 'あなたの勝ち！' : 'CPUの勝ち！'}</h3>
+          <p class="text-gray-300 mb-4">
+            ${isPlayerWin ? '先攻・後攻を選択してください' : 'CPUが先攻・後攻を選択します'}
+          </p>
+        </div>
+      `,
+      actions: [
+        {
+          text: '続行',
+          callback: () => modalManager.closeCentralModal(),
+          className: `px-6 py-3 ${resultColor} text-white font-bold rounded-lg text-lg`
+        }
+      ],
+      allowHtml: true
+    });
 
     if (winner === 'player') {
       // プレイヤーが勝った場合、先攻後攻選択
@@ -1106,8 +1163,7 @@ export class SetupManager {
       newState.prompt.message = 'じゃんけんに勝ちました！先攻か後攻を選んでください。';
       
       // フェーズ遷移エフェクト
-      soundManager.playPhaseTransition();
-      visualEffectsManager.playPhaseTransitionEffect('先攻後攻選択');
+      // フェーズ遷移エフェクトを削除
     } else {
       // CPUが勝った場合、CPU自動選択（思考時間含む）
       await this.simulateHumanCpuBehavior('choosing', 2000);
@@ -1122,15 +1178,7 @@ export class SetupManager {
         message: `CPUが${newState.setupProgress.firstPlayer === 'cpu' ? '先攻' : '後攻'}を選択しました`
       });
       
-      // 選択結果の視覚エフェクト
-      visualEffectsManager.createFloatingText(
-        `CPUが${newState.setupProgress.firstPlayer === 'cpu' ? '先攻' : '後攻'}を選択！`, {
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-        fontSize: '28px',
-        color: '#87CEEB',
-        duration: 2000
-      });
+      // 選択結果の視覚エフェクトを削除
       
       await new Promise(resolve => setTimeout(resolve, 1500));
       
@@ -1157,17 +1205,8 @@ export class SetupManager {
     newState.setupProgress.firstPlayer = choice === 'first' ? 'player' : 'cpu';
     
     // 選択確定のサウンドとエフェクト
-    soundManager.playConfirm();
-    visualEffectsManager.createFloatingText(
-      choice === 'first' ? '先攻選択！' : '後攻選択！',
-      {
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-        fontSize: '28px',
-        color: choice === 'first' ? '#FFD700' : '#87CEEB',
-        duration: 2000
-      }
-    );
+    // soundManager.playConfirm();
+    // 選択エフェクトを削除
     
     newState = addLogEntry(newState, {
       type: 'first_player_choice',
@@ -1190,8 +1229,8 @@ export class SetupManager {
     newState.prompt.message = 'デッキをシャッフルして山札の場所に置いています...';
     
     // フェーズ遷移エフェクト
-    soundManager.playPhaseTransition();
-    visualEffectsManager.playPhaseTransitionEffect('③ 山札配置');
+    // soundManager.playPhaseTransition();
+    // visualEffectsManager.playPhaseTransitionEffect('③ 山札配置');
     
     // デッキシャッフルアニメーション実行
     await this.animateDeckShuffle();
@@ -1226,14 +1265,14 @@ export class SetupManager {
     newState.prompt.message = '山札から手札を7枚引いています...';
     
     // フェーズ遷移エフェクト
-    soundManager.playPhaseTransition();
-    visualEffectsManager.playPhaseTransitionEffect('④ 手札配布');
+    // soundManager.playPhaseTransition();
+    // visualEffectsManager.playPhaseTransitionEffect('④ 手札配布');
     
     // プレイヤーとCPUの手札を配布（アニメーション付き）
     newState = await this.dealHandsWithAnimation(newState);
     
     // 手札配布完了音
-    soundManager.playHandDeal();
+    // soundManager.playHandDeal();
     
     // setupProgressの初期化確認
     if (!newState.setupProgress) {
@@ -1257,8 +1296,8 @@ export class SetupManager {
     newState.prompt.message = '手札からたねポケモンを1枚選んでバトル場に配置してください。';
     
     // フェーズ遷移エフェクト
-    soundManager.playPhaseTransition();
-    visualEffectsManager.playPhaseTransitionEffect('⑤ プレイヤーのポケモン配置');
+    // soundManager.playPhaseTransition();
+    // visualEffectsManager.playPhaseTransitionEffect('⑤ プレイヤーのポケモン配置');
     
     return newState;
   }
@@ -1287,31 +1326,25 @@ export class SetupManager {
   async animateInitialHandDeal(state) {
     noop('🃏 Starting original initial hand deal animation');
     
-    // プレイヤーの手札配布（7枚を順番に）
+    // プレイヤーの手札配布（7枚一括）
     for (let i = 0; i < 7; i++) {
       if (state.players.player.deck.length > 0) {
         const playerCard = state.players.player.deck.shift();
         state.players.player.hand.push(playerCard);
-        
-        // カード移動アニメーション
-        await this.animateHandDeal('player', i);
-        soundManager.playCardDeal(); // カード配布音
-        await new Promise(resolve => setTimeout(resolve, 200)); // 200ms間隔
       }
     }
     
-    // CPU手札配布（7枚を順番に）  
+    // CPUの手札配布（7枚一括）
     for (let i = 0; i < 7; i++) {
       if (state.players.cpu.deck.length > 0) {
         const cpuCard = state.players.cpu.deck.shift();
         state.players.cpu.hand.push(cpuCard);
-        
-        // カード移動アニメーション
-        await this.animateHandDeal('cpu', i);
-        soundManager.playCardDeal(); // カード配布音
-        await new Promise(resolve => setTimeout(resolve, 150)); // 150ms間隔（CPUは少し速く）
       }
     }
+    
+    // 手札一括出現アニメーション
+    await this.createBulkHandAppearAnimation('player');
+    await this.createBulkHandAppearAnimation('cpu');
     
     // 手札配布完了後、DOM更新のための少しの遅延
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -1477,7 +1510,7 @@ export class SetupManager {
         
         setTimeout(() => {
           cardElement.style.transform = 'scale(1)';
-          soundManager.playCardDeal(); // カード配置音
+          // soundManager.playCardDeal(); // カード配置音
           
           setTimeout(() => {
             if (document.body.contains(cardElement)) {
@@ -1509,8 +1542,8 @@ export class SetupManager {
     newState.prompt.message = 'ベンチにたねポケモンを配置してください。（最大5枚、スキップ可能）';
     
     // フェーズ遷移エフェクト
-    soundManager.playPhaseTransition();
-    visualEffectsManager.playPhaseTransitionEffect('⑥ プレイヤーのベンチ配置');
+    // soundManager.playPhaseTransition();
+    // visualEffectsManager.playPhaseTransitionEffect('⑥ プレイヤーのベンチ配置');
     
     return newState;
   }
@@ -1534,8 +1567,8 @@ export class SetupManager {
     newState.prompt.message = 'プレイヤーのサイドカードを配置しています...';
     
     // フェーズ遷移エフェクト
-    soundManager.playPhaseTransition();
-    visualEffectsManager.playPhaseTransitionEffect('⑦ プレイヤーのサイド配置');
+    // soundManager.playPhaseTransition();
+    // visualEffectsManager.playPhaseTransitionEffect('⑦ プレイヤーのサイド配置');
     
     // プレイヤーのみサイドカード配置
     await this.placePrizeCardsWithAnimation(newState, 'player');
@@ -1559,8 +1592,8 @@ export class SetupManager {
     newState.prompt.message = 'ポケモンを表向きにして、バトル開始！';
     
     // カード公開フェーズ遷移エフェクト
-    soundManager.playPhaseTransition();
-    visualEffectsManager.playPhaseTransitionEffect('⑧ カード公開・バトル開始');
+    // soundManager.playPhaseTransition();
+    // visualEffectsManager.playPhaseTransitionEffect('⑧ カード公開・バトル開始');
     
     return newState;
   }
@@ -1577,17 +1610,15 @@ export class SetupManager {
     newState.prompt.message = '山札からサイドカードを6枚配置しています...';
     
     // フェーズ遷移エフェクト
-    soundManager.playPhaseTransition();
-    visualEffectsManager.playPhaseTransitionEffect('⑦ サイド配置');
+    // soundManager.playPhaseTransition();
+    // visualEffectsManager.playPhaseTransitionEffect('⑦ サイド配置');
     
-    // 順次実行でサイドカード配置（プレイヤー→CPU）
-    noop('🎁 Starting prize placement - Player first');
-    await this.placePrizeCardsWithAnimation(newState, 'player');
-    
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    noop('🎁 Starting prize placement - CPU second');
-    await this.placePrizeCardsWithAnimation(newState, 'cpu');
+    // 並列処理でサイドカード配置（プレイヤーとCPU同時）
+    noop('🎁 Starting parallel prize placement for both players');
+    await Promise.all([
+      this.placePrizeCardsWithAnimation(newState, 'player'),
+      this.placePrizeCardsWithAnimation(newState, 'cpu')
+    ]);
     
     // setupProgressの初期化確認
     if (!newState.setupProgress) {
@@ -1608,8 +1639,8 @@ export class SetupManager {
     newState.prompt.message = 'ポケモンを表向きにして、バトル開始！';
     
     // カード公開フェーズ遷移エフェクト
-    soundManager.playPhaseTransition();
-    visualEffectsManager.playPhaseTransitionEffect('⑧ カード公開・バトル開始');
+    // soundManager.playPhaseTransition();
+    // visualEffectsManager.playPhaseTransitionEffect('⑧ カード公開・バトル開始');
     
     return newState;
   }
@@ -1623,8 +1654,8 @@ export class SetupManager {
     let newState = cloneGameState(state);
     
     // カード公開エフェクト
-    soundManager.playCardReveal();
-    visualEffectsManager.playCardRevealEffect();
+    // soundManager.playCardReveal();
+    // visualEffectsManager.playCardRevealEffect();
     
     // 全ポケモンカードを表向きに（アニメーション付き）
     await this.revealAllPokemonWithAnimation(newState);

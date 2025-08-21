@@ -1,18 +1,18 @@
 import { createInitialState } from './state.js';
 import { View } from './view.js';
 import * as Logic from './logic.js';
-import { animationManager } from './animations.js';
-import { unifiedAnimationManager } from './unified-animations.js';
-import { CardOrientationManager } from './card-orientation.js';
+// animationManagerを削除 - シンプル化
+import { unifiedAnimationManager } from './simple-animations.js';
+// CardOrientationManagerを削除 - シンプル化
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { BUTTON_IDS, ACTION_BUTTON_GROUPS } from './ui-constants.js';
 import { errorHandler, ERROR_TYPES } from './error-handler.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
-import { getCardImagePath, loadCardsFromJSON } from './data-manager.js';
+import { getCardImagePath, loadCardsFromJSON } from './state.js';
 import { addLogEntry } from './state.js';
-import { soundManager } from './sound-manager.js';
-import { visualEffectsManager } from './visual-effects.js';
+// soundManagerを削除 - シンプル化
+// visualEffectsManagerを削除 - シンプル化
 
 const noop = () => {};
 
@@ -57,7 +57,7 @@ export class Game {
             this.resetAnimationFlags();
             
             // サウンドマネージャー初期化
-            await soundManager.initialize();
+            // サウンド初期化を削除 - シンプル化
             
             this.state = createInitialState();
             
@@ -128,6 +128,7 @@ export class Game {
             const retreatButton = this.view.getButton(BUTTON_IDS.RETREAT);
             const attackButton = this.view.getButton(BUTTON_IDS.ATTACK);
             const endTurnButton = this.view.getButton(BUTTON_IDS.END_TURN);
+            const drawCardButton = this.view.getButton(BUTTON_IDS.DRAW_CARD);
 
             if (retreatButton) {
                 retreatButton.onclick = this._handleRetreat.bind(this);
@@ -142,6 +143,11 @@ export class Game {
             if (endTurnButton) {
                 endTurnButton.onclick = this._handleEndTurn.bind(this);
                 noop('✅ End turn button handler bound');
+            }
+
+            if (drawCardButton) {
+                drawCardButton.onclick = this._handleDrawCard.bind(this);
+                noop('✅ Draw card button handler bound');
             }
         };
 
@@ -763,7 +769,7 @@ export class Game {
      * 攻撃ボタンクリック処理
      */
     _handleAttack() {
-        soundManager.playButtonClick();
+        // ボタンクリック音を削除
         const attacker = this.state.players.player.active;
         if (!attacker || !attacker.attacks) return;
         
@@ -812,10 +818,20 @@ export class Game {
     }
 
     /**
+     * ドローボタン処理
+     */
+    async _handleDrawCard() {
+        if (this.state.phase === GAME_PHASES.PLAYER_DRAW && this.state.awaitingInput) {
+            const newState = await this.turnManager.executePlayerDraw(this.state);
+            await this._updateState(newState);
+        }
+    }
+
+    /**
      * ターン終了ボタン処理
      */
     async _handleEndTurn() {
-        soundManager.playButtonClick();
+        // ボタンクリック音を削除
         let newState = this.turnManager.endPlayerTurn(this.state);
         this._updateState(newState);
         
@@ -1421,7 +1437,7 @@ export class Game {
      */
     async _handleRockPaperScissors(choice) {
         noop(`🎮 Player chose: ${choice}`);
-        soundManager.playButtonClick();
+        // ボタンクリック音を削除
         this.view.hideActionHUD();
         
         // 選択をトースト通知で確認
@@ -1445,7 +1461,7 @@ export class Game {
      */
     async _handleFirstPlayerChoice(choice) {
         noop(`⚡ Player chose: ${choice}`);
-        soundManager.playButtonClick();
+        // ボタンクリック音を削除
         this.view.hideActionHUD();
         
         // 選択をトースト通知で確認
@@ -1474,7 +1490,7 @@ export class Game {
             }
         } else if (zone === 'active' && this.selectedCardForSetup) {
             // バトルポケモン配置実行
-            soundManager.playPokemonPlace();
+            // ポケモン配置音を削除
             this.state = await this.setupManager.handlePokemonSelection(
                 this.state, 'player', this.selectedCardForSetup.id, 'active', 0
             );
@@ -1608,7 +1624,7 @@ export class Game {
             const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
             
             // ポケモン配置実行
-            soundManager.playPokemonPlace();
+            // ポケモン配置音を削除
             this.state = await this.setupManager.handlePokemonSelection(
                 this.state,
                 'player',

@@ -4,12 +4,13 @@
  * プレイヤーとCPUのターン進行、制約管理、自動処理を統括
  */
 
-import { animationManager } from './animations.js';
-import { unifiedAnimationManager } from './unified-animations.js';
-import { CardOrientationManager } from './card-orientation.js';
+// animationManagerを削除 - animations.jsは存在せず
+import { unifiedAnimationManager } from './simple-animations.js';
+// CardOrientationManagerを削除 - シンプル化
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
+import { modalManager } from './modal-manager.js';
 
 const noop = () => {};
 
@@ -71,17 +72,38 @@ export class TurnManager {
     noop('🎴 Player draw phase...');
     let newState = cloneGameState(state);
 
-    // 自動ドロー（最初のターンのみ選択制、以降は強制）
+    // 手動ドロー待機状態に設定
+    if (!newState.hasDrawnThisTurn) {
+      newState.awaitingInput = true;
+      newState.prompt.message = 'カードを引いてください。山札をクリックしてドローしてください。';
+      newState.prompt.actions = [{
+        type: 'draw_card',
+        label: 'カードを引く'
+      }];
+    }
+
+    return newState;
+  }
+
+  /**
+   * 手動ドロー実行処理
+   */
+  async executePlayerDraw(state) {
+    noop('🃏 Executing player draw...');
+    let newState = cloneGameState(state);
+
     if (!newState.hasDrawnThisTurn) {
       newState = Logic.drawCard(newState, 'player');
       newState.hasDrawnThisTurn = true;
+      newState.awaitingInput = false;
 
-      // ドローアニメーション（統合アニメーション使用）
+      // ドローアニメーション
       await this.animateCardDraw('player');
 
-      // メインフェーズに自動移行
+      // メインフェーズに移行
       newState.phase = GAME_PHASES.PLAYER_MAIN;
       newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+      newState.prompt.actions = [];
 
       newState = addLogEntry(newState, {
         type: 'card_draw',
@@ -243,7 +265,7 @@ export class TurnManager {
 
     const { attackIndex, attacker } = newState.pendingAction;
     const defender = attacker === 'player' ? 'cpu' : 'player';
-    const defenderOrientation = CardOrientationManager.getCardOrientation(defender, 'active');
+    // CardOrientationManagerを削除 - シンプル化
     const defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defender === 'player' ? '.active-bottom' : '.active-top'}`);
 
     noop(`🗡️ ${attacker} attacks ${defender} with attack index ${attackIndex}`);
@@ -261,6 +283,42 @@ export class TurnManager {
     const defenderAfter = newState.players[defender].active;
     if (defenderAfter) {
       noop(`💥 After attack - Defender: ${defenderAfter.name_ja} (HP: ${defenderAfter.hp - (defenderAfter.damage || 0)}/${defenderAfter.hp}, Damage: ${defenderAfter.damage || 0})`);
+    }
+
+    // ダメージ結果を中央モーダルで表示
+    if (defenderAfter && attackerPokemon) {
+      const attack = attackerPokemon.attacks[attackIndex];
+      const damageDealt = (defenderAfter.damage || 0) - (defenderPokemon.damage || 0);
+      
+      if (damageDealt > 0) {
+        const isKO = defenderAfter.damage >= defenderAfter.hp;
+        const attackerName = attacker === 'player' ? 'あなた' : 'CPU';
+        const defenderName = defender === 'player' ? 'あなた' : 'CPU';
+        
+        await modalManager.showCentralModal({
+          title: `⚔️ ${attack.name_ja}！`,
+          message: `
+            <div class="text-center">
+              <div class="text-4xl mb-4">💥</div>
+              <h3 class="text-xl font-bold mb-2">${attackerName}の攻撃！</h3>
+              <p class="text-2xl font-bold text-red-400 mb-2">${damageDealt}ダメージ！</p>
+              <p class="text-gray-300 mb-2">${defenderName}の${defenderAfter.name_ja}に攻撃！</p>
+              <p class="text-sm text-gray-400">
+                ${defenderAfter.name_ja}: ${defenderAfter.hp - defenderAfter.damage}/${defenderAfter.hp} HP
+              </p>
+              ${isKO ? '<p class="text-red-500 font-bold mt-2">きぜつ！</p>' : ''}
+            </div>
+          `,
+          actions: [
+            {
+              text: '続行',
+              callback: () => modalManager.closeCentralModal(),
+              className: 'px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-lg'
+            }
+          ],
+          allowHtml: true
+        });
+      }
     }
 
     // 統合バトルアニメーション実行
