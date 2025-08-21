@@ -65,7 +65,7 @@
             --z-animations: 50;     /* アニメーション */
             --z-hover: 55;          /* ホバー効果 */
             --z-selected: 58;       /* 選択状態 */
-            --z-highlight: 65;      /* ハイライト */
+            --z-highlight: 60;      /* ハイライト */
             
             /* === UI・HUD === */
             --z-hud-base: 80;       /* HUD基本 */
@@ -762,7 +762,7 @@
             top: 50% !important;
             right: 20px !important;
             transform: translateY(-50%) !important; /* 垂直方向中央揃え */
-            z-index: 85 !important;
+            z-index: var(--z-panels) !important;
             will-change: auto !important;
             perspective: none !important;
         }
@@ -801,7 +801,7 @@
                 #dc2626 50%, #dc2626 100%);
             border-radius: 50%;
             border: 2px solid #FCD34D;
-            z-index: 1;
+            z-index: var(--z-board-bg);
         }
 
         .status-panel-header {
@@ -1205,7 +1205,7 @@
         
         .prize-stack .card-slot:first-child {
             position: relative;
-            z-index: 2;
+            z-index: var(--z-board);
             /* プレイマットの元座標を保持 */
         }
         
@@ -1213,7 +1213,7 @@
             position: absolute;
             top: 3px;
             left: -4px;
-            z-index: 1;
+            z-index: var(--z-board-bg);
             /* プレイマット座標に基づくサイズを保持 */
         }
         
@@ -1373,7 +1373,7 @@
             bottom: -2px;
             background: linear-gradient(45deg, #ffd700, #ffed4a, #ffd700);
             border-radius: 8px;
-            z-index: 25;
+            z-index: var(--z-hand-cards);
             animation: pulse-glow 1.5s ease-in-out infinite alternate;
         }
         
@@ -1461,7 +1461,7 @@
             bottom: -1px;
             background: linear-gradient(45deg, transparent, rgba(77, 208, 253, 0.3), transparent);
             border-radius: inherit;
-            z-index: 99;
+            z-index: var(--z-toast);
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -1890,7 +1890,7 @@
 </div>
 
 <!-- Player Hand -->
-<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: 10px; z-index: 15; overflow: visible; pointer-events: none;">
+<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: 10px; z-index: var(--z-slots); overflow: visible; pointer-events: none;">
     <!-- プレイヤーの手札はここに動的に追加されます -->
 </div>
 

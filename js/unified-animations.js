@@ -863,7 +863,7 @@ export class UnifiedAnimationManager {
       top: ${finalSourceTop}px;
       width: ${originalCard.offsetWidth}px;
       height: ${originalCard.offsetHeight}px;
-      z-index: 9999;
+      z-index: var(--z-critical);
       transform: scale(0.8) rotate(-3deg);
       opacity: 0.9;
       pointer-events: none;
@@ -1335,7 +1335,7 @@ export class UnifiedAnimationManager {
       right: -25px;
       width: 73px;
       height: 104px;
-      z-index: 20;
+      z-index: var(--z-hand-area);
       opacity: 0;
       background-image: url('${cardImageSrc}');
       background-size: cover;
