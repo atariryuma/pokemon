@@ -8,8 +8,10 @@ import { BUTTON_IDS, ACTION_BUTTON_GROUPS } from './ui-constants.js';
 import { errorHandler, ERROR_TYPES } from './error-handler.js';
 import { setupManager } from './setup-manager.js';
 import { turnManager } from './turn-manager.js';
-import { getCardImagePath, loadCardsFromJSON } from './data-manager.js';
+import { getCardImagePath, loadCardsFromJSON, getCardMasterList } from './data-manager.js';
 import { addLogEntry } from './state.js';
+import { modalManager } from './modal-manager.js';
+import { memoryManager } from './memory-manager.js';
 
 const noop = () => {};
 
@@ -119,31 +121,37 @@ export class Game {
     } // End of _updateState
 
     /**
-     * アクションボタンのイベントハンドラーを設定
+     * フローティングアクションボタンのイベントハンドラーを設定
      * DOM準備完了を確認してからバインドする
      */
     _setupActionButtonHandlers() {
-        noop('🔧 Setting up action button handlers');
+        noop('🔧 Setting up floating action button handlers');
         
         // DOMContentLoadedまたはDOM準備完了まで待機
         const setupHandlers = () => {
-            const retreatButton = this.view.getButton(BUTTON_IDS.RETREAT);
-            const attackButton = this.view.getButton(BUTTON_IDS.ATTACK);
-            const endTurnButton = this.view.getButton(BUTTON_IDS.END_TURN);
+            const retreatButton = document.getElementById(BUTTON_IDS.RETREAT);
+            const attackButton = document.getElementById(BUTTON_IDS.ATTACK);
+            const endTurnButton = document.getElementById(BUTTON_IDS.END_TURN);
 
             if (retreatButton) {
                 retreatButton.onclick = this._handleRetreat.bind(this);
-                noop('✅ Retreat button handler bound');
+                noop('✅ Floating retreat button handler bound');
+            } else {
+                noop('⚠️ Floating retreat button not found');
             }
 
             if (attackButton) {
                 attackButton.onclick = this._handleAttack.bind(this);
-                noop('✅ Attack button handler bound');
+                noop('✅ Floating attack button handler bound');
+            } else {
+                noop('⚠️ Floating attack button not found');
             }
 
             if (endTurnButton) {
                 endTurnButton.onclick = this._handleEndTurn.bind(this);
-                noop('✅ End turn button handler bound');
+                noop('✅ Floating end turn button handler bound');
+            } else {
+                noop('⚠️ Floating end turn button not found');
             }
         };
 
@@ -654,12 +662,15 @@ export class Game {
                 this.view.hideInitialPokemonSelectionUI();
                 this.view.showGameMessage(this.state.prompt.message);
                 this.view.showActionButtons(ACTION_BUTTON_GROUPS.INITIAL_POKEMON);
-                // ボタンテキストを変更
-                const gameStartButton = document.getElementById('confirm-initial-pokemon-button');
+                // ボタンテキストを変更 (フローティング版を使用)
+                const gameStartButton = document.getElementById('confirm-setup-button-float');
                 if (gameStartButton) {
-                    gameStartButton.textContent = 'ゲームスタート';
+                    const textElement = gameStartButton.querySelector('.pokemon-btn-text');
+                    if (textElement) {
+                        textElement.textContent = 'ゲームスタート';
+                    }
                     gameStartButton.disabled = false;
-                    gameStartButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    gameStartButton.classList.remove('opacity-50', 'cursor-not-allowed', 'hidden');
                 }
                 break;
 
@@ -812,9 +823,8 @@ export class Game {
         });
         
         if (newState !== this.state) {
-            // エネルギー付与アニメーション
-            await this._animateEnergyAttachment(energyId, pokemonId);
-            
+            // 軽量エネルギー付与エフェクト
+            await unifiedAnimationManager.createLightweightEnergyEffect(energyId, pokemonId, newState);
             
             newState.pendingAction = null;
             newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
@@ -876,17 +886,108 @@ export class Game {
             return;
         }
         
-        this.view.showInteractiveMessage(
-            'どのワザを使いますか？',
-            [
-                ...usableAttacks.map(attack => ({
-                    text: `${attack.name_ja} (${attack.damage || 0})`,
-                    callback: () => this._executeAttack(attack.index)
-                })),
-                { text: 'キャンセル', callback: () => {} }
-            ],
-            'central' // 攻撃選択は重要な意思決定なので中央モーダル
-        );
+        this._showBattleAttackModal(usableAttacks);
+    }
+
+    /**
+     * バトル攻撃選択モーダル表示
+     */
+    _showBattleAttackModal(usableAttacks) {
+        const attacker = this.state.players.player.active;
+        const defender = this.state.players.cpu.active;
+        
+        if (!attacker || !defender) {
+            this.view.showGameMessage('バトルできるポケモンがいません。');
+            return;
+        }
+
+        // 相手ポケモンの画像パスを取得
+        const defenderImagePath = defender.imagePath || `assets/cards/${defender.name_en.replace(/\s+/g, '_').toLowerCase()}.webp`;
+        
+        // バトル画面のHTMLを構築（右側に相手のポケモン画像を追加）
+        const battleHtml = `
+            <div class="battle-modal-container-enhanced">
+                <!-- Left: Battle Info & Attack Selection -->
+                <div class="battle-left-panel">
+                    <div class="battle-modal-container">
+                        <!-- Attacker (Left) -->
+                        <div class="battle-pokemon attacker">
+                            <h4 class="pokemon-name">${attacker.name_ja}</h4>
+                            <div class="pokemon-stats">
+                                <div class="hp-bar">HP: ${Math.max(0, attacker.hp - (attacker.damage || 0))}/${attacker.hp}</div>
+                                <div class="pokemon-type">${attacker.types?.join('・') || 'ノーマル'}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- VS -->
+                        <div class="vs-indicator">
+                            <span class="vs-text">VS</span>
+                        </div>
+                        
+                        <!-- Defender (Right) -->
+                        <div class="battle-pokemon defender">
+                            <h4 class="pokemon-name">${defender.name_ja}</h4>
+                            <div class="pokemon-stats">
+                                <div class="hp-bar">HP: ${Math.max(0, defender.hp - (defender.damage || 0))}/${defender.hp}</div>
+                                <div class="pokemon-type">${defender.types?.join('・') || 'ノーマル'}</div>
+                                ${defender.weakness ? `<div class="weakness">弱点: ${defender.weakness.type}</div>` : ''}
+                                ${defender.resistance ? `<div class="resistance">抵抗: ${defender.resistance.type}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="attack-selection">
+                        <h3>ワザを選択してください</h3>
+                        ${usableAttacks.map(attack => `
+                            <div class="attack-option" onclick="window.gameInstance._executeAttackAndCloseModal(${attack.index})">
+                                <div class="attack-name">${attack.name_ja}</div>
+                                <div class="attack-details">
+                                    <span class="damage">ダメージ: ${attack.damage || 0}</span>
+                                    <span class="energy-cost">エネルギー: ${attack.cost?.join('・') || 'なし'}</span>
+                                </div>
+                                ${attack.text_ja ? `<div class="attack-effect">${attack.text_ja}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <!-- Right: Opponent Pokemon Card Image -->
+                <div class="battle-right-panel">
+                    <div class="opponent-card-display">
+                        <img src="${defenderImagePath}" alt="${defender.name_ja}" class="opponent-card-image" />
+                        <div class="card-overlay">
+                            <h4>${defender.name_ja}</h4>
+                            <div class="card-hp">HP: ${Math.max(0, defender.hp - (defender.damage || 0))}/${defender.hp}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        modalManager.showCentralModal({
+            title: 'バトル - ワザ選択',
+            message: battleHtml,
+            allowHtml: true,
+            actions: [
+                { text: 'キャンセル', callback: () => {}, className: 'px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg' }
+            ]
+        });
+    }
+
+    /**
+     * 攻撃実行処理（モーダルを即座に閉じて、プレイマット上でアニメーション表示）
+     */
+    async _executeAttackAndCloseModal(attackIndex) {
+        // モーダルを即座に閉じる
+        modalManager.closeCentralModal();
+        
+        // 攻撃開始メッセージを表示
+        this.view.showInfoMessage('攻撃を実行しています...');
+        
+        // 少し待ってからアニメーション開始
+        memoryManager.setTimeout(async () => {
+            await this._executeAttack(attackIndex);
+        }, 300);
     }
 
     /**
@@ -902,10 +1003,10 @@ export class Game {
         
         // 攻撃実行
         newState = await this.turnManager.executeAttack(newState);
-        this._updateState(newState);
+        // this._updateState(newState); // 重複削除 - 下で一度だけ呼ぶ
 
         if (newState.turnPlayer === 'cpu') {
-            setTimeout(async () => {
+            memoryManager.setTimeout(async () => {
                 await this._executeCpuTurn();
             }, 1000);
         }
@@ -915,6 +1016,11 @@ export class Game {
      * ターン終了ボタン処理
      */
     async _handleEndTurn() {
+        // すべてのフローティングアクションボタンを非表示
+        this._hideFloatingActionButton(BUTTON_IDS.RETREAT);
+        this._hideFloatingActionButton(BUTTON_IDS.ATTACK);
+        this._hideFloatingActionButton(BUTTON_IDS.END_TURN);
+        
         let newState = this.turnManager.endPlayerTurn(this.state);
         this._updateState(newState);
         
@@ -922,7 +1028,7 @@ export class Game {
         this.view.showInfoMessage('ターンが終了しました');
         
         // CPUターン開始
-        setTimeout(async () => {
+        memoryManager.setTimeout(async () => {
             this.view.showInfoMessage('相手のターンが開始されました');
             await this._executeCpuTurn();
         }, 1000);
@@ -938,7 +1044,7 @@ export class Game {
         
         // CPUの自動ターン実行
         newState = await this.turnManager.executeCpuTurn(newState);
-        this._updateState(newState);
+        this._updateState(newState); // CPUターン最後に一度だけ呼ぶ
     }
 
     /**
@@ -1237,10 +1343,24 @@ export class Game {
             className: 'px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-sm'
         });
         
-        // 手札エリアの上にアクションHUDを表示
+        // 左下フローティングHUDでアクションボタンを表示
         if (actions.length > 0) {
-            this.view.showActionHUD({ actions });
-            noop('🎯 Player main actions HUD displayed');
+            // にげるボタン
+            const canRetreat = actions.some(action => action.text.includes('にげる'));
+            if (canRetreat) {
+                this._showFloatingActionButton(BUTTON_IDS.RETREAT, () => this._handleRetreat());
+            }
+            
+            // 攻撃ボタン
+            const canAttack = actions.some(action => action.text.includes('攻撃'));
+            if (canAttack) {
+                this._showFloatingActionButton(BUTTON_IDS.ATTACK, () => this._handleAttack());
+            }
+            
+            // ターン終了ボタン（常に表示）
+            this._showFloatingActionButton(BUTTON_IDS.END_TURN, () => this._handleEndTurn());
+            
+            noop('🎯 Player main actions displayed in floating HUD');
         }
     }
 
@@ -1254,16 +1374,22 @@ export class Game {
         const hasBasicPokemonInActive = playerActive && playerActive.card_type === 'Pokémon' && playerActive.stage === 'BASIC';
         
         if (hasBasicPokemonInActive) {
-            this.view.showActionHUD({
-                actions: [
-                    {
-                        text: '✅ ポケモン配置を確定',
-                        callback: () => this._handleConfirmSetup(),
-                        className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
-                    }
-                ]
-            });
+            this._showFloatingActionButton('confirm-setup-button-float', () => this._handleConfirmSetup());
         }
+    }
+
+    /**
+     * フローティングアクションボタン表示（modal-manager統合）
+     */
+    _showFloatingActionButton(buttonId, callback) {
+        modalManager.showFloatingActionButton(buttonId, callback);
+    }
+
+    /**
+     * フローティングアクションボタン非表示（modal-manager統合）
+     */
+    _hideFloatingActionButton(buttonId) {
+        modalManager.hideFloatingActionButton(buttonId);
     }
 
     /**
@@ -1279,8 +1405,8 @@ export class Game {
         }
 
         // 初期ポケモン配置確定の場合
-        // 強制的にボタンの無効化状態をチェック
-        const confirmButton = document.getElementById('confirm-initial-pokemon-button');
+        // 強制的にボタンの無効化状態をチェック (フローティング版を使用)
+        const confirmButton = document.getElementById('confirm-setup-button-float');
         if (confirmButton && confirmButton.disabled) {
             this.state = addLogEntry(this.state, { message: 'バトル場にたねポケモンを配置してください。' });
             return;
@@ -1310,6 +1436,9 @@ export class Game {
         this.state = addLogEntry(this.state, { message: 'サイドカード配布開始' });
         
         noop('🔥 About to call setupManager.confirmSetup');
+        
+        // 確定ボタンを隠す
+        this._hideFloatingActionButton('confirm-setup-button-float');
         
         // 状態を更新して、サイドカード配布を含む完全なセットアップを実行
         let newState = await this.setupManager.confirmSetup(this.state);
@@ -1656,16 +1785,84 @@ export class Game {
         );
     }
 
+
     /**
-     * エネルギー付与アニメーション
+     * ポケモン要素を検索（アクティブ・ベンチ両方）
      */
-    async _animateEnergyAttachment(energyId, pokemonId) {
-        // 統一システムを使用
-        await animationManager.createUnifiedEnergyAnimation(
-            'player', 
-            energyId, 
-            pokemonId
-        );
+    _findPokemonElement(pokemonId) {
+        // プレイヤーのアクティブポケモンをチェック
+        const playerActiveSlot = document.querySelector('.player-self .active-bottom');
+        if (playerActiveSlot) {
+            const card = playerActiveSlot.querySelector('[data-card-id]');
+            if (card && card.dataset.cardId === pokemonId) {
+                return playerActiveSlot;
+            }
+        }
+
+        // プレイヤーのベンチポケモンをチェック
+        for (let i = 1; i <= 5; i++) {
+            const benchSlot = document.querySelector(`.player-self .bottom-bench-${i}`);
+            if (benchSlot) {
+                const card = benchSlot.querySelector('[data-card-id]');
+                if (card && card.dataset.cardId === pokemonId) {
+                    return benchSlot;
+                }
+            }
+        }
+
+        // CPUのアクティブポケモンをチェック
+        const cpuActiveSlot = document.querySelector('.opponent-board .active-top');
+        if (cpuActiveSlot) {
+            const card = cpuActiveSlot.querySelector('[data-card-id]');
+            if (card && card.dataset.cardId === pokemonId) {
+                return cpuActiveSlot;
+            }
+        }
+
+        // CPUのベンチポケモンをチェック
+        for (let i = 1; i <= 5; i++) {
+            const benchSlot = document.querySelector(`.opponent-board .top-bench-${i}`);
+            if (benchSlot) {
+                const card = benchSlot.querySelector('[data-card-id]');
+                if (card && card.dataset.cardId === pokemonId) {
+                    return benchSlot;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * バトル中のポケモン配置アニメーション（準備フェーズ流用）
+     */
+    async _animateBattlePokemonPlacement(cardId, targetZone, targetIndex) {
+        try {
+            // 準備フェーズのアニメーションシステムを流用
+            const sourceElement = document.querySelector(`[data-card-id="${cardId}"]`);
+            if (!sourceElement) return;
+
+            // アニメーション実行（表面で配置）
+            const animationOptions = {
+                isSetupPhase: false,  // バトル中なので false
+                isFaceUp: true,      // 表面で配置
+                duration: 600
+            };
+
+            // 統一アニメーションシステムを使用（準備フェーズと同じ）
+            await animationManager.createUnifiedCardAnimation(
+                'player',
+                cardId,
+                'hand',
+                targetZone,
+                targetIndex,
+                animationOptions
+            );
+
+        } catch (error) {
+            noop(`⚠️ Battle Pokemon placement animation failed: ${error.message}`);
+            // アニメーション失敗時も処理を続行
+        }
     }
 
     /**

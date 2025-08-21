@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const game = new Game(root, window.playmatSlotsData);
+        // Make game instance globally accessible for energy animations
+        window.game = game;
         noop('Game instance created.');
         game.init();
         noop('game.init() called.');

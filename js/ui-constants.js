@@ -3,16 +3,16 @@
  * 全システムで統一的に使用される
  */
 
-// ボタンID定数
+// ボタンID定数 (フローティングHUDシステム)
 export const BUTTON_IDS = {
-    // 静的アクションボタン（HTML固定）
-    RETREAT: 'retreat-button',
-    ATTACK: 'attack-button',
-    END_TURN: 'end-turn-button',
+    // アクションボタン（フローティング版）
+    RETREAT: 'retreat-button-float',
+    ATTACK: 'attack-button-float',
+    END_TURN: 'end-turn-button-float',
     
-    // セットアップフェーズボタン
-    CONFIRM_SETUP: 'confirm-setup-button',
-    CONFIRM_INITIAL_POKEMON: 'confirm-initial-pokemon-button',
+    // セットアップフェーズボタン (フローティング版)
+    CONFIRM_SETUP: 'confirm-setup-button-float',
+    CONFIRM_INITIAL_POKEMON: 'confirm-setup-button-float',
     
     // その他のUI要素
     ACTION_MODAL_OK: 'action-modal-ok',
@@ -21,12 +21,11 @@ export const BUTTON_IDS = {
 
 // コンテナID定数
 export const CONTAINER_IDS = {
-    // 静的ボタンコンテナ
-    STATIC_ACTION_BUTTONS: 'static-action-buttons',
+    // フローティングアクションHUDコンテナ
+    FLOATING_ACTION_HUD: 'floating-action-hud',
     
     // 動的ボタンコンテナ
     PLAYER_ACTION_BUTTONS: 'player-action-buttons',
-    DYNAMIC_INTERACTIVE_BUTTONS: 'dynamic-interactive-buttons',
     
     // その他のコンテナ
     ACTION_MODAL: 'action-modal',

@@ -11,9 +11,9 @@
         const originalWarn = console.warn;
         console.warn = function(...args) {
             const message = args.join(' ');
-            // Filter out Tailwind CDN production warnings
+            // Filter out Tailwind CDN production warnings during development
             if (message.includes('cdn.tailwindcss.com should not be used in production')) {
-                console.info('🎨 Tailwind CSS loaded via CDN (development mode)');
+                console.info('🎨 Tailwind CSS loaded via CDN (development environment only)');
                 return;
             }
             originalWarn.apply(console, args);
@@ -143,7 +143,8 @@
             width: 679px !important;           /* 完全固定サイズ */
             height: 679px !important;          /* 完全固定サイズ */
             object-fit: none;       /* 1:1ピクセルマッピング */
-            z-index: 10;
+            z-index: 5;             /* カードスロットより背面に配置 */
+            pointer-events: none;   /* クリックイベントを通過させる */
         }
 
         .card-slot {
@@ -151,43 +152,49 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
             position: absolute;
-            z-index: 15; /* ボード上の標準カードレイヤー */
+            /* z-index統合: 上の.card-slotルールで制御 */
             min-width: 20px; /* 最小サイズを確保 */
             min-height: 28px;
             overflow: visible; /* Explicitly set overflow to visible */
         }
 
-        /* セットアップ時のカードスロット */
-        .card-slot.setup-interactive {
-            z-index: 24 !important; /* ボード内で前面 */
-        }
 
-        /* プレイヤーのボード全体をオーバーレイより上に */
-        .player-board.player-self {
-            z-index: 14; /* Should be lower than the card slots inside it */
-        }
-
-        /* CPU側のボードにもスタッキングコンテキストを生成 */
+        /* === Z-INDEX階層定義 === */
+        
+        /* レイヤー1: ボード基盤 */
+        .player-board.player-self,
         .player-board.opponent-board {
-            z-index: 14; /* Should be lower than the card slots inside it */
+            z-index: 5;
+            pointer-events: auto;
         }
-
-        /* 手札コンテナのZ-index強化 */
+        
+        /* プレイマットの下部は手札エリアと重複しないよう制限 */
+        .player-board.player-self {
+            bottom: 130px;
+        }
+        
+        /* レイヤー2: カードスロット */
+        .card-slot {
+            z-index: 10;
+            pointer-events: auto;
+            position: relative;
+        }
+        
+        /* 手札エリア - 論理的配置 */
         #player-hand {
-            z-index: 60 !important;
-            position: fixed !important;
+            z-index: 60;
+            pointer-events: auto;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: -20px;
+            height: 150px;
         }
-
-        #player-hand-inner {
-            z-index: 61 !important;
-            position: relative !important;
-        }
-
-        /* 手札の個別カード要素 */
-        #player-hand .relative,
-        #player-hand-inner .relative {
-            z-index: 61 !important;
-            position: relative !important;
+        
+        /* 手札内の各カードは独立したクリック領域を持つ */
+        #player-hand .hand-slot {
+            pointer-events: auto;
+            z-index: 61;
         }
 
         /* 手札カードの表示を強制 */
@@ -207,11 +214,6 @@
         /* Side cards stacking effects */
         .side-cards-container {
             position: static;
-        }
-        
-        /* Prize container positioning for badges */
-        .side-left, .side-right {
-            position: relative !important;
         }
 
         .side-cards-container .card-slot {
@@ -311,7 +313,7 @@
 
         /* --- 全体の transform-style を設定 --- */
         .card-slot {
-            transform-style: preserve-3d; /* 子要素の3D transform を有効にする */
+            transform-style: preserve-3d;
         }
 
         /* --- CPUカードの反転 --- */
@@ -340,21 +342,12 @@
             transform: rotateX(180deg) translateZ(20px);
         }
 
-        /* --- CPUの裏向きカードの操作を無効化 --- */
-        .is-cpu-facedown {
+        /* CPU側のカード操作制限 - プレースホルダーは除外 */
+        .cpu-card:not(.card-placeholder) {
             pointer-events: none;
         }
         
-        /* Allow hover on CPU placeholder slots (empty slots should be hoverable) */
-        .card-slot.placeholder {
-            pointer-events: auto !important;
-        }
-        
-        /* CPU placeholders during setup should be hoverable */
-        .opponent-board .card-slot:empty,
-        .opponent-board .card-slot.placeholder {
-            pointer-events: auto !important;
-        }
+        /* CPU側の空スロット - 統合ルールで制御 */
 
         /* Enhanced hover effects for stacked cards */
         .side-cards-container .card-slot:hover {
@@ -692,10 +685,10 @@
 
         .player-board {
             position: absolute;
-            width: 100%;
-            height: 100%; /* ボード全体を基準にする */
             top: 0;
             left: 0;
+            right: 0;
+            bottom: 0;
         }
 
         /* 盤面の下に余白を追加して、固定手札と重ならないようにするためのスクロールエリア */
@@ -714,7 +707,8 @@
             padding: 1rem;
             font-size: 0.875rem;
             width: 320px !important; /* 固定幅 */
-            height: 420px !important; /* 高さを短くする */
+            min-height: 500px !important; /* 最小高さを拡張してスクロールを防止 */
+            max-height: 80vh !important; /* 画面の80%を超えないように */
             /* 右側中央寄りに配置 */
             position: fixed !important;
             top: 50% !important;
@@ -729,58 +723,92 @@
             height: 100%;
             display: flex;
             flex-direction: column;
-            background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.95));
-            border: 1px solid rgba(75, 85, 99, 0.6);
-            border-radius: 12px;
+            background: linear-gradient(135deg, 
+                rgba(220, 38, 38, 0.9) 0%,    /* Pokemon Red */
+                rgba(239, 68, 68, 0.95) 30%,   
+                rgba(59, 130, 246, 0.9) 70%,   /* Pokemon Blue */
+                rgba(37, 99, 235, 0.95) 100%);
+            border: 3px solid #FCD34D; /* Pokemon Yellow border */
+            border-radius: 20px;
             box-shadow: 
-                0 20px 40px rgba(0, 0, 0, 0.4),
-                0 0 20px rgba(77, 208, 253, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(252, 211, 77, 0.4), /* Yellow glow */
+                inset 0 2px 4px rgba(255, 255, 255, 0.2),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(15px);
+            position: relative;
+        }
+        
+        /* Pokeball-inspired decoration on panel */
+        .status-panel-content::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, 
+                #ffffff 0%, #ffffff 30%, 
+                #000000 30%, #000000 50%, 
+                #dc2626 50%, #dc2626 100%);
+            border-radius: 50%;
+            border: 2px solid #FCD34D;
+            z-index: 1;
         }
 
         .status-panel-header {
             padding: 16px 20px 12px 20px;
-            border-bottom: 1px solid rgba(75, 85, 99, 0.3);
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+            border-bottom: 2px solid rgba(252, 211, 77, 0.6); /* Yellow border */
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.15) 0%,
+                rgba(252, 211, 77, 0.1) 50%,
+                rgba(255, 255, 255, 0.1) 100%);
+            border-radius: 20px 20px 0 0;
+            position: relative;
         }
 
         .status-panel-body {
             flex: 1;
             padding: 16px 20px;
-            overflow-y: auto;
+            overflow-y: hidden; /* スクロールを無効化 */
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 12px; /* ギャップを少し狭めてスペースを節約 */
         }
 
         .status-info-section {
-            background: rgba(55, 65, 81, 0.4);
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
             padding: 12px 16px;
-            border-left: 3px solid rgba(77, 208, 253, 0.6);
+            border: 2px solid rgba(252, 211, 77, 0.3); /* Yellow border */
+            box-shadow: 
+                0 4px 8px rgba(0, 0, 0, 0.2),
+                inset 0 1px 2px rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
         }
 
         .status-info-title {
             font-size: 0.75rem;
             font-weight: 600;
-            color: rgba(156, 163, 175, 1);
+            color: #FFFFFF; /* より明るい白に変更 */
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-bottom: 4px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* テキストシャドウを追加 */
         }
 
         .status-info-value {
             font-size: 0.875rem;
             font-weight: 500;
-            color: white;
+            color: #FFFFFF;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
         }
 
         .game-message-area {
-            background: rgba(31, 41, 55, 0.6);
+            background: rgba(0, 0, 0, 0.4); /* より暗い背景でコントラスト向上 */
             border-radius: 8px;
             padding: 12px 16px;
-            border: 1px solid rgba(75, 85, 99, 0.3);
+            border: 2px solid rgba(252, 211, 77, 0.4); /* 黄色の境界線 */
             min-height: 60px;
             display: flex;
             align-items: center;
@@ -791,7 +819,9 @@
         .game-message-text {
             font-size: 0.875rem;
             line-height: 1.4;
-            color: rgba(229, 231, 235, 0.9);
+            color: #FFFFFF;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+            font-weight: 500;
         }
 
         /* Hand Dock (Mac Dock-like magnification) */
@@ -799,21 +829,40 @@
             user-select: none;
             -webkit-user-select: none;
             contain: layout paint;
-            overflow: visible;           /* allow cards to grow upward without clipping */
-            pointer-events: none;        /* let clicks pass through empty hand area */
-            z-index: 60 !important;      /* hands above board, below UI */
-            transform: none !important;  /* keep out of 3D stacking issues */
-            will-change: auto;
-        }
-        /* プレイヤー手札のシンプルなスタイル（CPUと同じ） */
-        #player-hand {
-            z-index: 60 !important;
+            overflow: visible;
             pointer-events: auto;
-            transform: none !important;
+            z-index: 60;
+            transform: none;
             will-change: auto;
         }
-        #player-hand .relative { z-index: 61 !important; }
-        #player-hand.hand-dock .hand-card {
+        
+        /* プレイヤー手札のシンプルなスタイル */
+        #player-hand {
+            z-index: 60;
+            pointer-events: auto;
+            transform: none;
+            will-change: auto;
+        }
+        
+        /* 手札スロット基本スタイル */
+        .hand-slot {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+            border-radius: 8px;
+        }
+        
+        /* アクティブな手札スロット（黄色いハイライトシステムを使用） */
+        .hand-slot.active {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+            border: 2px solid #ffd700;
+        }
+        
+        /* ホバー時の手札スロット */
+        .hand-slot:hover:not(.active) {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        #player-hand.hand-dock .hand-slot.hand-card {
             transition: transform 140ms ease, filter 140ms ease;
             will-change: transform;
             transform-origin: bottom center;
@@ -824,12 +873,11 @@
 
         /* CPU手札も前面に（操作透過） */
         #cpu-hand {
-            z-index: 60 !important;
+            z-index: 60;
             pointer-events: none;
-            transform: none !important;
+            transform: none;
             will-change: auto;
         }
-        #cpu-hand .relative { z-index: 61 !important; }
 
         button {
             /* background-color: rgba(255, 255, 255, 0.1); */ /* Base color from Tailwind classes */
@@ -849,13 +897,251 @@
             background: rgba(10, 10, 10, 0.6); /* Darker, more opaque */
         }
         
-        #action-modal { z-index: 100 !important; }
-        #player-hand.hand-dock .hand-card img {
+        #action-modal { z-index: 100; }
+        
+        /* Pokemon-style Floating Action HUD */
+        .pokemon-action-hud {
+            transform-origin: bottom left;
+            animation: fadeInScale 0.4s ease-out;
+        }
+        
+        @keyframes fadeInScale {
+            from { 
+                opacity: 0; 
+                transform: scale(0.8) translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: scale(1) translateY(0); 
+            }
+        }
+        
+        .pokemon-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, 
+                #FCD34D 0%,      /* Pokemon Yellow */
+                #F59E0B 50%,     /* Darker Yellow */
+                #D97706 100%);   /* Orange */
+            border: 3px solid #DC2626; /* Pokemon Red border */
+            border-radius: 25px;
+            color: #1F2937; /* Dark text */
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 
+                0 6px 20px rgba(0, 0, 0, 0.3),
+                0 0 15px rgba(252, 211, 77, 0.4),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            min-width: 140px;
+        }
+        
+        .pokemon-action-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.4),
+                0 0 20px rgba(252, 211, 77, 0.6),
+                inset 0 2px 4px rgba(255, 255, 255, 0.4);
+            background: linear-gradient(135deg, 
+                #FDE047 0%,      /* Brighter Yellow on hover */
+                #FBBF24 50%,     
+                #F59E0B 100%);
+        }
+        
+        .pokemon-action-btn:active {
+            transform: translateY(-1px) scale(1.02);
+            box-shadow: 
+                0 4px 15px rgba(0, 0, 0, 0.3),
+                0 0 10px rgba(252, 211, 77, 0.3),
+                inset 0 2px 4px rgba(255, 255, 255, 0.2);
+        }
+        
+        .pokemon-btn-icon {
+            font-size: 1.2rem;
+            filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.3));
+        }
+        
+        .pokemon-btn-text {
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            letter-spacing: 0.5px;
+        }
+        
+        /* Show/hide animation for buttons */
+        .pokemon-action-btn.show {
+            animation: slideInLeft 0.3s ease-out forwards;
+        }
+        
+        .pokemon-action-btn.hide {
+            animation: slideOutLeft 0.2s ease-in forwards;
+        }
+        
+        @keyframes slideInLeft {
+            from { 
+                opacity: 0; 
+                transform: translateX(-100px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideOutLeft {
+            from { 
+                opacity: 1; 
+                transform: translateX(0);
+            }
+            to { 
+                opacity: 0; 
+                transform: translateX(-100px);
+            }
+        }
+        
+        #player-hand.hand-dock .hand-slot.hand-card img {
             pointer-events: auto;
         }
         /* default: same size as CPU hand */
-        #player-hand.hand-dock .hand-card {
+        #player-hand.hand-dock .hand-slot.hand-card {
             transform: translateY(0) scale(1.0);
+        }
+        
+        /* Battle Modal Styles */
+        .battle-modal-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(37, 99, 235, 0.1));
+            border: 2px solid rgba(252, 211, 77, 0.3);
+            border-radius: 15px;
+        }
+        
+        .battle-pokemon {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+        }
+        
+        .pokemon-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #FFFFFF;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            margin-bottom: 8px;
+        }
+        
+        .pokemon-stats {
+            font-size: 0.9rem;
+            color: #FFFFFF;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        .hp-bar {
+            background: rgba(34, 197, 94, 0.7);
+            padding: 4px 8px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        
+        .pokemon-type {
+            background: rgba(59, 130, 246, 0.7);
+            padding: 2px 6px;
+            border-radius: 6px;
+            margin-bottom: 2px;
+        }
+        
+        .weakness {
+            background: rgba(239, 68, 68, 0.7);
+            padding: 2px 6px;
+            border-radius: 6px;
+            margin-bottom: 2px;
+        }
+        
+        .resistance {
+            background: rgba(156, 163, 175, 0.7);
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        
+        .vs-indicator {
+            flex: 0 0 auto;
+            margin: 0 20px;
+        }
+        
+        .vs-text {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #FCD34D;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            animation: vsGlow 2s infinite alternate;
+        }
+        
+        @keyframes vsGlow {
+            from { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8), 0 0 10px rgba(252, 211, 77, 0.5); }
+            to { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8), 0 0 20px rgba(252, 211, 77, 0.8); }
+        }
+        
+        .attack-selection {
+            margin-top: 15px;
+        }
+        
+        .attack-selection h3 {
+            color: #FFFFFF;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .attack-option {
+            background: linear-gradient(135deg, 
+                rgba(252, 211, 77, 0.2) 0%,
+                rgba(245, 158, 11, 0.2) 100%);
+            border: 2px solid rgba(252, 211, 77, 0.4);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .attack-option:hover {
+            background: linear-gradient(135deg, 
+                rgba(252, 211, 77, 0.4) 0%,
+                rgba(245, 158, 11, 0.4) 100%);
+            border-color: rgba(252, 211, 77, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .attack-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #FFFFFF;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            margin-bottom: 5px;
+        }
+        
+        .attack-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .damage, .energy-cost {
+            font-size: 0.9rem;
+            color: #FFFFFF;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        .attack-effect {
+            font-size: 0.8rem;
+            color: #E5E7EB;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            font-style: italic;
         }
 
         /* 手札用の下部余白を追加 */
@@ -1002,6 +1288,8 @@
         /* CPUデッキのホバー時は、反転と手前に出すを両立（上記ルールを上書き） */
         .deck-container:hover .cpu-card .card-image {
             transform: rotateX(180deg) translateZ(5px);
+            filter: none; /* 暗くならないように */
+            opacity: 1; /* 明度を保持 */
         }
         
         /* CPU カード向き制御（回転なし・手札用） */
@@ -1113,6 +1401,7 @@
             border: 1px solid rgba(75, 85, 99, 0.6);
             backdrop-filter: blur(8px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(77, 208, 253, 0.2);
+            pointer-events: none; /* クリックを下の要素に通す */
         }
 
         .action-hud::before {
@@ -1131,6 +1420,123 @@
 
         .action-hud:hover::before {
             opacity: 1;
+        }
+
+        /* Enhanced Battle Modal Layout */
+        .battle-modal-container-enhanced {
+            display: flex;
+            gap: 24px;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .battle-left-panel {
+            flex: 1;
+            min-width: 500px;
+        }
+
+        .battle-right-panel {
+            flex: 0 0 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .opponent-card-display {
+            position: relative;
+            width: 280px;
+            height: 392px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .opponent-card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .opponent-card-display:hover .opponent-card-image {
+            transform: scale(1.05);
+        }
+
+        .card-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            padding: 16px;
+            color: white;
+        }
+
+        .card-overlay h4 {
+            margin: 0 0 8px 0;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .card-hp {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fbbf24;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Lightweight Energy Attachment Effects */
+        .energy-effect {
+            transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+        }
+
+        .energy-effect-fire {
+            box-shadow: 0 0 25px #ff6b35, 0 0 50px rgba(255, 107, 53, 0.4);
+            transform: scale(1.02);
+        }
+
+        .energy-effect-water {
+            box-shadow: 0 0 25px #4fc3f7, 0 0 50px rgba(79, 195, 247, 0.4);
+            transform: scale(1.02);
+        }
+
+        .energy-effect-grass {
+            box-shadow: 0 0 25px #66bb6a, 0 0 50px rgba(102, 187, 106, 0.4);
+            transform: scale(1.02);
+        }
+
+        .energy-effect-lightning {
+            box-shadow: 0 0 25px #ffeb3b, 0 0 50px rgba(255, 235, 59, 0.4);
+            transform: scale(1.02);
+        }
+
+        .energy-effect-psychic {
+            box-shadow: 0 0 25px #ab47bc, 0 0 50px rgba(171, 71, 188, 0.4);
+            transform: scale(1.02);
+        }
+
+        .energy-effect-fighting {
+            box-shadow: 0 0 25px #f57c00, 0 0 50px rgba(245, 124, 0, 0.4);
+            transform: scale(1.02);
+        }
+
+        .energy-effect-darkness {
+            box-shadow: 0 0 25px #424242, 0 0 50px rgba(66, 66, 66, 0.4);
+            transform: scale(1.02);
+        }
+
+        .energy-effect-metal {
+            box-shadow: 0 0 25px #90a4ae, 0 0 50px rgba(144, 164, 174, 0.4);
+            transform: scale(1.02);
+        }
+
+        .energy-effect-colorless {
+            box-shadow: 0 0 25px #bdbdbd, 0 0 50px rgba(189, 189, 189, 0.4);
+            transform: scale(1.02);
         }
 
         /* モーダルアニメーション */
@@ -1353,12 +1759,12 @@
             <!-- Header Section -->
             <div class="status-panel-header">
                 <div class="flex justify-between items-center mb-2">
-                    <div class="text-lg font-bold text-white">ゲーム状況</div>
-                    <div class="text-sm text-blue-300">
-                        <span id="turn-player" class="font-semibold">YOU</span>
+                    <div class="text-lg font-bold text-white" style="text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);">ゲーム状況</div>
+                    <div class="text-sm text-yellow-300">
+                        <span id="turn-player" class="font-semibold" style="text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);">YOU</span>
                     </div>
                 </div>
-                <div class="text-xs text-gray-300">
+                <div class="text-xs text-white" style="text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);">
                     <span id="phase-indicator">セットアップ</span> • ターン <span id="turn-indicator">1</span>
                 </div>
             </div>
@@ -1380,6 +1786,23 @@
                     </div>
                 </div>
 
+                <!-- Prize Cards Status -->
+                <div id="prize-status" class="status-info-section">
+                    <div class="status-info-title">サイドカード</div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            <span class="text-sm text-blue-200">YOU</span>
+                            <span id="player-prize-count" class="font-bold text-white">6/6</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <span class="text-sm text-red-200">CPU</span>
+                            <span id="cpu-prize-count" class="font-bold text-white">6/6</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Current Message Area -->
                 <div class="status-info-section">
                     <div class="status-info-title">現在の状況</div>
@@ -1392,21 +1815,31 @@
 
             </div>
 
-            <!-- 旧ボタン類は非表示で保持（互換性のため） -->
-            <div id="initial-pokemon-selection" class="hidden">
-                <button id="confirm-initial-pokemon-button" class="hidden"></button>
-            </div>
-            <div id="static-action-buttons" class="hidden">
-                <button id="retreat-button" class="hidden">にげる</button>
-                <button id="attack-button" class="hidden">攻撃</button>
-                <button id="end-turn-button" class="hidden">ターン終了</button>
-            </div>
-            <div id="dynamic-interactive-buttons" class="hidden"></div>
         </div>
     </div>
 
 <!-- Extra scroll space so bench doesn't sit under the fixed hand overlay -->
 <div class="scroll-spacer" aria-hidden="true"></div>
+
+<!-- Floating Action HUD (Bottom-left) -->
+<div id="floating-action-hud" class="fixed bottom-6 left-6 flex flex-col gap-3 z-50 pokemon-action-hud">
+    <button id="confirm-setup-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">✅</span>
+        <span class="pokemon-btn-text">ポケモン配置を確定</span>
+    </button>
+    <button id="retreat-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">🏃</span>
+        <span class="pokemon-btn-text">にげる</span>
+    </button>
+    <button id="attack-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">⚔️</span>
+        <span class="pokemon-btn-text">攻撃</span>
+    </button>
+    <button id="end-turn-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">🔄</span>
+        <span class="pokemon-btn-text">ターン終了</span>
+    </button>
+</div>
 
 <!-- Player Hand -->
 <div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: -20px; z-index: 60; overflow: visible;">

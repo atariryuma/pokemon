@@ -1267,6 +1267,173 @@ export class UnifiedAnimationManager {
         }, animationDuration);
     });
   }
+
+  /**
+   * 軽量エネルギー付与アニメーション
+   * @param {string} energyId - エネルギーカードID
+   * @param {string} pokemonId - 対象ポケモンID
+   * @param {Object} gameState - ゲームステート
+   * @returns {Promise} アニメーション完了Promise
+   */
+  async createLightweightEnergyEffect(energyId, pokemonId, gameState) {
+    // エネルギーカードのタイプを取得
+    let energyCard = gameState.players.player.hand?.find(card => card.id === energyId);
+    if (!energyCard) {
+      energyCard = gameState.players.cpu.hand?.find(card => card.id === energyId);
+    }
+    
+    // If not found in current state, try to get the card type from master list
+    if (!energyCard) {
+      const { getCardMasterList } = await import('./data-manager.js');
+      const masterList = getCardMasterList();
+      energyCard = masterList.find(card => card.name_en && energyId.includes(card.name_en));
+      
+      if (!energyCard) {
+        energyCard = masterList.find(card => 
+          card.card_type === 'Basic Energy' && 
+          energyId.toLowerCase().includes(card.energy_type?.toLowerCase())
+        );
+      }
+    }
+    
+    if (!energyCard) {
+      console.warn('🔋 Energy card not found:', energyId);
+      return;
+    }
+
+    // ポケモンの要素を取得
+    const pokemonElement = this.findPokemonElement(
+      gameState.players.player.active?.id === pokemonId ? 'player' : 'cpu',
+      pokemonId
+    );
+    
+    if (!pokemonElement) {
+      console.warn('🔋 Pokemon element not found:', pokemonId);
+      return;
+    }
+
+    // プレイヤーIDを特定
+    const playerId = pokemonElement.closest('.opponent-board') ? 'cpu' : 'player';
+    
+    // カードの向き制御情報を取得
+    const orientation = CardOrientationManager.getCardOrientation(playerId, 'active');
+
+    // エネルギータイプに応じたエフェクト色を決定
+    const energyType = energyCard.energy_type?.toLowerCase() || 'colorless';
+    const effectClass = `energy-effect-${energyType}`;
+
+    // エネルギーカードが右下から左上に滑り込むアニメーション要素を作成
+    const energyCardElement = document.createElement('div');
+    energyCardElement.className = 'energy-slide-card absolute';
+    
+    // エネルギーカードの画像を取得
+    const cardImageSrc = this._getEnergyCardImage(energyType);
+    
+    energyCardElement.style.cssText = `
+      bottom: -35px;
+      right: -25px;
+      width: 73px;
+      height: 104px;
+      z-index: 20;
+      opacity: 0;
+      background-image: url('${cardImageSrc}');
+      background-size: cover;
+      background-position: center;
+      border-radius: 6px;
+      border: 1px solid ${this._getEnergyColor(energyType)};
+      box-shadow: 0 0 8px ${this._getEnergyColor(energyType)};
+      transform: ${orientation.transform};
+      animation: slideToTarget 700ms ease-out forwards;
+    `;
+
+    // アニメーションキーフレームをCSSに追加（一度だけ）
+    if (!document.getElementById('energy-slide-animation-styles')) {
+      const style = document.createElement('style');
+      style.id = 'energy-slide-animation-styles';
+      style.textContent = `
+        @keyframes slideToTarget {
+          0% {
+            transform: ${orientation.transform} translate(0px, 0px) scale(1);
+            opacity: 0;
+          }
+          30% {
+            transform: ${orientation.transform} translate(-15px, -15px) scale(0.95);
+            opacity: 1;
+          }
+          70% {
+            transform: ${orientation.transform} translate(-30px, -30px) scale(0.7);
+            opacity: 0.9;
+          }
+          100% {
+            transform: ${orientation.transform} translate(-45px, -45px) scale(0.3);
+            opacity: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    pokemonElement.appendChild(energyCardElement);
+    
+    // メモリ管理のためのトラッキング
+    const { memoryManager } = await import('./memory-manager.js');
+    memoryManager.trackElement(energyCardElement);
+
+    // 700ms後にカードを削除し、ポケモンカードを光らせる
+    return new Promise(resolve => {
+      memoryManager.setTimeout(() => {
+        // エネルギーカードを削除
+        memoryManager.removeElement(energyCardElement);
+        
+        // ポケモンカード全体を光らせる
+        pokemonElement.classList.add('energy-effect', effectClass);
+        
+        // 400ms後に光を消す
+        memoryManager.setTimeout(() => {
+          pokemonElement.classList.remove('energy-effect', effectClass);
+          resolve();
+        }, 400);
+      }, 700);
+    });
+  }
+
+  /**
+   * エネルギータイプに応じたカード画像パスを取得
+   * @private
+   */
+  _getEnergyCardImage(energyType) {
+    const energyImageMap = {
+      fire: 'assets/cards/energy/Energy_Fire.webp',
+      water: 'assets/cards/energy/Energy_Water.webp',
+      grass: 'assets/cards/energy/Energy_Grass.webp',
+      lightning: 'assets/cards/energy/Energy_Lightning.webp',
+      psychic: 'assets/cards/energy/Energy_Psychic.webp',
+      fighting: 'assets/cards/energy/Energy_Fighting.webp',
+      darkness: 'assets/cards/energy/Energy_Darkness.webp',
+      metal: 'assets/cards/energy/Energy_Colorless.webp',
+      colorless: 'assets/cards/energy/Energy_Colorless.webp'
+    };
+    return energyImageMap[energyType] || energyImageMap.colorless;
+  }
+
+  /**
+   * エネルギータイプに応じた色を取得
+   * @private
+   */
+  _getEnergyColor(energyType) {
+    const colors = {
+      fire: '#ff6b35',
+      water: '#4fc3f7',
+      grass: '#66bb6a',
+      lightning: '#ffeb3b',
+      psychic: '#ab47bc',
+      fighting: '#f57c00',
+      darkness: '#424242',
+      metal: '#90a4ae',
+      colorless: '#bdbdbd'
+    };
+    return colors[energyType] || colors.colorless;
+  }
 }
 
 // デフォルトの統一アニメーションマネージャーインスタンス

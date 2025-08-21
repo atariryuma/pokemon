@@ -13,23 +13,25 @@ const noop = () => {};
  * モーダルタイプの定義
  */
 export const MODAL_TYPES = {
-    CENTRAL: 'central',          // 画面中央、重要な意思決定
-    TOAST: 'toast',              // 右上通知、自動消失
-    ACTION_HUD: 'action_hud',    // 手札上フローティング
-    STATUS_PANEL: 'status_panel' // 右側パネル（既存）
+    CENTRAL: 'central',               // 画面中央、重要な意思決定
+    TOAST: 'toast',                   // 右上通知、自動消失
+    ACTION_HUD: 'action_hud',         // 手札上フローティング（廃止予定）
+    FLOATING_ACTION_HUD: 'floating_action_hud',  // 左下フローティングHUD（メイン）
+    STATUS_PANEL: 'status_panel'      // 右側パネル（既存）
 };
 
 /**
  * モーダル優先度（Z-Index管理用）
  */
 export const MODAL_PRIORITY = {
-    BACKGROUND: 10,     // ゲームボード
-    CARDS: 60,          // カード・手札
-    HUD: 80,            // HUD要素
-    ACTION_HUD: 90,     // アクションHUD
-    TOAST: 95,          // 通知
-    CENTRAL: 100,       // 中央モーダル
-    CRITICAL: 110       // 致命的エラー
+    BACKGROUND: 10,       // ゲームボード
+    CARDS: 60,            // カード・手札
+    HUD: 80,              // HUD要素
+    ACTION_HUD: 90,       // アクションHUD（廃止予定）
+    FLOATING_HUD: 50,     // フローティングアクションHUD（左下）
+    TOAST: 95,            // 通知
+    CENTRAL: 100,         // 中央モーダル
+    CRITICAL: 110         // 致命的エラー
 };
 
 /**
@@ -454,6 +456,11 @@ export class ModalManager {
             this.hideActionHUD();
         }
         
+        // フローティングアクションHUD
+        if (this.activeModals.has(MODAL_TYPES.FLOATING_ACTION_HUD)) {
+            this.hideAllFloatingActionButtons();
+        }
+        
         // トースト削除
         const toasts = this.toastContainer.querySelectorAll('div');
         toasts.forEach(toast => this.removeToast(toast));
@@ -487,6 +494,77 @@ export class ModalManager {
      */
     isModalActive(type) {
         return this.activeModals.has(type);
+    }
+
+    /**
+     * フローティングアクションボタン表示
+     * @param {string} buttonId - ボタンのDOM ID
+     * @param {function} callback - クリック時のコールバック
+     */
+    showFloatingActionButton(buttonId, callback) {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.classList.remove('hidden');
+            button.classList.add('show');
+            button.onclick = callback;
+            
+            // アクティブなフローティングボタンとして追跡
+            if (!this.activeModals.has(MODAL_TYPES.FLOATING_ACTION_HUD)) {
+                this.activeModals.set(MODAL_TYPES.FLOATING_ACTION_HUD, { buttons: new Set() });
+            }
+            this.activeModals.get(MODAL_TYPES.FLOATING_ACTION_HUD).buttons.add(buttonId);
+            
+            noop(`🎯 Floating action button shown: ${buttonId}`);
+        } else {
+            noop(`⚠️ Floating action button not found: ${buttonId}`);
+        }
+    }
+
+    /**
+     * フローティングアクションボタン非表示
+     * @param {string} buttonId - ボタンのDOM ID
+     */
+    hideFloatingActionButton(buttonId) {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.classList.add('hidden');
+            button.classList.remove('show');
+            button.onclick = null;
+            
+            // アクティブ追跡から削除
+            if (this.activeModals.has(MODAL_TYPES.FLOATING_ACTION_HUD)) {
+                const hudData = this.activeModals.get(MODAL_TYPES.FLOATING_ACTION_HUD);
+                hudData.buttons.delete(buttonId);
+                
+                // すべてのボタンが非表示になった場合、HUDを非アクティブにする
+                if (hudData.buttons.size === 0) {
+                    this.activeModals.delete(MODAL_TYPES.FLOATING_ACTION_HUD);
+                }
+            }
+            
+            noop(`🎯 Floating action button hidden: ${buttonId}`);
+        }
+    }
+
+    /**
+     * すべてのフローティングアクションボタンを非表示
+     */
+    hideAllFloatingActionButtons() {
+        const floatingButtonIds = [
+            'confirm-setup-button-float',
+            'retreat-button-float',
+            'attack-button-float',
+            'end-turn-button-float'
+        ];
+        
+        floatingButtonIds.forEach(buttonId => {
+            this.hideFloatingActionButton(buttonId);
+        });
+        
+        // フローティングHUDを非アクティブにする
+        this.activeModals.delete(MODAL_TYPES.FLOATING_ACTION_HUD);
+        
+        noop('🎯 All floating action buttons hidden');
     }
 }
 

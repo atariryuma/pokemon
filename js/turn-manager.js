@@ -531,16 +531,15 @@ export class TurnManager {
     if (energyCards.length > 0 && cpuState.active) {
       const selectedEnergy = energyCards[0];
       
-      // キャプチャソース位置（状態更新前）
-      const sourceElement = document.querySelector(`[data-card-id="${selectedEnergy.id}"]`);
-      const initialSourceRect = sourceElement ? unifiedAnimationManager.getElementRect(sourceElement) : null;
-      
       newState = Logic.attachEnergy(newState, 'cpu', selectedEnergy.id, cpuState.active.id);
       
       if (newState !== state) {
-        await unifiedAnimationManager.createUnifiedEnergyAnimation('cpu', selectedEnergy.id, cpuState.active.id, {
-          initialSourceRect
-        });
+        // Use lightweight energy effect for CPU
+        await unifiedAnimationManager.createLightweightEnergyEffect(
+          selectedEnergy.id, 
+          cpuState.active.id, 
+          newState
+        );
       }
     }
 

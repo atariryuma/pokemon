@@ -16,10 +16,19 @@ export class View {
         // Board containers
         this.playerBoard = rootEl.querySelector('.player-board:not(.opponent-board)');
         this.opponentBoard = rootEl.querySelector('.opponent-board');
+        
+        
 
         // Hand containers
         this.playerHand = document.getElementById('player-hand');
         this.cpuHand = document.getElementById('cpu-hand');
+        
+        // 手札エリア全体のクリック保護
+        if (this.playerHand) {
+            this.playerHand.addEventListener('click', (e) => {
+                e.stopPropagation();
+            }, { capture: true });
+        }
 
         // 手札クリックは個別カード要素で処理（デリゲーション削除）
 
@@ -220,12 +229,14 @@ export class View {
     // All messages will now go through showGameMessage or showErrorMessage
 
     render(state) {
+        console.log('View.render() called from:', new Error().stack.split('\n')[2]);
         this._clearBoard();
         this._renderBoard(this.playerBoard, state.players.player, 'player', state);
         this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu', state);
         this._renderHand(this.playerHand, state.players.player.hand, 'player');
         this._renderHand(this.cpuHand, state.players.cpu.hand, 'cpu');
         this._renderStadium(state);
+        this._updatePrizeStatus(state);
 
         this.playerHand.style.bottom = '10px';
 
@@ -266,9 +277,8 @@ export class View {
             const isFaceDown = activePokemon && activePokemon.setupFaceDown;
             const cardEl = this._createCardElement(activePokemon, playerType, 'active', 0, isFaceDown);
             activeSlot.appendChild(cardEl);
-            if (playerType === 'player') {
-                this._makeSlotClickable(activeSlot, playerType, 'active', 0);
-            }
+            // プレイヤー側とCPU側の空スロット両方にクリック機能を追加
+            this._makeSlotClickable(activeSlot, playerType, 'active', 0);
         }
 
         // Bench
@@ -281,9 +291,8 @@ export class View {
             const isFaceDown = benchPokemon && benchPokemon.setupFaceDown;
             const cardEl = this._createCardElement(benchPokemon, playerType, 'bench', i, isFaceDown);
             benchSlot.appendChild(cardEl);
-            if (playerType === 'player') {
-                this._makeSlotClickable(benchSlot, playerType, 'bench', i);
-            }
+            // プレイヤー側とCPU側の空スロット両方にクリック機能を追加
+            this._makeSlotClickable(benchSlot, playerType, 'bench', i);
         }
 
         // Discard - HTMLのクラス名に合わせて修正
@@ -339,25 +348,101 @@ export class View {
         if (!handElement) return;
         const arr = Array.isArray(hand) ? hand : [];
         
+        console.log(`_renderHand called for ${playerType} with ${arr.length} cards`);
+        
+        // 手札の内容が変わっていない場合は再描画しない
+        const currentCardIds = arr.map(card => card ? card.id : null).join(',');
+        const lastCardIds = handElement.dataset.lastCardIds || '';
+        
+        if (lastCardIds === currentCardIds && lastCardIds !== '') {
+            console.log(`Hand unchanged for ${playerType}, skipping render (${arr.length} cards)`);
+            return;
+        }
+        
+        if (lastCardIds !== currentCardIds) {
+            console.log(`Hand changed for ${playerType}: [${lastCardIds}] -> [${currentCardIds}]`);
+        }
+        handElement.dataset.lastCardIds = currentCardIds;
+        
+        // 手札エリアを完全にクリア
+        handElement.innerHTML = '';
+        
+        // デバッグ用：手札エリア全体のクリックテスト（プレイヤーのみ）
+        if (playerType === 'player') {
+            handElement.onclick = (e) => {
+                console.log('Hand area clicked:', e.target);
+                alert('手札エリアがクリックされました: ' + e.target.tagName);
+            };
+            
+            // さらに強力なイベントキャプチャ
+            handElement.addEventListener('click', (e) => {
+                console.log('Hand area CAPTURE clicked:', e.target);
+                alert('手札エリア CAPTURE: ' + e.target.tagName);
+            }, { capture: true });
+        }
+        
+        // 既存のアクティブ状態をクリア
+        this._clearHandActiveStates();
+        
         arr.forEach((card, index) => {
             const isFaceDown = playerType === 'cpu';
+            
+            // プレースホルダーベースの手札スロットを作成
+            const handSlot = document.createElement('div');
+            handSlot.className = 'hand-slot relative';
+            handSlot.dataset.handIndex = index;
+            handSlot.dataset.owner = playerType;
+            handSlot.dataset.zone = 'hand';
+            handSlot.dataset.cardId = card.id;
+            
+            // カード要素を作成
             const cardEl = this._createCardElement(card, playerType, 'hand', index, isFaceDown);
             
             // プレイヤーとCPUで異なるカードサイズを設定
             if (playerType === 'player') {
-                cardEl.classList.add('w-24', 'h-32', 'flex-shrink-0'); // プレイヤーは大きめ
+                handSlot.classList.add('w-24', 'h-32', 'flex-shrink-0'); // プレイヤーは大きめ
+                cardEl.classList.add('w-full', 'h-full');
             } else {
-                cardEl.classList.add('w-20', 'h-28', 'flex-shrink-0'); // CPUは元のサイズ
+                handSlot.classList.add('w-20', 'h-28', 'flex-shrink-0'); // CPUは元のサイズ
+                cardEl.classList.add('w-full', 'h-full');
             }
             
             // 基本的な表示設定のみ（Mac Dock効果は後で追加）
-            cardEl.style.visibility = 'visible';
-            cardEl.style.display = 'flex';
-            cardEl.style.zIndex = '61';
-            cardEl.style.position = 'relative';
-            cardEl.style.opacity = '1'; // Always visible by default
+            handSlot.style.visibility = 'visible';
+            handSlot.style.display = 'flex';
+            handSlot.style.zIndex = '61';
+            handSlot.style.position = 'relative';
+            handSlot.style.opacity = '1'; // Always visible by default
             
-            handElement.appendChild(cardEl);
+            handSlot.appendChild(cardEl);
+            
+            // プレイヤーの手札のみクリック処理を追加
+            if (playerType === 'player') {
+                console.log('Adding click handler for:', card ? card.name_ja : 'null card', index);
+                
+                // 最もシンプルなクリックテスト
+                cardEl.onclick = () => {
+                    alert('カードクリック: ' + (card ? card.name_ja : 'no card'));
+                };
+                
+                // TEST: カード要素自体にもクリックハンドラーを追加
+                cardEl.addEventListener('click', (e) => {
+                    console.log('CARD ELEMENT CLICKED:', card ? card.name_ja : 'no card', index);
+                    e.stopPropagation();
+                    e.preventDefault();
+                });
+                
+                // カード要素のpointer-eventsを一時的に有効にしてテスト
+                cardEl.style.pointerEvents = 'auto';
+                const cardImg = cardEl.querySelector('img');
+                if (cardImg) {
+                    cardImg.style.pointerEvents = 'auto';
+                }
+                
+                this._addHandSlotClickHandler(handSlot, card, index);
+            }
+            
+            handElement.appendChild(handSlot);
         });
         
         // DOM挿入後の強制再描画
@@ -375,15 +460,114 @@ export class View {
 
     
     /**
+     * 手札のアクティブ状態をクリア
+     */
+    _clearHandActiveStates() {
+        // 手札スロットのアクティブ状態をクリア
+        const activeCards = document.querySelectorAll('.hand-slot.active');
+        activeCards.forEach(slot => {
+            slot.classList.remove('active');
+            const cardElement = slot.querySelector('.relative');
+            if (cardElement) {
+                cardElement.classList.remove('card-selected');
+            }
+        });
+    }
+
+    /**
+     * 手札スロット用のクリックハンドラーを追加
+     */
+    _addHandSlotClickHandler(handSlot, card, index) {
+        // 重複ハンドラー防止
+        if (handSlot.dataset.handlerAdded === 'true') {
+            console.log('Handler already added for:', card ? card.name_ja : 'no card', index);
+            return;
+        }
+        handSlot.dataset.handlerAdded = 'true';
+        console.log('Actually adding handler for:', card ? card.name_ja : 'no card', index);
+        
+        handSlot.style.cursor = 'pointer';
+        handSlot.style.pointerEvents = 'auto';
+        handSlot.style.position = 'relative';
+        handSlot.style.zIndex = '65';
+        handSlot.style.backgroundColor = 'rgba(255, 0, 0, 0.1)'; // デバッグ用赤い背景
+        
+        // マウスオーバーテスト
+        handSlot.addEventListener('mouseenter', () => {
+            console.log('Mouse entered hand slot:', card ? card.name_ja : 'no card', index);
+            handSlot.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+        });
+        
+        handSlot.addEventListener('mouseleave', () => {
+            console.log('Mouse left hand slot:', card ? card.name_ja : 'no card', index);
+            handSlot.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+        });
+        
+        // キャプチャフェーズでクリックを確実に捕捉
+        handSlot.addEventListener('click', (e) => {
+            console.log('CAPTURE CLICK: Hand slot clicked:', card ? card.name_ja : 'no card', index);
+            e.stopPropagation();
+            e.preventDefault();
+            
+            // 既存のアクティブ状態をクリア
+            this._clearHandActiveStates();
+            
+            // このスロットをアクティブ化（activeクラスとcard-selectedクラスの両方を追加）
+            handSlot.classList.add('active');
+            const cardElement = handSlot.querySelector('.relative');
+            if (cardElement) {
+                cardElement.classList.add('card-selected');
+            }
+            
+            // カードクリックハンドラーを呼び出し（一時的に無効化）
+            if (this.cardClickHandler) {
+                console.log('Would call cardClickHandler with:', {
+                    cardId: card.id,
+                    owner: 'player',
+                    zone: 'hand',
+                    index: index.toString()
+                });
+                // this.cardClickHandler({
+                //     cardId: card.id,
+                //     owner: 'player',
+                //     zone: 'hand',
+                //     index: index.toString()
+                // });
+            }
+        }, { capture: true, passive: false });
+        
+        // ドラッグ処理（元のカードからハンドラーを移動）
+        const cardEl = handSlot.querySelector('.relative');
+        if (cardEl && !cardEl.dataset.owner || cardEl.dataset.owner === 'player') {
+            handSlot.draggable = true;
+            handSlot.classList.add('cursor-grab');
+            
+            handSlot.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({
+                    cardId: card.id,
+                    zone: 'hand',
+                    owner: 'player',
+                    cardType: card.card_type
+                }));
+                handSlot.classList.add('dragging');
+            });
+            
+            handSlot.addEventListener('dragend', () => {
+                handSlot.classList.remove('dragging');
+            });
+        }
+    }
+
+    /**
      * プレイヤー手札にMac Dock効果を適用
      */
     _applyHandDockEffect(handElement) {
         if (!handElement) return;
         
-        // 手札カードにhand-cardクラスを追加
-        const cards = handElement.querySelectorAll('.relative');
-        cards.forEach(card => {
-            card.classList.add('hand-card');
+        // 手札スロットにhand-cardクラスを追加
+        const handSlots = handElement.querySelectorAll('.hand-slot');
+        handSlots.forEach(slot => {
+            slot.classList.add('hand-card');
         });
         
         // 手札コンテナにhand-dockクラスを追加
@@ -433,7 +617,7 @@ export class View {
         let pendingX = null;
 
         const resetAll = () => {
-            const cards = container.querySelectorAll('.hand-card');
+            const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active)');
             cards.forEach(el => {
                 el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
                 el.style.marginLeft = `${BASE_GAP}px`;
@@ -449,7 +633,7 @@ export class View {
         };
 
         const applyAt = (x) => {
-            const cards = container.querySelectorAll('.hand-card');
+            const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active)');
             let maxScale = 0;
             let maxEl = null;
             cards.forEach(el => {
@@ -510,7 +694,7 @@ export class View {
         document.addEventListener('mousemove', (e) => {
             if (!isMouseOverHand) {
                 // 手札エリア外では必ずリセット状態を保持
-                const cards = container.querySelectorAll('.hand-card');
+                const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active)');
                 if (cards.length > 0) {
                     const firstCard = cards[0];
                     if (firstCard.style.transform && !firstCard.style.transform.includes('scale(1)')) {
@@ -538,7 +722,7 @@ export class View {
             if (!board || !handInner) return;
 
             // Find a representative card to measure
-            const sampleCard = handInner.querySelector('.hand-card');
+            const sampleCard = handInner.querySelector('.hand-slot.hand-card');
             if (!sampleCard) return;
 
             const boardRect = board.getBoundingClientRect();
@@ -670,22 +854,27 @@ export class View {
             }
         });
 
-        // Add prize count badge
-        const prizeCount = prize.filter(p => p !== null).length; // Count non-null prizes
-        if (prizeCount > 0) {
-            let countBadge = prizeContainer.querySelector('.prize-count-badge');
-            if (!countBadge) {
-                countBadge = document.createElement('div');
-                countBadge.className = 'prize-count-badge absolute top-2 right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-lg z-10';
-                prizeContainer.appendChild(countBadge);
-            }
-            countBadge.textContent = prizeCount;
-            countBadge.style.display = 'flex'; // Ensure it's visible
-        } else {
-            const countBadge = prizeContainer.querySelector('.prize-count-badge');
-            if (countBadge) {
-                countBadge.style.display = 'none'; // Hide if no prizes left
-            }
+        // Badge system removed - prize info now shown in right panel
+    }
+
+    /**
+     * サイド情報を右パネルに更新
+     */
+    _updatePrizeStatus(state) {
+        const playerPrizeElement = document.getElementById('player-prize-count');
+        const cpuPrizeElement = document.getElementById('cpu-prize-count');
+        
+        if (playerPrizeElement && cpuPrizeElement) {
+            // プレイヤーのサイド残り枚数（prizeRemainingが正しいカウンター）
+            const playerPrizeRemaining = state.players.player.prizeRemaining || 0;
+            const playerPrizeTotal = 6; // 固定値
+            
+            // CPUのサイド残り枚数
+            const cpuPrizeRemaining = state.players.cpu.prizeRemaining || 0;
+            const cpuPrizeTotal = 6; // 固定値
+            
+            playerPrizeElement.textContent = `${playerPrizeRemaining}/${playerPrizeTotal}`;
+            cpuPrizeElement.textContent = `${cpuPrizeRemaining}/${cpuPrizeTotal}`;
         }
     }
 
@@ -739,49 +928,9 @@ export class View {
         img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
         container.appendChild(img);
 
-        // --- イベントリスナー ---
-        // プレイヤーの手札カードにドラッグ機能とクリック機能を追加
-        if (playerType === 'player' && zone === 'hand' && !isFaceDown) {
-            container.draggable = true;
-            container.classList.add('cursor-grab');
-            
-            // ドラッグ処理
-            container.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', JSON.stringify({
-                    cardId: card.id,
-                    zone: zone,
-                    owner: playerType,
-                    cardType: card.card_type
-                }));
-                container.classList.add('dragging');
-            });
-            
-            container.addEventListener('dragend', () => {
-                container.classList.remove('dragging');
-            });
 
-            // 直接クリック処理（最優先）
-            container.addEventListener('click', (e) => {
-                // イベント競合を完全に防止
-                e.stopImmediatePropagation();
-                e.preventDefault();
-                
-                // クリック時のz-index上昇
-                container.style.zIndex = '100';
-                setTimeout(() => {
-                    container.style.zIndex = '61';
-                }, 200);
-                
-                if (this.cardClickHandler) {
-                    this.cardClickHandler({
-                        cardId: card.id,
-                        owner: playerType,
-                        zone: zone,
-                        index: index.toString()
-                    });
-                }
-            }, { capture: true }); // キャプチャフェーズで最優先処理
-        }
+        // --- イベントリスナー ---
+        // 手札カードのクリック処理は親のhandSlotで処理するため、ここでは削除
         
         // 表向きのカードなら誰のでも詳細表示リスナーを追加
         if (!isFaceDown) {
@@ -793,15 +942,11 @@ export class View {
                 this.showCardInfo(card, e.currentTarget);
             });
             
-            // CPUカードでも通常クリックで情報表示可能にする
-            if (playerType === 'cpu' && zone !== 'hand') {
+            // 左クリックでも詳細表示（手札以外）
+            if (zone !== 'hand') {
                 container.addEventListener('click', (e) => {
-                    // カード選択処理と競合しないよう、Altキー押下時のみ有効
-                    if (e.altKey || e.ctrlKey) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.showCardInfo(card, e.currentTarget);
-                    }
+                    e.stopPropagation();
+                    this.showCardInfo(card, e.currentTarget);
                 });
             }
         }
@@ -1198,13 +1343,12 @@ export class View {
     }
 
     /**
-     * アクションHUDを表示（コンテキスト依存UI）
+     * アクションHUDを表示（フローティングHUDにリダイレクト）
+     * 右パネルではなく左下のフローティングHUDを使用
      */
     showActionHUD({ actions, title }) {
-        modalManager.showActionHUD({
-            actions,
-            title
-        });
+        // フローティングHUDを使用するため、game.jsの _showPlayerMainActions で処理
+        noop('🎯 showActionHUD called - handled by floating HUD system');
     }
 
     /**
@@ -1233,52 +1377,15 @@ export class View {
         this.hideElement(hand);
     }
 
-    // Action Buttons
+    // Action Buttons (Floating HUD System - Direct Management)
     showActionButtons(buttonsToShow = []) {
-        noop('📋 showActionButtons called with:', buttonsToShow);
-        
-        // すべての静的ボタンを一度非表示にする
-        const allButtonIds = [
-            BUTTON_IDS.RETREAT,
-            BUTTON_IDS.ATTACK,
-            BUTTON_IDS.END_TURN,
-            BUTTON_IDS.CONFIRM_SETUP,
-            BUTTON_IDS.CONFIRM_INITIAL_POKEMON
-        ];
-        
-        allButtonIds.forEach(buttonId => {
-            const button = this.getButton(buttonId);
-            if (button) {
-                button.classList.add(CSS_CLASSES.HIDDEN);
-            }
-        });
-
-        // 表示対象のボタンを表示
-        buttonsToShow.forEach(buttonId => {
-            const button = this.getButton(buttonId);
-            if (button) {
-                button.classList.remove(CSS_CLASSES.HIDDEN);
-                noop(`✅ Button shown: ${buttonId}`);
-            } else {
-                errorHandler.handleError(new Error(`Button not found: ${buttonId}`), 'game_state', false);
-            }
-        });
+        noop('📋 showActionButtons called - managed directly by game.js floating HUD system');
+        // フローティングボタンは game.js の _showFloatingActionButton で直接管理
     }
 
     hideActionButtons() {
-        const allButtonIds = [
-            BUTTON_IDS.RETREAT,
-            BUTTON_IDS.ATTACK,
-            BUTTON_IDS.END_TURN,
-            BUTTON_IDS.CONFIRM_SETUP,
-            BUTTON_IDS.CONFIRM_INITIAL_POKEMON
-        ];
-        allButtonIds.forEach(buttonId => {
-            const button = this.getButton(buttonId);
-            if (button) {
-                button.classList.add(CSS_CLASSES.HIDDEN);
-            }
-        });
+        // modal-managerを使ってすべてのフローティングボタンを非表示にする
+        modalManager.hideAllFloatingActionButtons();
         this.hideInitialPokemonSelectionUI();
     }
 
@@ -1287,6 +1394,7 @@ export class View {
             this.initialPokemonSelectionUI.classList.remove('hidden');
         }
     }
+
 
     hideInitialPokemonSelectionUI() {
         if (this.initialPokemonSelectionUI) {
@@ -1381,14 +1489,21 @@ export class View {
     }
 
     _makeSlotClickable(slotElement, owner, zone, index) {
-        if (!slotElement || !this.cardClickHandler) return;
+        if (!slotElement || !this.cardClickHandler) {
+            return;
+        }
+
+        // 重複ハンドラー防止
+        if (slotElement.dataset.clickableSet === 'true') {
+            return;
+        }
+        slotElement.dataset.clickableSet = 'true';
 
         slotElement.style.cursor = 'pointer';
 
-        // クリック処理
+        // シンプルなクリック処理
         slotElement.addEventListener('click', (e) => {
             e.stopPropagation();
-            e.preventDefault();
             
             const cardInSlot = slotElement.querySelector('[data-card-id]');
             const cardId = cardInSlot ? cardInSlot.dataset.cardId : null;
@@ -1440,6 +1555,7 @@ export class View {
     _clearBoard() {
         noop('🧹 Clearing board');
         
+        // HTMLを空にするだけ - DOMノード自体は保持してイベント重複を防止
         const allSlots = document.querySelectorAll('.card-slot');
         allSlots.forEach(slot => {
             slot.innerHTML = '';
