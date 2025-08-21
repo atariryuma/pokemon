@@ -25,12 +25,11 @@ export class View {
         
         // 手札エリア全体のクリック保護
         if (this.playerHand) {
-            this.playerHand.addEventListener('click', (e) => {
-                e.stopPropagation();
-            }, { capture: true });
+            this.playerHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
         }
-
-        // 手札クリックは個別カード要素で処理（デリゲーション削除）
+        if (this.cpuHand) {
+            this.cpuHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
+        }
 
         // Modal elements
         // Modal elements removed - showInteractiveMessageシステムに統一済み
@@ -228,8 +227,14 @@ export class View {
 
     // All messages will now go through showGameMessage or showErrorMessage
 
+    _handleHandClickDelegation(e) {
+        const cardElement = e.target.closest('[data-card-id]');
+        if (cardElement && this.cardClickHandler) {
+            this.cardClickHandler(cardElement.dataset);
+        }
+    }
+
     render(state) {
-        console.log('View.render() called from:', new Error().stack.split('\n')[2]);
         this._clearBoard();
         this._renderBoard(this.playerBoard, state.players.player, 'player', state);
         this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu', state);
@@ -348,39 +353,6 @@ export class View {
         if (!handElement) return;
         const arr = Array.isArray(hand) ? hand : [];
         
-        console.log(`_renderHand called for ${playerType} with ${arr.length} cards`);
-        
-        // 手札の内容が変わっていない場合は再描画しない
-        const currentCardIds = arr.map(card => card ? card.id : null).join(',');
-        const lastCardIds = handElement.dataset.lastCardIds || '';
-        
-        if (lastCardIds === currentCardIds && lastCardIds !== '') {
-            console.log(`Hand unchanged for ${playerType}, skipping render (${arr.length} cards)`);
-            return;
-        }
-        
-        if (lastCardIds !== currentCardIds) {
-            console.log(`Hand changed for ${playerType}: [${lastCardIds}] -> [${currentCardIds}]`);
-        }
-        handElement.dataset.lastCardIds = currentCardIds;
-        
-        // 手札エリアを完全にクリア
-        handElement.innerHTML = '';
-        
-        // デバッグ用：手札エリア全体のクリックテスト（プレイヤーのみ）
-        if (playerType === 'player') {
-            handElement.onclick = (e) => {
-                console.log('Hand area clicked:', e.target);
-                alert('手札エリアがクリックされました: ' + e.target.tagName);
-            };
-            
-            // さらに強力なイベントキャプチャ
-            handElement.addEventListener('click', (e) => {
-                console.log('Hand area CAPTURE clicked:', e.target);
-                alert('手札エリア CAPTURE: ' + e.target.tagName);
-            }, { capture: true });
-        }
-        
         // 既存のアクティブ状態をクリア
         this._clearHandActiveStates();
         
@@ -416,31 +388,6 @@ export class View {
             
             handSlot.appendChild(cardEl);
             
-            // プレイヤーの手札のみクリック処理を追加
-            if (playerType === 'player') {
-                console.log('Adding click handler for:', card ? card.name_ja : 'null card', index);
-                
-                // 最もシンプルなクリックテスト
-                cardEl.onclick = () => {
-                    alert('カードクリック: ' + (card ? card.name_ja : 'no card'));
-                };
-                
-                // TEST: カード要素自体にもクリックハンドラーを追加
-                cardEl.addEventListener('click', (e) => {
-                    console.log('CARD ELEMENT CLICKED:', card ? card.name_ja : 'no card', index);
-                    e.stopPropagation();
-                    e.preventDefault();
-                });
-                
-                // カード要素のpointer-eventsを一時的に有効にしてテスト
-                cardEl.style.pointerEvents = 'auto';
-                const cardImg = cardEl.querySelector('img');
-                if (cardImg) {
-                    cardImg.style.pointerEvents = 'auto';
-                }
-                
-                this._addHandSlotClickHandler(handSlot, card, index);
-            }
             
             handElement.appendChild(handSlot);
         });
@@ -463,7 +410,7 @@ export class View {
      * 手札のアクティブ状態をクリア
      */
     _clearHandActiveStates() {
-        // 手札スロットのアクティブ状態をクリア
+        // 手札スロットのアクティブ状態と選択状態をクリア
         const activeCards = document.querySelectorAll('.hand-slot.active');
         activeCards.forEach(slot => {
             slot.classList.remove('active');
@@ -474,89 +421,6 @@ export class View {
         });
     }
 
-    /**
-     * 手札スロット用のクリックハンドラーを追加
-     */
-    _addHandSlotClickHandler(handSlot, card, index) {
-        // 重複ハンドラー防止
-        if (handSlot.dataset.handlerAdded === 'true') {
-            console.log('Handler already added for:', card ? card.name_ja : 'no card', index);
-            return;
-        }
-        handSlot.dataset.handlerAdded = 'true';
-        console.log('Actually adding handler for:', card ? card.name_ja : 'no card', index);
-        
-        handSlot.style.cursor = 'pointer';
-        handSlot.style.pointerEvents = 'auto';
-        handSlot.style.position = 'relative';
-        handSlot.style.zIndex = '65';
-        handSlot.style.backgroundColor = 'rgba(255, 0, 0, 0.1)'; // デバッグ用赤い背景
-        
-        // マウスオーバーテスト
-        handSlot.addEventListener('mouseenter', () => {
-            console.log('Mouse entered hand slot:', card ? card.name_ja : 'no card', index);
-            handSlot.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
-        });
-        
-        handSlot.addEventListener('mouseleave', () => {
-            console.log('Mouse left hand slot:', card ? card.name_ja : 'no card', index);
-            handSlot.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-        });
-        
-        // キャプチャフェーズでクリックを確実に捕捉
-        handSlot.addEventListener('click', (e) => {
-            console.log('CAPTURE CLICK: Hand slot clicked:', card ? card.name_ja : 'no card', index);
-            e.stopPropagation();
-            e.preventDefault();
-            
-            // 既存のアクティブ状態をクリア
-            this._clearHandActiveStates();
-            
-            // このスロットをアクティブ化（activeクラスとcard-selectedクラスの両方を追加）
-            handSlot.classList.add('active');
-            const cardElement = handSlot.querySelector('.relative');
-            if (cardElement) {
-                cardElement.classList.add('card-selected');
-            }
-            
-            // カードクリックハンドラーを呼び出し（一時的に無効化）
-            if (this.cardClickHandler) {
-                console.log('Would call cardClickHandler with:', {
-                    cardId: card.id,
-                    owner: 'player',
-                    zone: 'hand',
-                    index: index.toString()
-                });
-                // this.cardClickHandler({
-                //     cardId: card.id,
-                //     owner: 'player',
-                //     zone: 'hand',
-                //     index: index.toString()
-                // });
-            }
-        }, { capture: true, passive: false });
-        
-        // ドラッグ処理（元のカードからハンドラーを移動）
-        const cardEl = handSlot.querySelector('.relative');
-        if (cardEl && !cardEl.dataset.owner || cardEl.dataset.owner === 'player') {
-            handSlot.draggable = true;
-            handSlot.classList.add('cursor-grab');
-            
-            handSlot.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', JSON.stringify({
-                    cardId: card.id,
-                    zone: 'hand',
-                    owner: 'player',
-                    cardType: card.card_type
-                }));
-                handSlot.classList.add('dragging');
-            });
-            
-            handSlot.addEventListener('dragend', () => {
-                handSlot.classList.remove('dragging');
-            });
-        }
-    }
 
     /**
      * プレイヤー手札にMac Dock効果を適用
