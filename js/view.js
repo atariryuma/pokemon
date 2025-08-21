@@ -6,6 +6,14 @@ import { BUTTON_IDS, CONTAINER_IDS, ACTION_BUTTON_GROUPS, CSS_CLASSES } from './
 import { errorHandler } from './error-handler.js';
 import { modalManager, MODAL_TYPES } from './modal-manager.js';
 
+// Z-index定数 (CSS変数と連携)
+const Z_INDEX = {
+    HAND_EFFECT: '59',        // 手札エフェクト (--z-selected + 1)
+    HAND_MAX_EFFECT: '60',    // 手札最大エフェクト (--z-selected + 2)
+    DAMAGE_COUNTER: '30',     // ダメージカウンター (--z-placeholder)
+    MODAL_TEMP: '100'         // 一時的モーダル表示 (--z-modals)
+};
+
 const noop = () => {};
 
 export class View {
@@ -382,7 +390,7 @@ export class View {
             // 基本的な表示設定のみ（Mac Dock効果は後で追加）
             handSlot.style.visibility = 'visible';
             handSlot.style.display = 'flex';
-            handSlot.style.zIndex = '61';
+            handSlot.style.zIndex = Z_INDEX.HAND_EFFECT;
             handSlot.style.position = 'relative';
             handSlot.style.opacity = '1'; // Always visible by default
             
@@ -486,7 +494,7 @@ export class View {
                 el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
                 el.style.marginLeft = `${BASE_GAP}px`;
                 el.style.marginRight = `${BASE_GAP}px`;
-                el.style.zIndex = '61'; // 一貫した z-index 値を使用
+                el.style.zIndex = Z_INDEX.HAND_EFFECT;
             });
             
             // アニメーションフラグをクリア（必要に応じて）
@@ -519,8 +527,8 @@ export class View {
                 }
             });
             // Raise stacking for the card closest to the cursor  
-            cards.forEach(el => { el.style.zIndex = '61'; });
-            if (maxEl) maxEl.style.zIndex = '62';
+            cards.forEach(el => { el.style.zIndex = Z_INDEX.HAND_EFFECT; });
+            if (maxEl) maxEl.style.zIndex = Z_INDEX.HAND_MAX_EFFECT;
         };
 
         const onMove = (e) => {
@@ -532,7 +540,17 @@ export class View {
             });
         };
 
-        container.addEventListener('mousemove', onMove, { passive: true });
+        // マウス検出を手札カード要素のみに厳密に制限
+        container.addEventListener('mousemove', (e) => {
+            // カード要素またはその子要素の上にいる場合のみ Mac Dock 効果を適用
+            const cardElement = e.target.closest('.hand-slot.hand-card');
+            const isOnCard = cardElement && container.contains(e.target);
+            if (isOnCard) {
+                onMove(e);
+            } else {
+                resetAll();
+            }
+        }, { passive: true });
         container.addEventListener('mouseleave', resetAll, { passive: true });
         
         // Touch support: tap to center magnify under finger, then reset on end
@@ -806,13 +824,7 @@ export class View {
                 this.showCardInfo(card, e.currentTarget);
             });
             
-            // 左クリックでも詳細表示（手札以外）
-            if (zone !== 'hand') {
-                container.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.showCardInfo(card, e.currentTarget);
-                });
-            }
+            // 左クリック詳細表示を無効化（右クリックのみ）
         }
 
         if (card.damage > 0) {
@@ -820,7 +832,7 @@ export class View {
             damageCounter.className = 'absolute top-1 right-1 bg-red-600 text-white text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center';
             damageCounter.textContent = card.damage;
             damageCounter.style.pointerEvents = 'none';
-            damageCounter.style.zIndex = '30';
+            damageCounter.style.zIndex = Z_INDEX.DAMAGE_COUNTER;
             container.appendChild(damageCounter);
         }
 

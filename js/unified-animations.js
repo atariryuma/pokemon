@@ -7,6 +7,7 @@
 
 import { CardOrientationManager } from './card-orientation.js';
 import { getCardImagePath } from './data-manager.js'; // Added import
+import { MODAL_PRIORITY } from './modal-manager.js';
 
 const noop = () => {};
 
@@ -290,7 +291,7 @@ export class UnifiedAnimationManager {
     cardElement.style.transform = 'scale(1.05)';
     cardElement.style.transition = 'transform 200ms ease, box-shadow 200ms ease';
     cardElement.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
-    cardElement.style.zIndex = '100';
+    cardElement.style.zIndex = MODAL_PRIORITY.CENTRAL;
   }
 
   /**

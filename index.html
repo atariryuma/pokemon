@@ -40,8 +40,43 @@
             padding: 6rem 0; /* 上下の余白を十分に確保 */
         }
 
-        /* Z-Order Guidelines (lowest -> highest)
-           10: Board base, 15: slots/cards, 20–25: hover/highlights, 60: hands, 80: HUD, 90: panels, 100: modals */
+        /* ==========================================
+           Z-INDEX統一管理システム
+           ========================================== */
+        :root {
+            /* === 基本レイヤー === */
+            --z-board-bg: 5;        /* 背景画像 */
+            --z-board: 10;          /* ゲームボード基底 */
+            --z-slots: 15;          /* カードスロット */
+            
+            /* === 手札システム === */
+            --z-hand-area: 20;      /* 手札エリア */
+            --z-hand-cards: 25;     /* 手札カード */
+            --z-placeholder: 30;    /* プレースホルダー */
+            
+            /* === サイドエフェクト === */
+            --z-side-stack-3: 35;   /* サイドカード最背面 */
+            --z-side-stack-2: 36;   /* サイドカード中間 */
+            --z-side-stack-1: 37;   /* サイドカード最前面 */
+            --z-deck-effects: 38;   /* デッキエフェクト */
+            
+            /* === インタラクション === */
+            --z-effects-base: 40;   /* 基本エフェクト */
+            --z-animations: 50;     /* アニメーション */
+            --z-hover: 55;          /* ホバー効果 */
+            --z-selected: 58;       /* 選択状態 */
+            --z-highlight: 65;      /* ハイライト */
+            
+            /* === UI・HUD === */
+            --z-hud-base: 80;       /* HUD基本 */
+            --z-panels: 85;         /* パネル */
+            --z-floating-hud: 90;   /* フローティングHUD */
+            --z-toast: 95;          /* トースト通知 */
+            
+            /* === モーダル === */
+            --z-modals: 100;        /* 中央モーダル */
+            --z-critical: 110;      /* 致命的エラー */
+        }
 
         /* 🎬 ゲームフローアニメーション */
         .game-start-flash {
@@ -132,7 +167,7 @@
             width: 679px !important;           /* 完全固定サイズ */
             height: 679px !important;          /* 完全固定サイズ */
             margin: 0 auto;         /* 中央配置 */
-            z-index: 10;            /* ボード基底レイヤー */
+            z-index: var(--z-board);
         }
 
         /* 背景画像用のレイヤー */
@@ -143,7 +178,7 @@
             width: 679px !important;           /* 完全固定サイズ */
             height: 679px !important;          /* 完全固定サイズ */
             object-fit: none;       /* 1:1ピクセルマッピング */
-            z-index: 5;             /* カードスロットより背面に配置 */
+            z-index: var(--z-board-bg);
             pointer-events: none;   /* クリックイベントを通過させる */
         }
 
@@ -159,12 +194,10 @@
         }
 
 
-        /* === Z-INDEX階層定義 === */
-        
-        /* レイヤー1: ボード基盤 */
+        /* ボード基盤 */
         .player-board.player-self,
         .player-board.opponent-board {
-            z-index: 5;
+            z-index: var(--z-board-bg);
             pointer-events: auto;
         }
         
@@ -173,28 +206,28 @@
             bottom: 130px;
         }
         
-        /* レイヤー2: カードスロット */
+        /* カードスロット */
         .card-slot {
-            z-index: 10;
+            z-index: var(--z-slots);
             pointer-events: auto;
             position: relative;
         }
         
-        /* 手札エリア - 論理的配置 */
+        /* 手札エリア */
         #player-hand {
-            z-index: 60;
-            pointer-events: auto;
+            z-index: var(--z-hand-area);
+            pointer-events: none;
             position: fixed;
             left: 0;
             right: 0;
-            bottom: -20px;
-            height: 150px;
+            bottom: 10px;
+            height: 60px;
         }
         
-        /* 手札内の各カードは独立したクリック領域を持つ */
+        /* 手札カード */
         #player-hand .hand-slot {
             pointer-events: auto;
-            z-index: 61;
+            z-index: var(--z-hand-cards);
         }
 
         /* 手札カードの表示を強制 */
@@ -222,21 +255,21 @@
 
         .side-cards-container .side-right-1,
         .side-cards-container .side-left-1 {
-            z-index: 16;
+            z-index: var(--z-side-stack-1);
             transform: translateZ(6px);
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
         }
 
         .side-cards-container .side-right-2,
         .side-cards-container .side-left-2 {
-            z-index: 15;
+            z-index: var(--z-side-stack-2);
             transform: translateZ(3px) translate(2px, 2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.65);
         }
 
         .side-cards-container .side-right-3,
         .side-cards-container .side-left-3 {
-            z-index: 14;
+            z-index: var(--z-side-stack-3);
             transform: translateZ(0px) translate(4px, 4px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
         }
@@ -274,7 +307,7 @@
         .deck-stack::before {
             top: calc(-1 * var(--deck-height) / 3);
             left: -1px;
-            z-index: -1;
+            z-index: var(--z-deck-effects);
             transform: rotate(-0.5deg);
             background: linear-gradient(135deg, rgba(20, 20, 40, 0.6), rgba(10, 10, 20, 0.4));
         }
@@ -282,7 +315,7 @@
         .deck-stack::after {
             top: calc(-2 * var(--deck-height) / 3);
             left: -2px;
-            z-index: -2;
+            z-index: var(--z-deck-effects);
             transform: rotate(0.8deg);
             opacity: 0.7;
             background: linear-gradient(135deg, rgba(30, 30, 50, 0.5), rgba(15, 15, 25, 0.3));
@@ -290,7 +323,7 @@
 
         /* Stadium special styling */
         .stadium-zone {
-            z-index: 14;
+            z-index: var(--z-board);
             background-color: rgba(75, 0, 130, 0.15);
             border-color: rgba(147, 51, 234, 0.3);
             transform: translateZ(1px);
@@ -300,7 +333,7 @@
             transform: translateY(-8px) scale(1.08);
             border-color: #4dd0fd;
             box-shadow: 0 0 25px #4dd0fd80;
-            z-index: 22; /* ボード内で前面 */
+            z-index: var(--z-hover);
         }
 
         /* JSで制御するホバーエフェクト用クラス */
@@ -308,7 +341,7 @@
             transform: translateY(-8px) scale(1.08);
             border-color: #4dd0fd;
             box-shadow: 0 0 25px #4dd0fd80;
-            z-index: 22; /* ボード内で前面 */
+            z-index: var(--z-hover);
         }
 
         /* --- 全体の transform-style を設定 --- */
@@ -351,13 +384,13 @@
 
         /* Enhanced hover effects for stacked cards */
         .side-cards-container .card-slot:hover {
-            transform: translateY(-12px) scale(1.15) !important;
-            z-index: 23;
+            transform: translateY(-12px) scale(1.15);
+            z-index: var(--z-hover);
         }
 
         .deck-container:hover {
             transform: translateY(-6px) scale(1.05);
-            z-index: 22;
+            z-index: var(--z-hover);
         }
 
         .deck-container:hover .deck-stack::before {
@@ -553,53 +586,65 @@
             animation: deckLift 0.3s ease-out forwards; /* Apply the lift animation */
         }
 
-        /* アニメーションクラス */
+        /* レイヤー5: アニメーションクラス */
         .animate-deal-card {
             animation: dealCard 0.6s ease-out;
+            z-index: var(--z-animations);
         }
 
         .animate-deal-player-hand-card {
-            animation: dealPlayerHandCard 0.6s ease-out forwards; /* Added forwards */
+            animation: dealPlayerHandCard 0.6s ease-out forwards;
+            z-index: var(--z-animations);
         }
 
         .animate-deal-card-nofade {
-            animation: dealCardNoFade 0.6s ease-out forwards; /* Added forwards */
+            animation: dealCardNoFade 0.6s ease-out forwards;
+            z-index: var(--z-animations);
         }
 
         .animate-prize-deal-left {
             animation: prizeDealLeft 0.5s ease-out;
+            z-index: var(--z-animations);
         }
 
         .animate-prize-deal-right {
             animation: prizeDealRight 0.5s ease-out;
+            z-index: var(--z-animations);
         }
 
         .animate-draw-card {
             animation: drawCard 0.4s ease-out;
+            z-index: var(--z-animations);
         }
 
         .animate-play-card {
             animation: playCard 0.5s ease-out;
+            z-index: var(--z-animations);
         }
 
         .animate-attack {
             animation: attackForward 0.8s ease-out;
+            z-index: var(--z-animations);
         }
 
         .animate-damage {
             animation: damageShake 0.6s ease-out;
+            z-index: var(--z-animations);
         }
 
         .animate-hp-damage {
             animation: hpFlash 0.6s ease-out;
+            z-index: var(--z-animations);
         }
 
         .animate-knockout {
             animation: knockout 1.2s ease-out forwards;
+            z-index: var(--z-animations);
         }
 
         .animate-energy-attach {
             animation: energyAttach 0.7s ease-out forwards;
+            z-index: var(--z-animations);
         }
 
         .animate-fade-in {
@@ -618,23 +663,23 @@
             animation: fadeIn 0.5s ease-out;
         }
 
-        /* ハイライト効果 */
+        /* レイヤー6: ハイライト効果 */
         .card-selected {
-            box-shadow: 0 0 20px #4dd0fd80 !important;
-            border: 2px solid #4dd0fd !important;
-            transform: translateY(-5px) scale(1.05) !important;
-            z-index: 100 !important;
+            box-shadow: 0 0 20px #4dd0fd80;
+            border: 2px solid #4dd0fd;
+            transform: translateY(-5px) scale(1.05);
+            z-index: var(--z-selected);
         }
 
         .slot-highlight {
-            box-shadow: 0 0 15px #22c55e80 !important;
-            border: 2px dashed #22c55e !important;
-            background-color: rgba(34, 197, 94, 0.1) !important;
+            box-shadow: 0 0 15px #22c55e80;
+            border: 2px dashed #22c55e;
+            background-color: rgba(34, 197, 94, 0.1);
         }
 
         .energy-target-highlight {
-            box-shadow: 0 0 15px #f59e0b80 !important;
-            border: 2px dashed #f59e0b !important;
+            box-shadow: 0 0 15px #f59e0b80;
+            border: 2px dashed #f59e0b;
             background-color: rgba(245, 158, 11, 0.1) !important;
         }
 
@@ -681,6 +726,9 @@
             text-align: center;
             padding: 5px;
             box-sizing: border-box;
+            pointer-events: auto;  /* CPU側プレースホルダーのクリック確保 */
+            position: relative;
+            z-index: var(--z-placeholder);
         }
 
         .player-board {
@@ -831,14 +879,14 @@
             contain: layout paint;
             overflow: visible;
             pointer-events: auto;
-            z-index: 60;
+            z-index: var(--z-hand-cards);
             transform: none;
             will-change: auto;
         }
         
         /* プレイヤー手札のシンプルなスタイル */
         #player-hand {
-            z-index: 60;
+            z-index: var(--z-hand-cards);
             pointer-events: auto;
             transform: none;
             will-change: auto;
@@ -868,12 +916,12 @@
             transform-origin: bottom center;
             filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
             position: relative;
-            z-index: 61;
+            z-index: var(--z-highlight);
         }
 
         /* CPU手札も前面に（操作透過） */
         #cpu-hand {
-            z-index: 60;
+            z-index: var(--z-hand-cards);
             pointer-events: none;
             transform: none;
             will-change: auto;
@@ -897,7 +945,7 @@
             background: rgba(10, 10, 10, 0.6); /* Darker, more opaque */
         }
         
-        #action-modal { z-index: 100; }
+        #action-modal { z-index: var(--z-modals); }
         
         /* Pokemon-style Floating Action HUD */
         .pokemon-action-hud {
@@ -1313,7 +1361,7 @@
         /* カードハイライトスタイル */
         .card-highlighted {
             position: relative;
-            z-index: 100 !important;
+            z-index: var(--z-modals) !important;
         }
         
         .card-highlighted::after {
@@ -1325,7 +1373,7 @@
             bottom: -2px;
             background: linear-gradient(45deg, #ffd700, #ffed4a, #ffd700);
             border-radius: 8px;
-            z-index: -1;
+            z-index: 25;
             animation: pulse-glow 1.5s ease-in-out infinite alternate;
         }
         
@@ -1344,7 +1392,7 @@
 
         /* 中央モーダル - 重要な意思決定用 */
         .central-modal {
-            z-index: 100;
+            z-index: var(--z-modals);
             backdrop-filter: blur(4px);
             background: rgba(0, 0, 0, 0.75);
         }
@@ -1363,7 +1411,7 @@
 
         /* 通知トースト - 右上自動消失 */
         .toast-container {
-            z-index: 95;
+            z-index: var(--z-toast);
             pointer-events: none;
         }
 
@@ -1396,7 +1444,7 @@
 
         /* アクションHUD - コンテキスト依存UI */
         .action-hud {
-            z-index: 90;
+            z-index: var(--z-floating-hud);
             background: linear-gradient(135deg, rgba(31, 41, 55, 0.95), rgba(17, 24, 39, 0.95));
             border: 1px solid rgba(75, 85, 99, 0.6);
             backdrop-filter: blur(8px);
@@ -1413,7 +1461,7 @@
             bottom: -1px;
             background: linear-gradient(45deg, transparent, rgba(77, 208, 253, 0.3), transparent);
             border-radius: inherit;
-            z-index: -1;
+            z-index: 99;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -1822,7 +1870,7 @@
 <div class="scroll-spacer" aria-hidden="true"></div>
 
 <!-- Floating Action HUD (Bottom-left) -->
-<div id="floating-action-hud" class="fixed bottom-6 left-6 flex flex-col gap-3 z-50 pokemon-action-hud">
+<div id="floating-action-hud" class="fixed bottom-6 left-6 flex flex-col gap-3 z-100 pokemon-action-hud">
     <button id="confirm-setup-button-float" class="pokemon-action-btn hidden">
         <span class="pokemon-btn-icon">✅</span>
         <span class="pokemon-btn-text">ポケモン配置を確定</span>
@@ -1842,7 +1890,7 @@
 </div>
 
 <!-- Player Hand -->
-<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: -20px; z-index: 60; overflow: visible;">
+<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: 10px; z-index: 15; overflow: visible; pointer-events: none;">
     <!-- プレイヤーの手札はここに動的に追加されます -->
 </div>
 

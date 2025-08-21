@@ -235,16 +235,23 @@ export class TurnManager {
     noop('⚔️ Executing attack...');
     let newState = cloneGameState(state);
 
-    if (!newState.pendingAction || newState.pendingAction.type !== 'attack') {
-      return newState;
-    }
+    try {
+      if (!newState.pendingAction || newState.pendingAction.type !== 'attack') {
+        return newState;
+      }
 
-    const { attackIndex, attacker } = newState.pendingAction;
-    const defender = attacker === 'player' ? 'cpu' : 'player';
-    const defenderOrientation = CardOrientationManager.getCardOrientation(defender, 'active');
-    const defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defender === 'player' ? '.active-bottom' : '.active-top'}`);
+      const { attackIndex, attacker } = newState.pendingAction;
+      const defender = attacker === 'player' ? 'cpu' : 'player';
+      
+      // DOM要素の安全な取得
+      const defenderOrientation = CardOrientationManager.getCardOrientation(defender, 'active');
+      const defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defender === 'player' ? '.active-bottom' : '.active-top'}`);
+      
+      if (!defenderElement) {
+        console.warn('防御側の要素が見つかりません。アニメーションなしで攻撃を実行します。');
+      }
 
-    noop(`🗡️ ${attacker} attacks ${defender} with attack index ${attackIndex}`);
+      noop(`🗡️ ${attacker} attacks ${defender} with attack index ${attackIndex}`);
     
     // 攻撃前の状態ログ
     const attackerPokemon = newState.players[attacker].active;
@@ -331,13 +338,28 @@ export class TurnManager {
       newState = await this.endCpuTurn(newState);
     }
 
-    newState = addLogEntry(newState, {
-      type: 'attack_executed',
-      player: attacker,
-      message: `攻撃を実行しました`
-    });
+      newState = addLogEntry(newState, {
+        type: 'attack_executed',
+        player: attacker,
+        message: `攻撃を実行しました`
+      });
 
-    return newState;
+      return newState;
+    } catch (error) {
+      console.error('攻撃実行中にエラーが発生しました:', error);
+      // エラー時も基本的な攻撃処理は実行
+      newState = Logic.performAttack(newState, attacker, attackIndex);
+      newState.pendingAction = null;
+      
+      // 攻撃後のターン終了処理
+      if (attacker === 'player') {
+        newState = this.endPlayerTurn(newState);
+      } else {
+        newState = await this.endCpuTurn(newState);
+      }
+      
+      return newState;
+    }
   }
 
   /**

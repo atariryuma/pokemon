@@ -994,21 +994,29 @@ export class Game {
      * 攻撃実行処理
      */
     async _executeAttack(attackIndex) {
-        // 攻撃宣言
-        let newState = this.turnManager.handlePlayerMainPhase(this.state, 'declare_attack', {
-            attackIndex
-        });
-        
-        this._updateState(newState);
-        
-        // 攻撃実行
-        newState = await this.turnManager.executeAttack(newState);
-        // this._updateState(newState); // 重複削除 - 下で一度だけ呼ぶ
+        try {
+            // 攻撃宣言
+            let newState = this.turnManager.handlePlayerMainPhase(this.state, 'declare_attack', {
+                attackIndex
+            });
+            
+            this._updateState(newState);
+            
+            // 攻撃実行
+            newState = await this.turnManager.executeAttack(newState);
+            this._updateState(newState); // state更新を復旧
 
-        if (newState.turnPlayer === 'cpu') {
-            memoryManager.setTimeout(async () => {
-                await this._executeCpuTurn();
-            }, 1000);
+            if (newState.turnPlayer === 'cpu') {
+                memoryManager.setTimeout(async () => {
+                    await this._executeCpuTurn();
+                }, 1000);
+            }
+        } catch (error) {
+            console.error('攻撃実行中にエラーが発生しました:', error);
+            this.view.showGameMessage('攻撃実行中にエラーが発生しました。ゲームを続行します。');
+            // エラー時はターンを終了して回復を試みる
+            let newState = this.turnManager.endPlayerTurn(this.state);
+            this._updateState(newState);
         }
     }
 
@@ -1440,21 +1448,21 @@ export class Game {
         // 確定ボタンを隠す
         this._hideFloatingActionButton('confirm-setup-button-float');
         
-        // 状態を更新して、サイドカード配布を含む完全なセットアップを実行
+        // サイドカード配布の状態更新（レンダリングはアニメーション後）
         let newState = await this.setupManager.confirmSetup(this.state);
-        this._updateState(newState);
+        this.state = newState; // 状態のみ更新、レンダリングはまだしない
         
-        // サイドカード配布が完了した後でアニメーションとUI更新を順次実行
+        // サイドカード配布が完了した後でアニメーション実行
         if (newState.phase === GAME_PHASES.GAME_START_READY) {
-            noop('🎯 Prize cards setup completed, showing animation and start button');
+            noop('🎯 Prize cards setup completed, starting animation');
             
-            // 1. DOM更新を少し待つ
-            await this._delay(300);
-            
-            // 2. サイドカードアニメーション実行
+            // 1. サイドカードアニメーション実行
             noop('🔥 About to call _animatePrizeCardSetup');
             await this._animatePrizeCardSetup();
             noop('✅ Prize card animation completed');
+            
+            // 2. アニメーション完了後にレンダリング
+            this._updateState(this.state);
             
             // 3. アニメーション完了後に準備完了メッセージとスタートボタンを表示
             await this._delay(500); // アニメーション完了を待つ

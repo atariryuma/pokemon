@@ -22,16 +22,17 @@ export const MODAL_TYPES = {
 
 /**
  * モーダル優先度（Z-Index管理用）
+ * CSS変数と統合された定数値
  */
 export const MODAL_PRIORITY = {
-    BACKGROUND: 10,       // ゲームボード
-    CARDS: 60,            // カード・手札
-    HUD: 80,              // HUD要素
-    ACTION_HUD: 90,       // アクションHUD（廃止予定）
-    FLOATING_HUD: 50,     // フローティングアクションHUD（左下）
-    TOAST: 95,            // 通知
-    CENTRAL: 100,         // 中央モーダル
-    CRITICAL: 110         // 致命的エラー
+    BACKGROUND: 10,       // --z-board (ゲームボード)
+    CARDS: 58,            // --z-selected (カード・手札選択状態)
+    HUD: 80,              // --z-hud-base (HUD要素)
+    ACTION_HUD: 90,       // --z-floating-hud (廃止予定)
+    FLOATING_HUD: 90,     // --z-floating-hud (フローティングアクションHUD)
+    TOAST: 95,            // --z-toast (通知)
+    CENTRAL: 100,         // --z-modals (中央モーダル)
+    CRITICAL: 110         // --z-critical (致命的エラー)
 };
 
 /**
