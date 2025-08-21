@@ -776,14 +776,13 @@ export class View {
         }
 
         // ダメージバッジ（ポケモンカードのみ、ダメージがある場合）
-        if (card.card_type === 'Pokemon' && card.damage && card.damage > 0) {
+        const dmgValue = Number(card.damage || 0);
+        if (card.card_type === 'Pokemon' && dmgValue > 0) {
             const damageCounter = document.createElement('div');
-            damageCounter.className = 'absolute top-0 right-0 bg-red-600 text-white text-sm font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-lg border-2 border-white';
-            damageCounter.style.transform = 'translate(50%, -50%)';
-            damageCounter.textContent = card.damage;
+            damageCounter.className = 'damage-counter absolute top-0 right-0 bg-red-600 text-white text-sm font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-lg border-2 border-white';
+            damageCounter.textContent = dmgValue;
             damageCounter.style.pointerEvents = 'none';
-            damageCounter.style.zIndex = '35'; // Higher than prize badge
-            container.appendChild(damageCounter); // containerの子要素として配置
+            container.appendChild(damageCounter);
         }
 
         return container;
