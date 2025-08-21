@@ -319,6 +319,40 @@
             pointer-events: none;
         }
 
+        /* --- バッジのz-index調整 --- */
+        .prize-count-badge {
+            z-index: 40 !important;
+            transform: translate(50%, -50%) !important;
+        }
+
+        .damage-counter, 
+        [class*="damage"] {
+            z-index: 35 !important;
+            transform: translate(50%, -50%) !important;
+        }
+
+        /* CPUカード情報表示のヒント */
+        .cpu-card:not(.is-cpu-facedown)::before {
+            content: 'Alt+クリックで詳細';
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 50;
+        }
+
+        .cpu-card:not(.is-cpu-facedown):hover::before {
+            opacity: 1;
+        }
+
         /* Enhanced hover effects for stacked cards */
         .side-cards-container .card-slot:hover {
             transform: translateY(-12px) scale(1.15) !important;
@@ -506,6 +540,181 @@
             100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
         }
 
+        /* 🔥 新しい戦闘キーフレーム */
+        
+        /* 攻撃者アニメーション */
+        @keyframes attackFire {
+            0% { transform: scale(1) rotate(0deg); filter: hue-rotate(0deg) brightness(1); }
+            30% { transform: scale(1.2) rotate(5deg); filter: hue-rotate(30deg) brightness(1.3); }
+            60% { transform: scale(1.1) rotate(-2deg); filter: hue-rotate(15deg) brightness(1.2); }
+            100% { transform: scale(1) rotate(0deg); filter: hue-rotate(0deg) brightness(1); }
+        }
+        
+        @keyframes attackWater {
+            0% { transform: translateX(0) scale(1); filter: brightness(1) saturate(1); }
+            25% { transform: translateX(-10px) scale(1.1); filter: brightness(1.2) saturate(1.3); }
+            50% { transform: translateX(15px) scale(1.05); filter: brightness(1.1) saturate(1.2); }
+            75% { transform: translateX(-5px) scale(1.02); filter: brightness(1.05) saturate(1.1); }
+            100% { transform: translateX(0) scale(1); filter: brightness(1) saturate(1); }
+        }
+        
+        @keyframes attackElectric {
+            0% { transform: scale(1); filter: brightness(1); }
+            10% { transform: scale(1.05); filter: brightness(1.5) drop-shadow(0 0 10px #ffeb3b); }
+            20% { transform: scale(0.98); filter: brightness(1.2); }
+            30% { transform: scale(1.08); filter: brightness(1.8) drop-shadow(0 0 15px #ffc107); }
+            40% { transform: scale(1.02); filter: brightness(1.1); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+        
+        @keyframes attackSuper {
+            0% { transform: scale(1) rotate(0deg); filter: brightness(1) saturate(1); }
+            25% { transform: scale(1.3) rotate(10deg); filter: brightness(1.8) saturate(1.5) drop-shadow(0 0 20px #ff9800); }
+            50% { transform: scale(1.15) rotate(-5deg); filter: brightness(1.5) saturate(1.3) drop-shadow(0 0 15px #ff5722); }
+            75% { transform: scale(1.2) rotate(3deg); filter: brightness(1.6) saturate(1.4) drop-shadow(0 0 10px #f44336); }
+            100% { transform: scale(1) rotate(0deg); filter: brightness(1) saturate(1); }
+        }
+        
+        @keyframes attackHeavy {
+            0% { transform: translateY(0) scale(1); }
+            20% { transform: translateY(-15px) scale(1.2); }
+            40% { transform: translateY(5px) scale(1.1); }
+            60% { transform: translateY(-8px) scale(1.15); }
+            80% { transform: translateY(2px) scale(1.05); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        /* 防御側反応アニメーション */
+        @keyframes damageNormal {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-5px); }
+            80% { transform: translateX(3px); }
+            100% { transform: translateX(0); }
+        }
+        
+        @keyframes damageSuper {
+            0% { transform: translateX(0) scale(1); filter: brightness(1); }
+            15% { transform: translateX(-12px) scale(0.95); filter: brightness(1.3); }
+            30% { transform: translateX(12px) scale(1.05); filter: brightness(0.8); }
+            45% { transform: translateX(-8px) scale(0.98); filter: brightness(1.2); }
+            60% { transform: translateX(6px) scale(1.02); filter: brightness(0.9); }
+            75% { transform: translateX(-3px) scale(1.01); filter: brightness(1.1); }
+            100% { transform: translateX(0) scale(1); filter: brightness(1); }
+        }
+        
+        @keyframes damageHeavy {
+            0% { transform: translateX(0) translateY(0) scale(1); }
+            12% { transform: translateX(-15px) translateY(-8px) scale(0.9); }
+            24% { transform: translateX(15px) translateY(8px) scale(1.1); }
+            36% { transform: translateX(-10px) translateY(-5px) scale(0.95); }
+            48% { transform: translateX(10px) translateY(5px) scale(1.05); }
+            60% { transform: translateX(-6px) translateY(-3px) scale(0.98); }
+            72% { transform: translateX(6px) translateY(3px) scale(1.02); }
+            84% { transform: translateX(-2px) translateY(-1px) scale(0.99); }
+            100% { transform: translateX(0) translateY(0) scale(1); }
+        }
+
+        /* ダメージ数値ポップアップ */
+        @keyframes damagePopup {
+            0% { 
+                transform: translateX(-50%) translateY(0) scale(0.5);
+                opacity: 0;
+            }
+            20% { 
+                transform: translateX(-50%) translateY(-20px) scale(1.2);
+                opacity: 1;
+            }
+            80% { 
+                transform: translateX(-50%) translateY(-80px) scale(1);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateX(-50%) translateY(-120px) scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        /* バトルエフェクト */
+        @keyframes fireBlastEffect {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            30% { transform: scale(1.5) rotate(45deg); opacity: 0.8; }
+            70% { transform: scale(2) rotate(90deg); opacity: 0.6; }
+            100% { transform: scale(2.5) rotate(135deg); opacity: 0; }
+        }
+        
+        @keyframes waterWaveEffect {
+            0% { transform: scale(0); opacity: 0; border-radius: 50%; }
+            40% { transform: scale(2); opacity: 0.7; border-radius: 30%; }
+            80% { transform: scale(3); opacity: 0.4; border-radius: 20%; }
+            100% { transform: scale(4); opacity: 0; border-radius: 10%; }
+        }
+        
+        @keyframes thunderBoltEffect {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            10% { transform: scale(1) rotate(30deg); opacity: 1; }
+            30% { transform: scale(1.5) rotate(-15deg); opacity: 0.8; }
+            50% { transform: scale(1.2) rotate(45deg); opacity: 0.9; }
+            70% { transform: scale(1.8) rotate(-30deg); opacity: 0.6; }
+            100% { transform: scale(2.5) rotate(0deg); opacity: 0; }
+        }
+        
+        @keyframes superEffectiveEffect {
+            0% { transform: scale(0); opacity: 0; }
+            25% { transform: scale(1.8); opacity: 1; }
+            50% { transform: scale(2.2); opacity: 0.8; }
+            75% { transform: scale(2.8); opacity: 0.6; }
+            100% { transform: scale(3.5); opacity: 0; }
+        }
+
+        /* 画面シェイク */
+        @keyframes shakeLight {
+            0%, 100% { transform: translateX(0); }
+            10% { transform: translateX(-2px); }
+            20% { transform: translateX(2px); }
+            30% { transform: translateX(-1px); }
+            40% { transform: translateX(1px); }
+        }
+        
+        @keyframes shakeNormal {
+            0%, 100% { transform: translateX(0); }
+            10% { transform: translateX(-4px); }
+            20% { transform: translateX(4px); }
+            30% { transform: translateX(-3px); }
+            40% { transform: translateX(3px); }
+            50% { transform: translateX(-2px); }
+            60% { transform: translateX(2px); }
+        }
+        
+        @keyframes shakeHeavy {
+            0%, 100% { transform: translateX(0); }
+            10% { transform: translateX(-8px); }
+            20% { transform: translateX(8px); }
+            30% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            50% { transform: translateX(-4px); }
+            60% { transform: translateX(4px); }
+            70% { transform: translateX(-2px); }
+            80% { transform: translateX(2px); }
+        }
+        
+        @keyframes shakeSuper {
+            0%, 100% { transform: translateX(0) translateY(0); }
+            8% { transform: translateX(-12px) translateY(-8px); }
+            16% { transform: translateX(12px) translateY(8px); }
+            24% { transform: translateX(-10px) translateY(-6px); }
+            32% { transform: translateX(10px) translateY(6px); }
+            40% { transform: translateX(-8px) translateY(-4px); }
+            48% { transform: translateX(8px) translateY(4px); }
+            56% { transform: translateX(-6px) translateY(-3px); }
+            64% { transform: translateX(6px) translateY(3px); }
+            72% { transform: translateX(-4px) translateY(-2px); }
+            80% { transform: translateX(4px) translateY(2px); }
+            88% { transform: translateX(-2px) translateY(-1px); }
+            96% { transform: translateX(2px) translateY(1px); }
+        }
+
         @keyframes revealFlash {
             0% { opacity: 0; transform: scale(0.8); }
             30% { opacity: 1; transform: scale(1.2); }
@@ -536,16 +745,130 @@
             animation: dealCardNoFade 0.6s ease-out forwards; /* Added forwards */
         }
 
-        .animate-prize-deal-left {
-            animation: prizeDealLeft 0.5s ease-out;
-        }
-
-        .animate-prize-deal-right {
-            animation: prizeDealRight 0.5s ease-out;
-        }
 
         .animate-draw-card {
             animation: drawCard 0.4s ease-out;
+        }
+
+        /* 🔥 新しい戦闘アニメーション */
+        
+        /* 攻撃者アニメーション（タイプ別） */
+        .animate-attack-fire {
+            animation: attackFire 0.8s ease-out;
+        }
+        
+        .animate-attack-water {
+            animation: attackWater 0.8s ease-out;
+        }
+        
+        .animate-attack-grass {
+            animation: attackGrass 0.8s ease-out;
+        }
+        
+        .animate-attack-electric {
+            animation: attackElectric 0.8s ease-out;
+        }
+        
+        .animate-attack-psychic {
+            animation: attackPsychic 0.8s ease-out;
+        }
+        
+        .animate-attack-fighting {
+            animation: attackFighting 0.8s ease-out;
+        }
+        
+        .animate-attack-super {
+            animation: attackSuper 1s ease-out;
+        }
+        
+        .animate-attack-heavy {
+            animation: attackHeavy 1s ease-out;
+        }
+
+        /* 防御側反応アニメーション */
+        .animate-damage-normal {
+            animation: damageNormal 0.6s ease-out;
+        }
+        
+        .animate-damage-super {
+            animation: damageSuper 0.8s ease-out;
+        }
+        
+        .animate-damage-heavy {
+            animation: damageHeavy 0.8s ease-out;
+        }
+
+        /* ダメージ数値表示 */
+        .damage-numbers {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 24px;
+            color: #ff4444;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            user-select: none;
+        }
+        
+        .damage-numbers.super-effective {
+            color: #ffaa00;
+            font-size: 28px;
+        }
+        
+        .damage-numbers.critical-hit {
+            color: #ff0000;
+            font-size: 32px;
+        }
+        
+        .damage-popup {
+            animation: damagePopup 2s ease-out forwards;
+        }
+
+        /* バトルエフェクト */
+        .battle-effect {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+        }
+        
+        .effect-fire-blast {
+            background: radial-gradient(circle, #ff6b35, #f7931e);
+            animation: fireBlastEffect 1s ease-out forwards;
+        }
+        
+        .effect-water-wave {
+            background: radial-gradient(circle, #4fc3f7, #29b6f6);
+            animation: waterWaveEffect 1s ease-out forwards;
+        }
+        
+        .effect-thunder-bolt {
+            background: radial-gradient(circle, #ffeb3b, #ffc107);
+            animation: thunderBoltEffect 1s ease-out forwards;
+        }
+        
+        .effect-super-effective {
+            background: radial-gradient(circle, #ff9800, #ff5722);
+            animation: superEffectiveEffect 1s ease-out forwards;
+        }
+        
+        .effect-heavy-impact {
+            background: radial-gradient(circle, #f44336, #d32f2f);
+            animation: heavyImpactEffect 1s ease-out forwards;
+        }
+
+        /* 画面シェイクエフェクト */
+        .screen-shake-light {
+            animation: shakeLight 0.5s ease-out;
+        }
+        
+        .screen-shake-normal {
+            animation: shakeNormal 0.5s ease-out;
+        }
+        
+        .screen-shake-heavy {
+            animation: shakeHeavy 0.6s ease-out;
+        }
+        
+        .screen-shake-super {
+            animation: shakeSuper 0.8s ease-out;
         }
 
         .animate-play-card {

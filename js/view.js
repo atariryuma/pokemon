@@ -685,11 +685,13 @@ export class View {
             let countBadge = prizeContainer.querySelector('.prize-count-badge');
             if (!countBadge) {
                 countBadge = document.createElement('div');
-                countBadge.className = 'prize-count-badge absolute top-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
+                countBadge.className = 'prize-count-badge absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white';
                 prizeContainer.appendChild(countBadge);
             }
             countBadge.textContent = prizeCount;
             countBadge.style.display = 'flex'; // Ensure it's visible
+            countBadge.style.transform = 'translate(50%, -50%)';
+            countBadge.style.zIndex = '40'; // Ensure it's above cards
         } else {
             const countBadge = prizeContainer.querySelector('.prize-count-badge');
             if (countBadge) {
@@ -743,6 +745,7 @@ export class View {
 
         const img = document.createElement('img');
         img.className = 'card-image w-full h-full object-contain rounded-lg';
+        img.style.position = 'relative'; // バッジ配置の基準点にする
         const shouldShowBack = isFaceDown || card.isPrizeCard;
         img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
@@ -752,19 +755,35 @@ export class View {
         // 表向きのカードなら誰のでも詳細表示リスナーを追加
         if (!isFaceDown) {
             container.classList.add('cursor-pointer');
+            
+            // 右クリックで詳細表示
             container.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 this.showCardInfo(card, e.currentTarget);
             });
+            
+            // CPUカードでも通常クリックで情報表示可能にする
+            if (playerType === 'cpu' && zone !== 'hand') {
+                container.addEventListener('click', (e) => {
+                    // カード選択処理と競合しないよう、Altキー押下時のみ有効
+                    if (e.altKey || e.ctrlKey) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showCardInfo(card, e.currentTarget);
+                    }
+                });
+            }
         }
 
-        if (card.damage > 0) {
+        // ダメージバッジ（ポケモンカードのみ、ダメージがある場合）
+        if (card.card_type === 'Pokemon' && card.damage && card.damage > 0) {
             const damageCounter = document.createElement('div');
-            damageCounter.className = 'absolute top-1 right-1 bg-red-600 text-white text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center';
+            damageCounter.className = 'absolute top-0 right-0 bg-red-600 text-white text-sm font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-lg border-2 border-white';
+            damageCounter.style.transform = 'translate(50%, -50%)';
             damageCounter.textContent = card.damage;
             damageCounter.style.pointerEvents = 'none';
-            damageCounter.style.zIndex = '30';
-            container.appendChild(damageCounter);
+            damageCounter.style.zIndex = '35'; // Higher than prize badge
+            container.appendChild(damageCounter); // containerの子要素として配置
         }
 
         return container;

@@ -30,9 +30,6 @@ export class Game {
         this.selectedCardForSetup = null;
         
         // Animation control flags
-        this.setupAnimationsExecuted = false;
-        this.prizeCardAnimationExecuted = false;
-        this.cardRevealAnimationExecuted = false;
     } // End of constructor
 
     _delay(ms) {
@@ -40,9 +37,6 @@ export class Game {
     } // End of _delay
 
     resetAnimationFlags() {
-        this.setupAnimationsExecuted = false;
-        this.prizeCardAnimationExecuted = false;
-        this.cardRevealAnimationExecuted = false;
         noop('🔄 Animation flags reset');
     }
 
@@ -105,10 +99,10 @@ export class Game {
         const oldPhase = this.phaseManager.currentPhase;
         this.phaseManager.currentPhase = newState.phase;
         
-        // フェーズ遷移アニメーションを実行
-        if (oldPhase !== newState.phase) {
-            await this.unifiedAnimationManager.animatePhaseTransition(oldPhase, newState.phase);
-        }
+        // フェーズ遷移アニメーション削除（カード反転等の不要なアニメーションを防止）
+        // if (oldPhase !== newState.phase) {
+        //     await this.unifiedAnimationManager.animatePhaseTransition(oldPhase, newState.phase);
+        // }
         
         // Always render the board first
         this.view.render(this.state);
@@ -207,11 +201,12 @@ export class Game {
         // 単一のレンダリングサイクルで処理（二重レンダリング防止）
         this._updateState(this.state);
         
+        // アニメーション準備クラスを削除して手札を表示
+        document.getElementById('player-hand')?.classList.remove('is-preparing-animation');
+        document.getElementById('cpu-hand')?.classList.remove('is-preparing-animation');
+        
         // 初期セットアップ後に確定HUD表示判定
         this._showConfirmHUDIfReady();
-        
-        // DOM要素の完全な準備を確実に待つ
-        this._scheduleSetupAnimations();
         
         // デバッグ: 手札の内容を確認（state.players存在チェック付き）
         if (!this.state || !this.state.players) {
@@ -1021,17 +1016,22 @@ export class Game {
         if (this.state.phase !== GAME_PHASES.INITIAL_POKEMON_SELECTION) return;
         
         const playerActive = this.state.players.player.active;
-        const hasBasicPokemonInActive = playerActive && playerActive.card_type === 'Pokémon' && playerActive.stage === 'BASIC';
+        const cpuActive = this.state.players.cpu.active;
         
-        if (hasBasicPokemonInActive) {
+        const playerReady = playerActive && playerActive.card_type === 'Pokémon' && playerActive.stage === 'BASIC';
+        const cpuReady = cpuActive && cpuActive.card_type === 'Pokémon' && cpuActive.stage === 'BASIC';
+        
+        // 両者の初期ポケモン配置が完了した場合のみサイドドローボタン表示
+        if (playerReady && cpuReady) {
             this.view.showActionHUD({
                 actions: [
                     {
-                        text: '✅ ポケモン配置を確定',
-                        callback: () => this._handleConfirmSetup(),
-                        className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
+                        text: 'サイドドロー',
+                        callback: () => this._distributePrizes(),
+                        className: 'px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg'
                     }
-                ]
+                ],
+                title: 'ゲーム進行'
             });
         }
     }
@@ -1063,11 +1063,7 @@ export class Game {
         }
 
         noop('🔥 CONFIRM BUTTON PRESSED - Starting setup confirmation flow');
-        noop('🔥 Animation flags at confirm button press:', {
-            setupAnimationsExecuted: this.setupAnimationsExecuted,
-            prizeCardAnimationExecuted: this.prizeCardAnimationExecuted,
-            cardRevealAnimationExecuted: this.cardRevealAnimationExecuted
-        });
+        noop('🔥 Animation flags at confirm button press: none');
         
         // 確定ボタン押下時にUIを非表示
         this.view.hideActionHUD(); // 確定HUDを非表示
@@ -1081,42 +1077,90 @@ export class Game {
         
         noop('🔥 About to call setupManager.confirmSetup');
         
-        // 状態を更新して、サイドカード配布を含む完全なセットアップを実行
+        // 状態を更新（サイド配布フェーズへ移行）
         let newState = await this.setupManager.confirmSetup(this.state);
         this._updateState(newState);
         
-        // サイドカード配布が完了した後でアニメーションとUI更新を順次実行
-        if (newState.phase === GAME_PHASES.GAME_START_READY) {
-            noop('🎯 Prize cards setup completed, showing animation and start button');
+        // 新フローでは自動的にサイド配布実行（冗長な手動ステップを削除）
+        if (newState.phase === GAME_PHASES.PRIZE_CARD_SETUP) {
+            noop('🎯 Auto-executing prize distribution');
+            // 自動実行のため追加の操作不要
+        }
+    }
+
+    /**
+     * サイド配布処理（自動実行 + ゲームスタートボタン表示）
+     */
+    async _distributePrizes() {
+        noop('🔥 GAME: _distributePrizes (Player only) called');
+        
+        try {
+            // アクションHUDを一旦非表示
+            this.view.hideActionHUD();
             
-            // 1. DOM更新を少し待つ
-            await this._delay(300);
+            // プレイヤーのサイドカード配布実行のみ
+            let newState = await this.setupManager.distributePlayerPrizes(this.state);
+            this._updateState(newState);
             
-            // 2. サイドカードアニメーション実行
-            noop('🔥 About to call _animatePrizeCardSetup');
-            await this._animatePrizeCardSetup();
-            noop('✅ Prize card animation completed');
+            // プレイヤーのサイド配布完了後、CPUサイドドローボタン表示
+            this.view.showActionHUD({
+                actions: [
+                    {
+                        text: 'CPUサイドドロー',
+                        callback: () => this._distributeCpuPrizes(),
+                        className: 'px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg'
+                    }
+                ],
+                title: 'CPU サイドカード配布'
+            });
             
-            // 3. アニメーション完了後に準備完了メッセージとスタートボタンを表示
-            await this._delay(500); // アニメーション完了を待つ
+        } catch (error) {
+            console.error('❌ Error during player prize distribution:', error);
+            this.state = addLogEntry(this.state, { 
+                message: 'プレイヤーのサイド配布でエラーが発生しました。',
+                type: 'error'
+            });
+            this._updateState(this.state);
+        }
+    }
+
+    /**
+     * CPUサイド配布処理（独立実行）
+     */
+    async _distributeCpuPrizes() {
+        noop('🔥 GAME: _distributeCpuPrizes called');
+        
+        try {
+            // アクションHUDを一旦非表示
+            this.view.hideActionHUD();
             
-            try {
-                this.view.showInteractiveMessage(
-                    '準備完了！「ゲームスタート」を押してバトルを開始してください。',
-                    [
+            // CPUのサイドカード配布実行
+            let newState = await this.setupManager.distributeCpuPrizes(this.state);
+            this._updateState(newState);
+            
+            // ゲームスタートボタンのみ表示（CPUサイド配布完了後）
+            if (newState.phase === GAME_PHASES.GAME_START_READY) {
+                this.view.showActionHUD({
+                    actions: [
                         {
                             text: 'ゲームスタート',
                             callback: () => {
-                                noop('🔥 GAME START BUTTON CLICKED - Starting actual game');
+                                noop('🔥 GAME START BUTTON CLICKED');
                                 this._startActualGame();
-                            }
+                            },
+                            className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
                         }
                     ],
-                    'central' // ゲームスタートは重要な意思決定なので中央モーダル
-                );
-            } catch (e) {
-                console.warn('Failed to show game start modal, fallback to side button.', e);
+                    title: 'ゲーム開始'
+                });
             }
+        } catch (error) {
+            console.error('❌ Error during prize distribution:', error);
+            this.state = addLogEntry(this.state, { 
+                message: 'サイド配布でエラーが発生しました。',
+                type: 'error'
+            });
+            this._updateState(this.state);
         }
     }
 
@@ -1125,11 +1169,11 @@ export class Game {
      */
     async _startActualGame() {
         noop('🔥 _startActualGame() CALLED - Current phase:', this.state.phase);
-        noop('🔥 _startActualGame() - Animation flags:', {
-            setupAnimationsExecuted: this.setupAnimationsExecuted,
-            prizeCardAnimationExecuted: this.prizeCardAnimationExecuted,
-            cardRevealAnimationExecuted: this.cardRevealAnimationExecuted
-        });
+        
+        // アクションHUDを非表示
+        this.view.hideActionHUD();
+        
+        noop('🔥 _startActualGame() - Animation flags: none');
         
         // 重複実行を防ぐため、既にゲーム開始済みなら早期return
         if (this.state.phase === GAME_PHASES.PLAYER_MAIN || this.state.phase === GAME_PHASES.PLAYER_TURN) {
@@ -1137,254 +1181,31 @@ export class Game {
             return;
         }
         
-        noop('🎮 Starting actual game with card reveal animation');
+        noop('🎮 Starting actual game without card reveal animation');
         
-        // 1. カードをめくるアニメーションを実行
-        noop('🔥 About to call _animateCardReveal');
-        await this._animateCardReveal();
-        noop('🔥 _animateCardReveal completed');
+        // カード反転アニメーションをスキップして直接ゲーム開始処理へ
+        noop('🔥 Skipping card reveal animation as requested');
 
-        // 2. カードを表向きにする (State更新)
+        // 1. カードを表向きにする (State更新)
         let newState = await this.setupManager.startGameRevealCards(this.state);
         
-        // 3. ターン制約をリセット (ドロー以外のもの)
+        // 2. ターン制約をリセット (ドロー以外のもの)
         newState.hasAttachedEnergyThisTurn = false;
         newState.canRetreat = true;
         newState.canPlaySupporter = true;
 
-        // 4. プレイヤーの初手ドローを自動で実行しメインフェーズへ
-        newState = await this.turnManager.handlePlayerDraw(newState);
-        newState.phase = GAME_PHASES.PLAYER_MAIN;
-        newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+        // 3. プレイヤーターンを開始（手動ドローフェーズから開始）
+        newState = await this.turnManager.startPlayerTurn(newState);
+        newState.prompt.message = '山札をクリックしてカードを引いてください。';
 
         this._updateState(newState);
 
         this.state = addLogEntry(this.state, { message: 'バトル開始！' });
     }
 
-    /**
-     * カード公開アニメーション
-     */
-    async _animateCardReveal() {
-        // 重複実行防止
-        if (this.cardRevealAnimationExecuted) {
-            noop('🔄 Card reveal animation already executed, skipping');
-            return;
-        }
-        
-        this.cardRevealAnimationExecuted = true;
-        noop('🃏 Starting card reveal animation');
-        
-        const allPokemonElements = [];
 
-        // プレイヤーのバトル場とベンチ
-        if (this.state.players.player.active) {
-            const activeEl = document.querySelector('.player-self .active-bottom .relative');
-            if (activeEl) allPokemonElements.push({ element: activeEl, card: this.state.players.player.active });
-        }
-        this.state.players.player.bench.forEach((pokemon, index) => {
-            if (pokemon) {
-                const benchEl = document.querySelector(`.player-self .bottom-bench-${index + 1} .relative`);
-                if (benchEl) allPokemonElements.push({ element: benchEl, card: pokemon });
-            }
-        });
 
-        // CPUのバトル場とベンチ
-        if (this.state.players.cpu.active) {
-            const activeEl = document.querySelector('.opponent-board .active-top .relative');
-            if (activeEl) allPokemonElements.push({ element: activeEl, card: this.state.players.cpu.active });
-        }
-        this.state.players.cpu.bench.forEach((pokemon, index) => {
-            if (pokemon) {
-                const benchEl = document.querySelector(`.opponent-board .top-bench-${index + 1} .relative`);
-                if (benchEl) allPokemonElements.push({ element: benchEl, card: pokemon });
-            }
-        });
 
-        // 各ポケモンをフリップ
-        noop(`🔥 About to flip ${allPokemonElements.length} pokemon cards`);
-        for (const { element, card } of allPokemonElements) {
-            noop(`🔥 Flipping card: ${card.name_ja} (${card.name_en})`);
-            await animationManager.flipCardFaceUp(element, getCardImagePath(card.name_en));
-        }
-        noop(`🔥 All ${allPokemonElements.length} pokemon cards flipped`);
-    }
-
-    /**
-     * セットアップアニメーション スケジューリング
-     */
-    _scheduleSetupAnimations() {
-        // 重複実行防止
-        if (this.setupAnimationsExecuted) {
-            return;
-        }
-        
-        this.setupAnimationsExecuted = true;
-        
-        // requestAnimationFrame を使って確実にDOM準備完了を待つ
-        requestAnimationFrame(() => {
-            requestAnimationFrame(async () => {
-                // さらに少し待ってから実行
-                setTimeout(async () => {
-                    await this._executeSetupAnimations();
-                }, 100);
-            });
-        });
-    }
-
-    /**
-     * セットアップアニメーション実行
-     */
-    async _executeSetupAnimations() {
-        try {
-            // DOM要素の存在確認を強化
-            await this._verifyDOMElements();
-            
-            // 手札のアニメーション
-            await this._animateInitialHandDraw();
-            
-            // Note: CPUの初期ポケモン配置はプレイヤーの操作後に実行
-            // サイドカードアニメーションは配布後に実行（重複防止）
-        } catch (error) {
-            errorHandler.handleError(error, ERROR_TYPES.ANIMATION_FAILED, false);
-        }
-    }
-
-    /**
-     * DOM要素存在確認
-     */
-    async _verifyDOMElements() {
-        const playerHand = document.getElementById('player-hand');
-        const cpuHand = document.getElementById('cpu-hand');
-        
-        if (!playerHand || !cpuHand) {
-            throw new Error('Hand elements not found');
-        }
-        
-        // 要素が空の場合は少し待ってから再確認
-        if (playerHand.children.length === 0 || cpuHand.children.length === 0) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-    }
-
-    /**
-     * 初期手札ドローアニメーション
-     */
-    async _animateInitialHandDraw() {
-        const playerHand = document.getElementById('player-hand');
-        const cpuHand = document.getElementById('cpu-hand');
-
-        // アニメーション開始直前に準備クラスを削除
-        playerHand?.classList.remove('is-preparing-animation');
-        cpuHand?.classList.remove('is-preparing-animation');
-
-        // 準備クラス削除後に各カードの表示状態を復元
-        if (playerHand) {
-            const playerCards = playerHand.querySelectorAll('.relative');
-            playerCards.forEach(card => {
-                card.style.opacity = '1';
-                card.style.visibility = 'visible';
-            });
-        }
-        if (cpuHand) {
-            const cpuCards = cpuHand.querySelectorAll('.relative');
-            cpuCards.forEach(card => {
-                card.style.opacity = '1';
-                card.style.visibility = 'visible';
-            });
-        }
-
-        // DOMにクラスの削除が反映されるのを待つ
-        await this._delay(20); // 非常に短い遅延
-
-        const promises = [];
-
-        if (playerHand) {
-            // Select actual card elements inside the hand (skip inner wrapper)
-            const playerCards = Array.from(playerHand.querySelectorAll('.relative'));
-            
-            // 各カード要素の詳細を確認
-            
-            if (playerCards.length > 0) {
-                promises.push(unifiedAnimationManager.animateHandDeal(playerCards, 'player'));
-            }
-        }
-
-        if (cpuHand) {
-            const cpuCards = Array.from(cpuHand.querySelectorAll('.relative'));
-            
-            // 各カード要素の詳細を確認
-            
-            if (cpuCards.length > 0) {
-                promises.push(unifiedAnimationManager.animateHandDeal(cpuCards, 'cpu'));
-            }
-        }
-
-        await Promise.all(promises);
-    }
-
-    /**
-     * サイドカード配置アニメーション
-     */
-    async _animatePrizeCardSetup() {
-        // 重複実行防止
-        if (this.prizeCardAnimationExecuted) {
-            noop('🔄 Prize card animation already executed, skipping');
-            return;
-        }
-        
-        this.prizeCardAnimationExecuted = true;
-        noop('🎯 Starting prize card animation');
-        
-        // 実際にカード要素が入っているスロットの子要素を取得
-        const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
-        const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
-
-        if (playerPrizeSlots.length === 0 || cpuPrizeSlots.length === 0) {
-            console.warn('⚠️ Prize slots not found, skipping animation');
-            return;
-        }
-
-        const playerPrizeElements = [];
-        playerPrizeSlots.forEach((slot) => {
-            const cardElement = slot.querySelector('.relative, .card'); // Use the same selector as original
-            if (cardElement) {
-                playerPrizeElements.push(cardElement);
-            } else {
-                playerPrizeElements.push(slot); // Fallback to slot if card element not found
-            }
-        });
-
-        const cpuPrizeElements = [];
-        cpuPrizeSlots.forEach((slot) => {
-            const cardElement = slot.querySelector('.relative, .card'); // Use the same selector as original
-            if (cardElement) {
-                cpuPrizeElements.push(cardElement);
-            } else {
-                cpuPrizeElements.push(slot); // Fallback to slot if card element not found
-            }
-        });
-
-        // Animate prize cards using unified system
-        const allPrizePromises = [];
-        
-        if (playerPrizeElements.length > 0) {
-            allPrizePromises.push(unifiedAnimationManager.animatePrizeDeal(playerPrizeElements, 'player'));
-        } else {
-            console.warn('⚠️ No player prize elements found for animation');
-        }
-
-        if (cpuPrizeElements.length > 0) {
-            allPrizePromises.push(unifiedAnimationManager.animatePrizeDeal(cpuPrizeElements, 'cpu'));
-        } else {
-            console.warn('⚠️ No CPU prize elements found for animation');
-        }
-
-        // Run prize animations in parallel
-        if (allPrizePromises.length > 0) {
-            await Promise.all(allPrizePromises);
-        }
-    }
 
     // ==================== アニメーション関連メソッド ====================
 

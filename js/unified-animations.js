@@ -309,43 +309,6 @@ export class UnifiedAnimationManager {
     cardElement.style.zIndex = '';
   }
 
-  /**
-   * カードフリップアニメーション（統合時に漏れた機能を追加）
-   * @param {Element} cardElement - フリップするカード要素
-   * @param {string} frontImageSrc - 表面の画像パス
-   */
-  async flipCardFaceUp(cardElement, frontImageSrc) {
-    noop(`🔥 ANIMATION CALLED: flipCardFaceUp for element:`, cardElement?.dataset?.cardId || 'unknown', 'image:', frontImageSrc);
-    
-    return new Promise((resolve) => {
-      if (!cardElement) return resolve();
-      
-      const imgElement = cardElement.querySelector('img');
-      if (!imgElement) return resolve();
-      
-      // フリップアニメーション開始
-      cardElement.style.transition = 'transform 300ms ease-in-out';
-      cardElement.style.transform = 'rotateY(90deg)';
-      
-      // 90度回転後に画像を切り替え
-      setTimeout(() => {
-        imgElement.src = frontImageSrc;
-        imgElement.alt = 'Card Face';
-        
-        // 画像読み込み完了後に反転完了
-        imgElement.onload = () => {
-          cardElement.style.transform = 'rotateY(0deg)';
-          setTimeout(resolve, 300);
-        };
-        
-        // 画像読み込み失敗時のフォールバック
-        imgElement.onerror = () => {
-          cardElement.style.transform = 'rotateY(0deg)';
-          setTimeout(resolve, 300);
-        };
-      }, 150);
-    });
-  }
 
   /**
    * フェーズ間遷移アニメーション
@@ -857,35 +820,280 @@ export class UnifiedAnimationManager {
   }
 
   /**
-   * 攻撃アニメーションの統一処理
+   * 攻撃アニメーションの統一処理（拡張版）
    */
-  async createUnifiedAttackAnimation(attackerPlayerId, defenderPlayerId) {
+  async createUnifiedAttackAnimation(attackerPlayerId, defenderPlayerId, attackData = {}) {
     noop(`⚔️ Starting unified attack animation: ${attackerPlayerId} -> ${defenderPlayerId}`);
     
     try {
       const attackerElement = document.querySelector(
         `${this.getPlayerSelector(attackerPlayerId)} ${this.getActiveSelector(attackerPlayerId)} .relative`
       );
+      
+      const defenderElement = document.querySelector(
+        `${this.getPlayerSelector(defenderPlayerId)} ${this.getActiveSelector(defenderPlayerId)} .relative`
+      );
 
-      if (!attackerElement) {
-        console.warn('⚠️ Attack animation: Missing attacker element');
+      if (!attackerElement || !defenderElement) {
+        console.warn('⚠️ Attack animation: Missing battle elements');
         return;
       }
 
-      // 'animate-attack' クラスは index.html で @keyframes attackForward に紐付けられている
-      return new Promise(resolve => {
-          attackerElement.classList.add('animate-attack');
-          const animationDuration = 800; // 0.8s
-          setTimeout(() => {
-              attackerElement.classList.remove('animate-attack');
-              resolve();
-          }, animationDuration);
-      });
+      // 攻撃タイプに基づくアニメーション選択
+      const attackType = this._determineAttackAnimationType(attackData);
+      
+      // 攻撃アニメーション実行
+      await this._executeAttackSequence(attackerElement, defenderElement, attackType, attackData);
 
     } catch (error) {
       console.error('❌ Error in unified attack animation:', error);
       throw error;
     }
+  }
+
+  /**
+   * 攻撃タイプの判定
+   */
+  _determineAttackAnimationType(attackData) {
+    const { attacker, attack, damage, modifiers } = attackData;
+    
+    // 弱点攻撃の場合
+    if (modifiers && modifiers.some(m => m.type === 'weakness')) {
+      return 'super-effective';
+    }
+    
+    // 高ダメージ攻撃の場合
+    if (damage >= 80) {
+      return 'heavy';
+    }
+    
+    // タイプ別アニメーション
+    if (attacker && attacker.types && attacker.types.length > 0) {
+      const primaryType = attacker.types[0];
+      return this._getTypeBasedAnimation(primaryType);
+    }
+    
+    return 'normal';
+  }
+
+  /**
+   * タイプ別アニメーション判定
+   */
+  _getTypeBasedAnimation(type) {
+    const typeAnimations = {
+      'Fire': 'fire-blast',
+      'Water': 'water-wave',
+      'Grass': 'grass-whip',
+      'Lightning': 'thunder-bolt',
+      'Psychic': 'psychic-wave',
+      'Fighting': 'physical-strike',
+      'Darkness': 'dark-pulse',
+      'Metal': 'metal-claw',
+      'Fairy': 'fairy-wind',
+      'Dragon': 'dragon-rage'
+    };
+    
+    return typeAnimations[type] || 'normal';
+  }
+
+  /**
+   * 攻撃シーケンスの実行
+   */
+  async _executeAttackSequence(attackerElement, defenderElement, attackType, attackData) {
+    const promises = [];
+    
+    // 1. 攻撃者の動作アニメーション
+    promises.push(this._animateAttacker(attackerElement, attackType));
+    
+    // 2. 攻撃エフェクト（少し遅延）
+    setTimeout(() => {
+      promises.push(this._createAttackEffect(attackerElement, defenderElement, attackType));
+    }, 300);
+    
+    // 3. 防御側の反応アニメーション（さらに遅延）
+    setTimeout(() => {
+      promises.push(this._animateDefender(defenderElement, attackType, attackData));
+    }, 500);
+    
+    await Promise.all(promises);
+  }
+
+  /**
+   * 攻撃者アニメーション
+   */
+  async _animateAttacker(attackerElement, attackType) {
+    return new Promise(resolve => {
+      // タイプ別の攻撃者アニメーション
+      const animationClass = this._getAttackerAnimation(attackType);
+      attackerElement.classList.add(animationClass);
+      
+      const duration = 800;
+      setTimeout(() => {
+        attackerElement.classList.remove(animationClass);
+        resolve();
+      }, duration);
+    });
+  }
+
+  /**
+   * 攻撃エフェクト
+   */
+  async _createAttackEffect(attackerElement, defenderElement, attackType) {
+    return new Promise(resolve => {
+      // エフェクト要素を作成
+      const effect = document.createElement('div');
+      effect.className = `battle-effect ${attackType}-effect`;
+      effect.style.position = 'absolute';
+      effect.style.pointerEvents = 'none';
+      effect.style.zIndex = '1000';
+      
+      // 攻撃者と防御側の中間にエフェクト配置
+      const attackerRect = attackerElement.getBoundingClientRect();
+      const defenderRect = defenderElement.getBoundingClientRect();
+      
+      const centerX = (attackerRect.left + defenderRect.left) / 2;
+      const centerY = (attackerRect.top + defenderRect.top) / 2;
+      
+      effect.style.left = centerX + 'px';
+      effect.style.top = centerY + 'px';
+      effect.style.transform = 'translate(-50%, -50%)';
+      
+      document.body.appendChild(effect);
+      
+      // エフェクトアニメーション実行
+      const effectClass = this._getEffectAnimation(attackType);
+      effect.classList.add(effectClass);
+      
+      setTimeout(() => {
+        document.body.removeChild(effect);
+        resolve();
+      }, 1000);
+    });
+  }
+
+  /**
+   * 防御側アニメーション
+   */
+  async _animateDefender(defenderElement, attackType, attackData) {
+    return new Promise(resolve => {
+      const { damage, modifiers } = attackData;
+      
+      // ダメージに応じた反応アニメーション
+      let reactionClass = 'animate-damage-normal';
+      if (modifiers && modifiers.some(m => m.type === 'weakness')) {
+        reactionClass = 'animate-damage-super';
+      } else if (damage >= 80) {
+        reactionClass = 'animate-damage-heavy';
+      }
+      
+      defenderElement.classList.add(reactionClass);
+      
+      // ダメージ数値の飛び出し表示
+      if (damage > 0) {
+        this._showDamageNumbers(defenderElement, damage, modifiers);
+      }
+      
+      const duration = 600;
+      setTimeout(() => {
+        defenderElement.classList.remove(reactionClass);
+        resolve();
+      }, duration);
+    });
+  }
+
+  /**
+   * ダメージ数値表示エフェクト
+   */
+  _showDamageNumbers(defenderElement, damage, modifiers) {
+    const damageDisplay = document.createElement('div');
+    damageDisplay.className = 'damage-numbers';
+    damageDisplay.textContent = `-${damage}`;
+    
+    // 弱点攻撃の場合はスタイル変更
+    if (modifiers && modifiers.some(m => m.type === 'weakness')) {
+      damageDisplay.classList.add('super-effective');
+    } else if (damage >= 80) {
+      damageDisplay.classList.add('critical-hit');
+    }
+    
+    // 位置設定
+    const rect = defenderElement.getBoundingClientRect();
+    damageDisplay.style.position = 'absolute';
+    damageDisplay.style.left = (rect.left + rect.width / 2) + 'px';
+    damageDisplay.style.top = (rect.top - 20) + 'px';
+    damageDisplay.style.transform = 'translateX(-50%)';
+    damageDisplay.style.zIndex = '1001';
+    damageDisplay.style.pointerEvents = 'none';
+    
+    document.body.appendChild(damageDisplay);
+    
+    // アニメーション実行
+    damageDisplay.classList.add('damage-popup');
+    
+    // 2秒後に削除
+    setTimeout(() => {
+      if (document.body.contains(damageDisplay)) {
+        document.body.removeChild(damageDisplay);
+      }
+    }, 2000);
+  }
+
+  /**
+   * 画面シェイクエフェクト
+   */
+  createScreenShakeEffect(intensity = 'normal') {
+    const gameBoard = document.getElementById('game-board');
+    if (!gameBoard) return;
+    
+    const shakeClasses = {
+      'light': 'screen-shake-light',
+      'normal': 'screen-shake-normal',
+      'heavy': 'screen-shake-heavy',
+      'super': 'screen-shake-super'
+    };
+    
+    const shakeClass = shakeClasses[intensity] || 'screen-shake-normal';
+    gameBoard.classList.add(shakeClass);
+    
+    setTimeout(() => {
+      gameBoard.classList.remove(shakeClass);
+    }, 500);
+  }
+
+  /**
+   * 攻撃者アニメーション取得
+   */
+  _getAttackerAnimation(attackType) {
+    const animations = {
+      'fire-blast': 'animate-attack-fire',
+      'water-wave': 'animate-attack-water',
+      'grass-whip': 'animate-attack-grass',
+      'thunder-bolt': 'animate-attack-electric',
+      'psychic-wave': 'animate-attack-psychic',
+      'physical-strike': 'animate-attack-fighting',
+      'super-effective': 'animate-attack-super',
+      'heavy': 'animate-attack-heavy'
+    };
+    
+    return animations[attackType] || 'animate-attack';
+  }
+
+  /**
+   * エフェクトアニメーション取得
+   */
+  _getEffectAnimation(attackType) {
+    const effects = {
+      'fire-blast': 'effect-fire-blast',
+      'water-wave': 'effect-water-wave',
+      'grass-whip': 'effect-grass-whip',
+      'thunder-bolt': 'effect-thunder-bolt',
+      'psychic-wave': 'effect-psychic-wave',
+      'physical-strike': 'effect-impact',
+      'super-effective': 'effect-super-effective',
+      'heavy': 'effect-heavy-impact'
+    };
+    
+    return effects[attackType] || 'effect-normal-attack';
   }
 
   /**
@@ -972,9 +1180,6 @@ export class UnifiedAnimationManager {
               case 'hand':
                 animationClass = playerId === 'player' ? 'animate-deal-player-hand-card' : 'animate-deal-card-nofade';
                 break;
-              case 'prize':
-                animationClass = `animate-prize-deal-${direction}`;
-                break;
               case 'deck':
                 animationClass = 'animate-draw-card';
                 break;
@@ -1058,28 +1263,6 @@ export class UnifiedAnimationManager {
     );
   }
 
-  /**
-   * サイドカード配布の統一アニメーション
-   * @param {Array<Element>} cardElements - カード要素配列
-   * @param {string} playerId - プレイヤーID
-   * @param {Object} options - オプション
-   */
-  async animatePrizeDeal(cardElements, playerId, options = {}) {
-    noop(`🔥 ANIMATION CALLED: animatePrizeDeal for ${playerId}, elements:`, cardElements.length);
-    
-    const defaultOptions = {
-      staggerDelay: 150,
-      direction: playerId === 'player' ? 'right' : 'left',
-      applyOrientation: false // 二重適用防止: view.js で既に適用済み
-    };
-    
-    return this.createUnifiedCardDeal(
-      cardElements, 
-      'prize', 
-      playerId, 
-      { ...defaultOptions, ...options }
-    );
-  }
 
   /**
    * システムリセット

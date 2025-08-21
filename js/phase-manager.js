@@ -262,6 +262,14 @@ export class PhaseManager {
         }
         break;
       
+      case GAME_PHASES.PRIZE_CARD_SETUP:
+        actions.push('distribute-prizes');
+        break;
+      
+      case GAME_PHASES.GAME_START_READY:
+        actions.push('start-game');
+        break;
+      
       case GAME_PHASES.PLAYER_DRAW:
         if (!state.hasDrawnThisTurn) {
           actions.push('draw-card');

@@ -106,6 +106,9 @@ export class SetupManager {
       }
     }
 
+    // 初期手札配布アニメーション実行
+    await this.animateInitialHandDeal();
+
     newState = addLogEntry(newState, {
       type: 'initial_draw',
       message: '両プレイヤーが初期手札を引きました。'
@@ -238,6 +241,34 @@ export class SetupManager {
   }
 
   /**
+   * 初期手札配布アニメーション
+   */
+  async animateInitialHandDeal() {
+    // プレイヤーとCPUの手札アニメーションを並列実行
+    await Promise.all([
+      this.animateHandDeal('player'),
+      this.animateHandDeal('cpu')
+    ]);
+  }
+
+  /**
+   * 手札配布アニメーション（プレイヤー別）
+   */
+  async animateHandDeal(playerId) {
+    const handElement = playerId === 'player' 
+      ? document.getElementById('player-hand')
+      : document.getElementById('cpu-hand');
+
+    if (handElement) {
+      // 新しい手札の入場アニメーション
+      const cards = Array.from(handElement.querySelectorAll('.relative'));
+      if (cards.length > 0) {
+        await animationManager.animateHandEntry(cards);
+      }
+    }
+  }
+
+  /**
    * マリガンアニメーション
    */
   async animateMulligan(playerId) {
@@ -256,9 +287,9 @@ export class SetupManager {
   }
 
   /**
-   * サイドカード配置
+   * プレイヤーのサイドカード配置（状態更新のみ）
    */
-  async setupPrizeCards(state) {
+  async setupPlayerPrizeCards(state) {
     let newState = cloneGameState(state);
 
     // プレイヤーのサイドカード（裏面フラグ付き）
@@ -269,6 +300,15 @@ export class SetupManager {
       }
     }
 
+    return newState;
+  }
+
+  /**
+   * CPUのサイドカード配置（状態更新のみ）
+   */
+  async setupCpuPrizeCards(state) {
+    let newState = cloneGameState(state);
+
     // CPUのサイドカード（裏面フラグ付き）
     for (let i = 0; i < 6; i++) {
       if (newState.players.cpu.deck.length > 0) {
@@ -276,9 +316,6 @@ export class SetupManager {
         newState.players.cpu.prize.push({ ...prizeCard, isPrizeCard: true });
       }
     }
-
-    // Note: アニメーションはGame.jsでview.render()の後に呼ばれる
-    // ここでは状態の更新のみを行う
 
     return newState;
   }
@@ -580,6 +617,20 @@ export class SetupManager {
       }
 
       placementIndex++;
+      
+      // CPU配置完了後、サイドドロー待機フェーズに移行
+      if (placementIndex >= basicPokemon.length) {
+        clearInterval(placementInterval);
+        
+        // プレイヤーのサイドドローボタン表示のためのフェーズ移行
+        setTimeout(() => {
+          if (window.gameInstance && window.gameInstance.state) {
+            window.gameInstance.state.phase = GAME_PHASES.PRIZE_CARD_SETUP;
+            window.gameInstance.state.prompt.message = 'サイドドローボタンを押してサイドカードを配布してください。';
+            window.gameInstance._updateState(window.gameInstance.state);
+          }
+        }, 500);
+      }
     }, 1200); // 1.2秒間隔で1枚ずつ配置
   }
 
@@ -629,23 +680,14 @@ export class SetupManager {
       return newState;
     }
 
-    // サイドカード配布フェーズに移行
+    // サイドカード配布フェーズに移行（手動操作待ち）
     newState.phase = GAME_PHASES.PRIZE_CARD_SETUP;
-    newState.prompt.message = 'サイドカードを配布しています...';
+    newState.prompt.message = 'サイドカードを配布してください。';
     newState.setupSelection.confirmed = true;
 
-    // サイドカード配布
-    noop('🔥 SETUP-MANAGER: About to call setupPrizeCards');
-    newState = await this.setupPrizeCards(newState);
-    noop('🔥 SETUP-MANAGER: setupPrizeCards completed');
-
-    // ゲーム開始準備完了フェーズに移行
-    newState.phase = GAME_PHASES.GAME_START_READY;
-    newState.prompt.message = '準備完了！「ゲームスタート」を押してバトルを開始してください。';
-
     newState = addLogEntry(newState, {
-      type: 'prize_setup_complete',
-      message: 'サイドカードが配布されました。ゲーム開始の準備が整いました！'
+      type: 'setup_complete',
+      message: 'ポケモンの配置が完了しました。サイドカードを配布してください。'
     });
     return newState;
   }
@@ -669,12 +711,9 @@ export class SetupManager {
     
     // フェーズをサイドカード配布に変更
     newState.phase = GAME_PHASES.PRIZE_CARD_SETUP;
+    newState.prompt.message = 'サイドドローボタンを押してサイドカードを配布してください。';
     
-    // サイドカード配布
-    newState = await this.setupPrizeCards(newState);
-    
-    // ゲーム開始準備完了フェーズに移行
-    newState.phase = GAME_PHASES.GAME_START_READY;
+    // サイドカード配布は_distributePrizes()で個別実行される
     
     newState = addLogEntry(newState, {
       type: 'prize_setup_complete',
@@ -682,6 +721,144 @@ export class SetupManager {
     });
     
     return newState;
+  }
+
+  /**
+   * プレイヤー用サイド配布処理
+   */
+  /**
+   * プレイヤーのサイドカード配布処理（独立実行）
+   */
+  async distributePlayerPrizes(state) {
+    noop('🔥 SETUP-MANAGER: distributePlayerPrizes called');
+    let newState = cloneGameState(state);
+    
+    // まずアニメーション実行（状態更新前）
+    await this.animatePlayerPrizeDistribution();
+    
+    // アニメーション完了後に状態更新
+    newState = await this.setupPlayerPrizeCards(newState);
+    
+    // プレイヤーサイド配布完了、CPUサイド配布待機状態
+    newState.prompt.message = 'CPUサイドドローボタンを押してください。';
+    
+    newState = addLogEntry(newState, {
+      type: 'player_prize_setup',
+      message: 'プレイヤーのサイドカードが配布されました。CPUのサイドカード配布を開始してください。'
+    });
+    
+    return newState;
+  }
+
+  /**
+   * CPUのサイドカード配布処理（独立実行）
+   */
+  async distributeCpuPrizes(state) {
+    noop('🔥 SETUP-MANAGER: distributeCpuPrizes called');
+    let newState = cloneGameState(state);
+    
+    // まずアニメーション実行（状態更新前）
+    await this.animateCpuPrizeDistribution();
+    
+    // アニメーション完了後に状態更新
+    newState = await this.setupCpuPrizeCards(newState);
+    
+    // ゲーム開始準備完了フェーズに移行
+    newState.phase = GAME_PHASES.GAME_START_READY;
+    newState.prompt.message = '準備完了！「ゲームスタート」を押してバトルを開始してください。';
+    
+    newState = addLogEntry(newState, {
+      type: 'prize_setup_complete',
+      message: 'プレイヤーとCPUのサイドカードが配布されました。ゲーム開始の準備が整いました！'
+    });
+    
+    return newState;
+  }
+
+  /**
+   * プレイヤーのサイド配布アニメーション
+   */
+  async animatePlayerPrizeDistribution() {
+    noop('🔥 SETUP-MANAGER: animatePlayerPrizeDistribution called');
+    
+    const deckElement = document.querySelector('.bottom-right-deck');
+    const prizeContainer = document.querySelector('.side-left');
+    
+    if (!deckElement || !prizeContainer) {
+      console.warn('Player prize distribution animation elements not found');
+      return;
+    }
+    
+    // 6枚のカードを1枚ずつ順次アニメーション
+    for (let i = 0; i < 6; i++) {
+      await this.animateSinglePrizeCard(deckElement, prizeContainer, i, 'player');
+      await new Promise(resolve => setTimeout(resolve, 200)); // 200ms待機
+    }
+  }
+
+  /**
+   * CPUのサイド配布アニメーション
+   */
+  async animateCpuPrizeDistribution() {
+    noop('🔥 SETUP-MANAGER: animateCpuPrizeDistribution called');
+    
+    const deckElement = document.querySelector('.top-left-deck');
+    const prizeContainer = document.querySelector('.side-right');
+    
+    if (!deckElement || !prizeContainer) {
+      console.warn('CPU prize distribution animation elements not found');
+      return;
+    }
+    
+    // 6枚のカードを1枚ずつ順次アニメーション
+    for (let i = 0; i < 6; i++) {
+      await this.animateSinglePrizeCard(deckElement, prizeContainer, i, 'cpu');
+      await new Promise(resolve => setTimeout(resolve, 200)); // 200ms待機
+    }
+  }
+
+  /**
+   * 1枚のサイドカードアニメーション（山札→プレースホルダー移動）
+   */
+  async animateSinglePrizeCard(deckElement, prizeContainer, prizeIndex, playerType) {
+    const cardElement = document.createElement('div');
+    cardElement.className = 'absolute w-16 h-22 rounded-lg border border-gray-600';
+    cardElement.style.zIndex = '100';
+    
+    // カード背面
+    const img = document.createElement('img');
+    img.src = 'assets/ui/card_back.webp';
+    img.className = 'w-full h-full object-cover rounded-lg';
+    cardElement.appendChild(img);
+    
+    // 開始位置（山札）
+    const deckRect = deckElement.getBoundingClientRect();
+    cardElement.style.left = `${deckRect.left}px`;
+    cardElement.style.top = `${deckRect.top}px`;
+    cardElement.style.opacity = '1';
+    
+    // 終了位置（サイドプレースホルダー）
+    const prizeSlots = prizeContainer.querySelectorAll('.card-slot');
+    if (prizeSlots[prizeIndex]) {
+      const slotRect = prizeSlots[prizeIndex].getBoundingClientRect();
+      
+      document.body.appendChild(cardElement);
+      
+      // シンプル移動アニメーション
+      return new Promise(resolve => {
+        cardElement.style.transition = 'all 0.6s ease-in-out';
+        cardElement.style.left = `${slotRect.left}px`;
+        cardElement.style.top = `${slotRect.top}px`;
+        
+        // アニメーション完了後クリーンアップ
+        setTimeout(() => {
+          if (document.body.contains(cardElement)) {
+            document.body.removeChild(cardElement);
+          }
+          resolve();
+        }, 600);
+      });
+    }
   }
 
   /**

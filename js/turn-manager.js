@@ -261,13 +261,8 @@ export class TurnManager {
       noop(`💥 After attack - Defender: ${defenderAfter.name_ja} (HP: ${defenderAfter.hp - (defenderAfter.damage || 0)}/${defenderAfter.hp}, Damage: ${defenderAfter.damage || 0})`);
     }
 
-    // 攻撃アニメーション
-    await this.animateAttack(attacker, newState);
-
-    // ダメージアニメーションを実行
-    if (defenderElement) {
-        await animationManager.animateDamage(defenderElement);
-    }
+    // 統合バトルアニメーション実行
+    await this._executeUnifiedBattleSequence(newState, attacker, defender, attackIndex);
 
     // きぜつチェックとアニメーション
     const defenderStateBeforeKO = newState.players[defender];
@@ -277,11 +272,11 @@ export class TurnManager {
     newState = Logic.checkForKnockout(newState, defender);
 
     // Check for prize cards after KO (if any)
-    const attackingPlayerState = newState.players[attackingPlayerId];
+    const attackingPlayerState = newState.players[attacker];
     if (attackingPlayerState.prizesToTake > 0) {
         newState.phase = GAME_PHASES.PRIZE_SELECTION;
-        newState.playerToAct = attackingPlayerId; // The player who needs to take prizes
-        newState.prompt.message = `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドカードを選んで取ってください。`;
+        newState.playerToAct = attacker; // The player who needs to take prizes
+        newState.prompt.message = `${attacker === 'player' ? 'あなた' : '相手'}はサイドカードを選んで取ってください。`;
         newState.pendingAction = null; // Clear any pending actions
         return newState; // Stop further processing in this function, wait for prize selection
     }
@@ -537,7 +532,7 @@ export class TurnManager {
   }
 
   /**
-   * CPU攻撃実行
+   * CPU攻撃実行（戦略的AIアルゴリズム搭載）
    */
   async cpuPerformAttack(state) {
     let newState = cloneGameState(state);
@@ -548,10 +543,8 @@ export class TurnManager {
       .filter(attack => Logic.hasEnoughEnergy(activePokemon, attack));
 
     if (usableAttacks.length > 0) {
-      // 簡単なAI: 最もダメージの高い攻撃を選択
-      const bestAttack = usableAttacks.reduce((best, current) => 
-        (current.damage || 0) > (best.damage || 0) ? current : best
-      );
+      // 戦略的AI: 最適な攻撃を選択
+      const bestAttack = this._selectBestAttack(newState, usableAttacks, activePokemon);
 
       newState.phase = GAME_PHASES.CPU_ATTACK;
       newState.pendingAction = {
@@ -566,6 +559,167 @@ export class TurnManager {
     }
 
     return newState;
+  }
+
+  /**
+   * 戦略的攻撃選択アルゴリズム
+   */
+  _selectBestAttack(state, usableAttacks, attacker) {
+    const defender = state.players.player.active;
+    let bestAttack = usableAttacks[0];
+    let bestScore = -1;
+    
+    for (const attack of usableAttacks) {
+      let score = this._calculateAttackScore(state, attack, attacker, defender);
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestAttack = attack;
+      }
+    }
+    
+    return bestAttack;
+  }
+
+  /**
+   * 攻撃の戦略的スコア計算
+   */
+  _calculateAttackScore(state, attack, attacker, defender) {
+    if (!defender) return 0;
+    
+    let score = 0;
+    const baseDamage = attack.damage || 0;
+    
+    // 1. 基本ダメージスコア
+    score += baseDamage * 10;
+    
+    // 2. 弱点ボーナス（大幅加点）
+    if (defender.weakness && Array.isArray(defender.weakness)) {
+      const attackerType = attacker.types?.[0];
+      const hasWeakness = defender.weakness.some(w => w.type === attackerType);
+      if (hasWeakness) {
+        score += 300; // 弱点攻撃は高優先度
+      }
+    }
+    
+    // 3. 抵抗力ペナルティ
+    if (defender.resistance && Array.isArray(defender.resistance)) {
+      const attackerType = attacker.types?.[0];
+      const hasResistance = defender.resistance.some(r => r.type === attackerType);
+      if (hasResistance) {
+        score -= 100;
+      }
+    }
+    
+    // 4. きぜつ判定（最高優先度）
+    const currentDamage = defender.damage || 0;
+    const potentialDamage = baseDamage; // 簡易計算
+    if (currentDamage + potentialDamage >= defender.hp) {
+      score += 1000; // きぜつできる攻撃は最優先
+    }
+    
+    // 5. 特殊効果による追加スコア
+    if (attack.text_ja) {
+      // 特殊状態を与える攻撃の価値
+      if (attack.text_ja.includes('毒')) score += 50;
+      if (attack.text_ja.includes('火傷')) score += 60;
+      if (attack.text_ja.includes('まひ')) score += 80;
+      if (attack.text_ja.includes('眠り')) score += 70;
+      if (attack.text_ja.includes('混乱')) score += 75;
+      
+      // エネルギー除去系の価値
+      if (attack.text_ja.includes('エネルギー')) score += 40;
+      
+      // ドロー妨害系の価値
+      if (attack.text_ja.includes('手札') || attack.text_ja.includes('山札')) score += 30;
+    }
+    
+    // 6. コスト効率計算
+    const energyCost = (attack.cost || []).length;
+    if (energyCost > 0) {
+      const efficiency = baseDamage / energyCost;
+      score += efficiency * 5;
+    }
+    
+    // 7. 状況判断
+    // 相手のHP残量による戦略
+    const defenderHpRatio = (defender.hp - (defender.damage || 0)) / defender.hp;
+    if (defenderHpRatio < 0.3) {
+      // 相手が瀕死の場合はとどめを優先
+      score += baseDamage * 20;
+    } else if (defenderHpRatio > 0.8) {
+      // 相手が元気な場合は特殊効果重視
+      if (attack.text_ja) score += 100;
+    }
+    
+    // 8. サイド状況による判断
+    const playerPrizesRemaining = state.players.player.prizeRemaining || 6;
+    const cpuPrizesRemaining = state.players.cpu.prizeRemaining || 6;
+    
+    if (playerPrizesRemaining <= 2) {
+      // プレイヤーが勝利寸前なら積極的に攻撃
+      score += 200;
+    }
+    if (cpuPrizesRemaining <= 2) {
+      // 自分が勝利寸前ならきぜつ狙いを重視
+      if (currentDamage + potentialDamage >= defender.hp) {
+        score += 500;
+      }
+    }
+    
+    return score;
+  }
+
+  /**
+   * 統合バトルシーケンスの実行
+   */
+  async _executeUnifiedBattleSequence(state, attackingPlayerId, defendingPlayerId, attackIndex) {
+    const attacker = state.players[attackingPlayerId].active;
+    const defender = state.players[defendingPlayerId].active;
+    const attack = attacker.attacks[attackIndex];
+    
+    if (!attacker || !defender || !attack) return;
+    
+    // ダメージ計算（表示用）
+    const baseDamage = attack.damage || 0;
+    const { damage: finalDamage, modifiers } = Logic.calculateDamageModifiers(baseDamage, attacker, defender);
+    
+    // アニメーションデータ準備
+    const attackData = {
+      attacker,
+      defender,
+      attack,
+      damage: finalDamage,
+      modifiers
+    };
+    
+    try {
+      // 新しい統合アニメーションシステムを使用
+      await unifiedAnimationManager.createUnifiedAttackAnimation(
+        attackingPlayerId, 
+        defendingPlayerId, 
+        attackData
+      );
+      
+      // 画面シェイクエフェクト
+      let shakeIntensity = 'normal';
+      if (modifiers.some(m => m.type === 'weakness')) {
+        shakeIntensity = 'super';
+      } else if (finalDamage >= 80) {
+        shakeIntensity = 'heavy';
+      } else if (finalDamage >= 50) {
+        shakeIntensity = 'normal';
+      } else {
+        shakeIntensity = 'light';
+      }
+      
+      unifiedAnimationManager.createScreenShakeEffect(shakeIntensity);
+      
+    } catch (error) {
+      console.error('❌ Error in unified battle sequence:', error);
+      // フォールバック: 基本アニメーション
+      await this.animateAttack(attackingPlayerId, state);
+    }
   }
 
   /**
