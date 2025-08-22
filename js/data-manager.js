@@ -203,6 +203,9 @@ export function getCardImagePath(cardNameEn, card = null) {
 /**
  * 名前翻訳マップ
  */
+// グローバルに公開（他のモジュールから使用可能にする）
+window.getCardImagePath = getCardImagePath;
+
 export const nameTranslations = {
     "Akamayabato": "アカメバト",
     "Cat exv": "猫exv",

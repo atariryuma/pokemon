@@ -828,6 +828,7 @@ export class Game {
         switch (this.state.phase) {
             case GAME_PHASES.SETUP:
             case GAME_PHASES.INITIAL_POKEMON_SELECTION:
+            case GAME_PHASES.PRIZE_CARD_SETUP:  // CPUが先に準備完了した場合
                 await this._handleSetupCardClick(dataset);
                 break;
                 
@@ -1451,14 +1452,16 @@ export class Game {
         if (!card) return;
 
         if (card.card_type === 'Pokémon' && card.stage === 'BASIC') {
-            // たねポケモンをベンチに出す - 重要な意思決定なので中央モーダル
+            // たねポケモンをベンチに出す - 既存のカード情報システムを活用
+            const cardInfoHtml = this._generateBenchPlacementModal(card);
             await this.view.showInteractiveMessage(
-                `「${card.name_ja}」をベンチに出しますか？`,
+                cardInfoHtml,
                 [
                     { text: 'はい', callback: () => this._placeOnBench(cardId) },
                     { text: 'いいえ', callback: () => {} }
                 ],
-                'central'
+                'central',
+                true // allowHtml = true
             );
         } else if (card.card_type === 'Basic Energy' || card.card_type === 'Energy') {
             // エネルギーを付ける
@@ -1509,6 +1512,55 @@ export class Game {
             await this._attachEnergy(this.state.pendingAction.sourceCardId, pokemonId);
         }
         // その他のインタラクションは今後実装
+    }
+
+    /**
+     * ベンチ配置確認用モーダルのHTMLを生成（view.jsのカード情報システムを活用）
+     */
+    _generateBenchPlacementModal(card) {
+        // カード画像部分
+        const imageHtml = `
+            <div class="flex-shrink-0 w-48 max-w-[35%]">
+                <img src="${this._getCardImagePath(card)}" 
+                     alt="${card.name_ja}" 
+                     class="w-full h-auto max-h-72 object-contain rounded-md border border-gray-700"
+                     onerror="this.src='assets/ui/card_back.webp'; this.onerror=null;" />
+            </div>
+        `;
+
+        // カード詳細情報部分（view.jsのメソッドを活用）
+        const cardInfoHtml = this.view._generateCardInfoHtml(card);
+        const detailsHtml = `
+            <div class="flex-grow text-left text-[13px] leading-snug space-y-2 min-w-0 overflow-hidden">
+                ${cardInfoHtml}
+            </div>
+        `;
+
+        // 確認メッセージ
+        const confirmationHtml = `
+            <div class="mt-4 pt-3 border-t border-gray-600 text-center">
+                <p class="text-white font-bold text-base mb-2">「${card.name_ja}」をベンチに出しますか？</p>
+                <p class="text-gray-400 text-sm">一度ベンチに出すとバトル場以外では取り下げることはできません。</p>
+            </div>
+        `;
+
+        // 全体のレイアウト
+        return `
+            <div class="flex flex-col md:flex-row gap-4 items-start max-w-full overflow-hidden">
+                ${imageHtml}
+                ${detailsHtml}
+            </div>
+            ${confirmationHtml}
+        `;
+    }
+
+    /**
+     * カード画像パスを取得（View層と統一）
+     */
+    _getCardImagePath(card) {
+        // data-manager.jsのgetCardImagePath関数と同じロジック
+        const { getCardImagePath } = window;
+        return getCardImagePath ? getCardImagePath(card.name_en, card) : 'assets/ui/card_back.webp';
     }
 
     /**
@@ -2503,23 +2555,18 @@ export class Game {
         
         // サイドカード配布の状態更新（レンダリングはアニメーション後）
         let newState = await this.setupManager.confirmSetup(this.state);
-        this.state = newState; // 状態のみ更新、レンダリングはまだしない
+        this._updateState(newState); // 状態更新とレンダリング
         
-        // サイドカード配布が完了した後でプレイヤー側アニメーションのみ実行
-        if (newState.phase === GAME_PHASES.GAME_START_READY) {
-            noop('🎯 Prize cards setup completed, starting PLAYER animation only');
-            
-            // 1. プレイヤー側サイドカードアニメーション実行
-            noop('🔥 About to call _animatePlayerPrizeCardSetup');
-            await this._animatePlayerPrizeCardSetup();
-            noop('✅ Player prize card animation completed');
-            
-            // 2. プレイヤー側アニメーション完了後のメッセージ
-            this.view.showGameMessage('あなたのサイドカード配布完了！相手の準備を待っています...');
-            
-            // Note: ゲームスタートボタンの表示は _checkBothPrizeAnimationsComplete() で処理される
-            // CPU側のアニメーションはCPUポケモン配置完了時に自動実行される
-        }
+        // プレイヤー側サイドカードアニメーション実行
+        noop('🔥 About to call _animatePlayerPrizeCardSetup');
+        await this._animatePlayerPrizeCardSetup();
+        noop('✅ Player prize card animation completed');
+        
+        // プレイヤー側アニメーション完了をマーク
+        this.prizeAnimationStatus.player = true;
+        
+        // 両者準備完了チェック（setup-manager経由）
+        this.setupManager._checkBothPlayersReady();
     }
 
     /**

@@ -43,6 +43,9 @@ export class View {
         // 手札エリア全体のクリック保護
         if (this.playerHand) {
             this.playerHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
+            console.log('🔗 Player hand click handler bound to element:', this.playerHand);
+        } else {
+            console.error('❌ Player hand element not found during initialization');
         }
         // CPU手札はクリック無効（プレイヤー操作対象外）
 
@@ -1297,14 +1300,16 @@ export class View {
      * @param {string} message - 表示するメッセージ
      * @param {Array<Object>} actions - { text: string, callback: Function } の配列
      * @param {string} [type='central'] - 表示タイプ: 'central'(中央モーダル), 'panel'(右パネル), 'toast'(通知)
+     * @param {boolean} [allowHtml=false] - HTMLレンダリングを許可するかどうか
      */
-    showInteractiveMessage(message, actions, type = 'central') {
+    showInteractiveMessage(message, actions, type = 'central', allowHtml = false) {
         // 重要な意思決定は中央モーダルで表示
         if (type === 'central' && actions.length > 0) {
             modalManager.showCentralModal({
                 title: null,
                 message,
                 actions,
+                allowHtml: allowHtml,
                 closable: actions.length === 0 // アクションがない場合のみクローズ可能
             });
             return;
