@@ -1,17 +1,16 @@
 import { getCardImagePath } from './data-manager.js';
 import { animationManager } from './unified-animations.js';
 import { GAME_PHASES } from './phase-manager.js';
-import { CardOrientationManager } from './card-orientation.js';
-import { BUTTON_IDS, CONTAINER_IDS, ACTION_BUTTON_GROUPS, CSS_CLASSES } from './ui-constants.js';
+import { BUTTON_IDS, CONTAINER_IDS, CSS_CLASSES } from './ui-constants.js';
 import { errorHandler } from './error-handler.js';
-import { modalManager, MODAL_TYPES } from './modal-manager.js';
+import { modalManager } from './modal-manager.js';
 
-// Z-index定数 (CSS変数と連携)
+// Z-index定数 (CSS変数と連携) - 最小限に削減
 const Z_INDEX = {
-    HAND_EFFECT: '59',        // 手札エフェクト (--z-selected + 1)
-    HAND_MAX_EFFECT: '60',    // 手札最大エフェクト (--z-selected + 2)
-    DAMAGE_COUNTER: '30',     // ダメージカウンター (--z-placeholder)
-    MODAL_TEMP: '100'         // 一時的モーダル表示 (--z-modals)
+    HAND: '50',               // 手札通常（--z-hand）
+    HAND_HOVER: '55',         // 手札ホバー（--z-hand-hover）
+    CARD_EFFECTS: '40',       // カード付与効果（--z-card-effects）
+    MODAL_TEMP: '100'         // 一時的モーダル表示（--z-modals）
 };
 
 const noop = () => {};
@@ -73,6 +72,7 @@ export class View {
         // Message system
 
         // Initialize Mac Dock–style magnification for player's hand (delayed)
+        // HoverManagerと統合してz-index管理を最適化
         setTimeout(() => {
             this._initHandDock();
         }, 1000);
@@ -244,8 +244,8 @@ export class View {
 
     render(state) {
         this._clearBoard();
-        this._renderBoard(this.playerBoard, state.players.player, 'player', state);
-        this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu', state);
+        this._renderBoard(this.playerBoard, state.players.player, 'player');
+        this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu');
         this._renderHand(this.playerHand, state.players.player.hand, 'player');
         this._renderHand(this.cpuHand, state.players.cpu.hand, 'cpu');
         this._renderStadium(state);
@@ -274,7 +274,7 @@ export class View {
         if (this.cpuHand) this.cpuHand.innerHTML = '';
     }
     
-    _renderBoard(boardElement, playerState, playerType, state) {
+    _renderBoard(boardElement, playerState, playerType) {
         if (!boardElement) return;
 
         const safePlayer = playerState || {};
@@ -390,13 +390,11 @@ export class View {
             // 基本的な表示設定のみ（Mac Dock効果は後で追加）
             handSlot.style.visibility = 'visible';
             handSlot.style.display = 'flex';
-            handSlot.style.zIndex = Z_INDEX.HAND_EFFECT;
+            handSlot.style.zIndex = Z_INDEX.HAND;
             handSlot.style.position = 'relative';
             handSlot.style.opacity = '1'; // Always visible by default
             
             handSlot.appendChild(cardEl);
-            
-            
             handElement.appendChild(handSlot);
         });
         
@@ -404,7 +402,6 @@ export class View {
         if (handElement.children.length > 0) {
             handElement.offsetHeight; // Force reflow
             
-            // プレイヤー手札の場合のみMac Dock効果を適用と高さ調整
             if (playerType === 'player') {
                 this._applyHandDockEffect(handElement);
                 this._adjustHandHeight(handElement);
@@ -494,7 +491,7 @@ export class View {
                 el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
                 el.style.marginLeft = `${BASE_GAP}px`;
                 el.style.marginRight = `${BASE_GAP}px`;
-                el.style.zIndex = Z_INDEX.HAND_EFFECT;
+                el.style.zIndex = Z_INDEX.HAND;
             });
             
             // アニメーションフラグをクリア（必要に応じて）
@@ -526,9 +523,8 @@ export class View {
                     maxEl = el;
                 }
             });
-            // Raise stacking for the card closest to the cursor  
-            cards.forEach(el => { el.style.zIndex = Z_INDEX.HAND_EFFECT; });
-            if (maxEl) maxEl.style.zIndex = Z_INDEX.HAND_MAX_EFFECT;
+            cards.forEach(el => { el.style.zIndex = Z_INDEX.HAND; });
+            if (maxEl) maxEl.style.zIndex = Z_INDEX.HAND_HOVER;
         };
 
         const onMove = (e) => {
@@ -573,7 +569,7 @@ export class View {
         });
         
         // グローバルマウス移動でも確認
-        document.addEventListener('mousemove', (e) => {
+        document.addEventListener('mousemove', () => {
             if (!isMouseOverHand) {
                 // 手札エリア外では必ずリセット状態を保持
                 const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active)');
@@ -821,7 +817,7 @@ export class View {
             // 右クリックで詳細表示
             container.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                this.showCardInfo(card, e.currentTarget);
+                this.showCardInfo(card);
             });
             
             // 左クリック詳細表示を無効化（右クリックのみ）
@@ -832,7 +828,7 @@ export class View {
             damageCounter.className = 'absolute top-1 right-1 bg-red-600 text-white text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center';
             damageCounter.textContent = card.damage;
             damageCounter.style.pointerEvents = 'none';
-            damageCounter.style.zIndex = Z_INDEX.DAMAGE_COUNTER;
+            damageCounter.style.zIndex = Z_INDEX.CARD_EFFECTS;
             container.appendChild(damageCounter);
         }
 
@@ -842,22 +838,24 @@ export class View {
     /**
      * Show detailed card information in a side panel next to the card.
      * @param {Object} card - カードデータ
-     * @param {HTMLElement} targetElement - 参照するカード要素
      */
-    showCardInfo(card, targetElement) {
+    showCardInfo(card) {
         if (!card) return;
 
         // 新モーダルシステムで中央に表示（左画像 / 右情報）
         const imageHtml = `
-          <div class="flex-shrink-0 w-56">
-            <img src="${getCardImagePath(card.name_en)}" alt="${card.name_ja}" class="w-full h-auto rounded-md border border-gray-700" />
+          <div class="flex-shrink-0 w-48 max-w-[40%]">
+            <img src="${getCardImagePath(card.name_en)}" 
+                 alt="${card.name_ja}" 
+                 class="w-full h-auto max-h-64 object-contain rounded-md border border-gray-700"
+                 onerror="this.src='assets/ui/card_back.webp'; this.onerror=null;" />
           </div>
         `;
         const detailsHtml = `
-          <div class="flex-grow text-left text-[13px] leading-snug space-y-3">${this._generateCardInfoHtml(card)}</div>
+          <div class="flex-grow text-left text-[13px] leading-snug space-y-3 min-w-0 overflow-hidden">${this._generateCardInfoHtml(card)}</div>
         `;
         const contentHtml = `
-          <div class="flex flex-row gap-5 items-start">
+          <div class="flex flex-col md:flex-row gap-4 items-start max-w-full overflow-hidden">
             ${imageHtml}
             ${detailsHtml}
           </div>
@@ -1222,7 +1220,7 @@ export class View {
      * アクションHUDを表示（フローティングHUDにリダイレクト）
      * 右パネルではなく左下のフローティングHUDを使用
      */
-    showActionHUD({ actions, title }) {
+    showActionHUD() {
         // フローティングHUDを使用するため、game.jsの _showPlayerMainActions で処理
         noop('🎯 showActionHUD called - handled by floating HUD system');
     }
@@ -1254,7 +1252,7 @@ export class View {
     }
 
     // Action Buttons (Floating HUD System - Direct Management)
-    showActionButtons(buttonsToShow = []) {
+    showActionButtons() {
         noop('📋 showActionButtons called - managed directly by game.js floating HUD system');
         // フローティングボタンは game.js の _showFloatingActionButton で直接管理
     }

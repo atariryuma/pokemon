@@ -44,36 +44,33 @@
            Z-INDEX統一管理システム
            ========================================== */
         :root {
-            /* === 基本レイヤー === */
+            /* === レイヤー1: プレイマット系 (5-15) === */
             --z-board-bg: 5;        /* 背景画像 */
             --z-board: 10;          /* ゲームボード基底 */
-            --z-slots: 15;          /* カードスロット */
+            --z-placeholder: 12;    /* プレースホルダー（空スロット） */
+            --z-placeholder-hover: 15; /* プレースホルダーホバー */
             
-            /* === 手札システム === */
-            --z-hand-area: 20;      /* 手札エリア */
-            --z-hand-cards: 25;     /* 手札カード */
-            --z-placeholder: 30;    /* プレースホルダー */
+            /* === レイヤー2: カード系 (20-45) === */
+            --z-deck-effects: 20;   /* 山札・サイド影エフェクト */
+            --z-deck-hover: 22;     /* 山札ホバー（レイヤー内浮上） */
+            --z-card: 25;           /* 1枚カード通常 */
+            --z-card-hover: 30;     /* 1枚カードホバー */
+            --z-card-effects: 40;   /* カード付与効果（ダメージ等） */
             
-            /* === サイドエフェクト === */
-            --z-side-stack-3: 35;   /* サイドカード最背面 */
-            --z-side-stack-2: 36;   /* サイドカード中間 */
-            --z-side-stack-1: 37;   /* サイドカード最前面 */
-            --z-deck-effects: 38;   /* デッキエフェクト */
+            /* === レイヤー3: 手札特別系 (50-58) === */
+            --z-hand: 50;           /* プレイヤー手札通常 */
+            --z-hand-hover: 55;     /* プレイヤー手札ホバー */
             
-            /* === インタラクション === */
-            --z-effects-base: 40;   /* 基本エフェクト */
-            --z-animations: 50;     /* アニメーション */
-            --z-hover: 55;          /* ホバー効果 */
-            --z-selected: 58;       /* 選択状態 */
-            --z-highlight: 60;      /* ハイライト */
+            /* === レイヤー4: アニメーション系 (60-78) === */
+            --z-animations: 60;     /* 移動アニメーション */
+            --z-selected: 65;       /* 選択状態 */
+            --z-highlight: 70;      /* ハイライト効果 */
             
-            /* === UI・HUD === */
+            /* === レイヤー5: UI・HUD系 (80-110) === */
             --z-hud-base: 80;       /* HUD基本 */
             --z-panels: 85;         /* パネル */
             --z-floating-hud: 90;   /* フローティングHUD */
             --z-toast: 95;          /* トースト通知 */
-            
-            /* === モーダル === */
             --z-modals: 100;        /* 中央モーダル */
             --z-critical: 110;      /* 致命的エラー */
         }
@@ -227,7 +224,7 @@
         /* 手札カード */
         #player-hand .hand-slot {
             pointer-events: auto;
-            z-index: var(--z-hand-cards);
+            z-index: var(--z-hand);
         }
 
         /* 手札カードの表示を強制 */
@@ -333,7 +330,7 @@
             transform: translateY(-8px) scale(1.08);
             border-color: #4dd0fd;
             box-shadow: 0 0 25px #4dd0fd80;
-            z-index: var(--z-hover);
+            z-index: var(--z-card-hover);
         }
 
         /* JSで制御するホバーエフェクト用クラス */
@@ -341,7 +338,7 @@
             transform: translateY(-8px) scale(1.08);
             border-color: #4dd0fd;
             box-shadow: 0 0 25px #4dd0fd80;
-            z-index: var(--z-hover);
+            z-index: var(--z-hand-hover);
         }
 
         /* --- 全体の transform-style を設定 --- */
@@ -382,15 +379,14 @@
         
         /* CPU側の空スロット - 統合ルールで制御 */
 
-        /* Enhanced hover effects for stacked cards */
         .side-cards-container .card-slot:hover {
             transform: translateY(-12px) scale(1.15);
-            z-index: var(--z-hover);
+            z-index: var(--z-deck-hover);
         }
 
         .deck-container:hover {
             transform: translateY(-6px) scale(1.05);
-            z-index: var(--z-hover);
+            z-index: var(--z-deck-hover);
         }
 
         .deck-container:hover .deck-stack::before {
@@ -671,6 +667,8 @@
             z-index: var(--z-selected);
         }
 
+
+
         .slot-highlight {
             box-shadow: 0 0 15px #22c55e80;
             border: 2px dashed #22c55e;
@@ -783,6 +781,7 @@
                 0 0 30px rgba(252, 211, 77, 0.4), /* Yellow glow */
                 inset 0 2px 4px rgba(255, 255, 255, 0.2),
                 inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+            -webkit-backdrop-filter: blur(15px);
             backdrop-filter: blur(15px);
             position: relative;
         }
@@ -832,6 +831,7 @@
             box-shadow: 
                 0 4px 8px rgba(0, 0, 0, 0.2),
                 inset 0 1px 2px rgba(255, 255, 255, 0.1);
+            -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px);
         }
 
@@ -874,19 +874,19 @@
 
         /* Hand Dock (Mac Dock-like magnification) */
         #player-hand.hand-dock {
-            user-select: none;
             -webkit-user-select: none;
+            user-select: none;
             contain: layout paint;
             overflow: visible;
             pointer-events: auto;
-            z-index: var(--z-hand-cards);
+            z-index: var(--z-hand);
             transform: none;
             will-change: auto;
         }
         
         /* プレイヤー手札のシンプルなスタイル */
         #player-hand {
-            z-index: var(--z-hand-cards);
+            z-index: var(--z-hand);
             pointer-events: auto;
             transform: none;
             will-change: auto;
@@ -921,7 +921,7 @@
 
         /* CPU手札も前面に（操作透過） */
         #cpu-hand {
-            z-index: var(--z-hand-cards);
+            z-index: var(--z-hand);
             pointer-events: none;
             transform: none;
             will-change: auto;
@@ -929,6 +929,7 @@
 
         button {
             /* background-color: rgba(255, 255, 255, 0.1); */ /* Base color from Tailwind classes */
+            -webkit-backdrop-filter: blur(5px); /* Subtle blur for buttons */
             backdrop-filter: blur(5px); /* Subtle blur for buttons */
             border: 1px solid rgba(255, 255, 255, 0.2); /* Light border */
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Soft shadow */
@@ -984,6 +985,7 @@
                 0 6px 20px rgba(0, 0, 0, 0.3),
                 0 0 15px rgba(252, 211, 77, 0.4),
                 inset 0 2px 4px rgba(255, 255, 255, 0.3);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             min-width: 140px;
         }
@@ -1361,7 +1363,7 @@
         /* カードハイライトスタイル */
         .card-highlighted {
             position: relative;
-            z-index: var(--z-modals) !important;
+            z-index: var(--z-highlight) !important;
         }
         
         .card-highlighted::after {
@@ -1373,7 +1375,7 @@
             bottom: -2px;
             background: linear-gradient(45deg, #ffd700, #ffed4a, #ffd700);
             border-radius: 8px;
-            z-index: var(--z-hand-cards);
+            z-index: var(--z-highlight);
             animation: pulse-glow 1.5s ease-in-out infinite alternate;
         }
         
@@ -1393,6 +1395,7 @@
         /* 中央モーダル - 重要な意思決定用 */
         .central-modal {
             z-index: var(--z-modals);
+            -webkit-backdrop-filter: blur(4px);
             backdrop-filter: blur(4px);
             background: rgba(0, 0, 0, 0.75);
         }
@@ -1401,7 +1404,12 @@
             background: linear-gradient(135deg, rgba(31, 41, 55, 0.98), rgba(17, 24, 39, 0.98));
             border: 1px solid rgba(75, 85, 99, 0.5);
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(77, 208, 253, 0.3);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
+            max-width: 90vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            word-wrap: break-word;
         }
 
         .central-modal-content:hover {
@@ -1417,6 +1425,7 @@
 
         .toast-item {
             pointer-events: auto;
+            -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1447,6 +1456,7 @@
             z-index: var(--z-floating-hud);
             background: linear-gradient(135deg, rgba(31, 41, 55, 0.95), rgba(17, 24, 39, 0.95));
             border: 1px solid rgba(75, 85, 99, 0.6);
+            -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(77, 208, 253, 0.2);
             pointer-events: none; /* クリックを下の要素に通す */
@@ -1719,7 +1729,7 @@
 <body class="min-h-screen flex items-center justify-center text-white p-4">
 
     <!-- CPU Hand -->
-    <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 flex justify-center items-center p-2 gap-x-1 z-10">
+    <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 flex justify-center items-center p-2 gap-x-1" style="z-index: var(--z-hand);">
         <!-- CPUの手札はここに動的に追加されます -->
     </div>
 
@@ -1870,32 +1880,32 @@
 <div class="scroll-spacer" aria-hidden="true"></div>
 
 <!-- Floating Action HUD (Bottom-left) -->
-<div id="floating-action-hud" class="fixed bottom-6 left-6 flex flex-col gap-3 z-100 pokemon-action-hud">
-    <button id="confirm-setup-button-float" class="pokemon-action-btn hidden">
+<div id="floating-action-hud" class="fixed bottom-6 left-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
+    <button type="button" id="confirm-setup-button-float" class="pokemon-action-btn hidden">
         <span class="pokemon-btn-icon">✅</span>
         <span class="pokemon-btn-text">ポケモン配置を確定</span>
     </button>
-    <button id="retreat-button-float" class="pokemon-action-btn hidden">
+    <button type="button" id="retreat-button-float" class="pokemon-action-btn hidden">
         <span class="pokemon-btn-icon">🏃</span>
         <span class="pokemon-btn-text">にげる</span>
     </button>
-    <button id="attack-button-float" class="pokemon-action-btn hidden">
+    <button type="button" id="attack-button-float" class="pokemon-action-btn hidden">
         <span class="pokemon-btn-icon">⚔️</span>
         <span class="pokemon-btn-text">攻撃</span>
     </button>
-    <button id="end-turn-button-float" class="pokemon-action-btn hidden">
+    <button type="button" id="end-turn-button-float" class="pokemon-action-btn hidden">
         <span class="pokemon-btn-icon">🔄</span>
         <span class="pokemon-btn-text">ターン終了</span>
     </button>
 </div>
 
 <!-- Player Hand -->
-<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: 10px; z-index: var(--z-slots); overflow: visible; pointer-events: none;">
+<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: 10px; z-index: var(--z-hand); overflow: visible; pointer-events: none;">
     <!-- プレイヤーの手札はここに動的に追加されます -->
 </div>
 
 <!-- Card Info Panel -->
-<div id="card-info-panel" class="hidden fixed z-50"></div>
+<div id="card-info-panel" class="hidden fixed" style="z-index: var(--z-panels);"></div>
 
 
 
@@ -2119,7 +2129,7 @@
         });
     </script>
     <!-- Action Modal -->
-    <div id="action-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100]">
+    <div id="action-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center" style="z-index: var(--z-modals);">
         <div class="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl p-6 w-full max-w-md m-4 transform transition-all duration-300 ease-out scale-95 opacity-0">
             <h3 id="modal-title" class="text-2xl font-bold text-white mb-4"></h3>
             <p id="modal-body" class="text-gray-300 mb-6"></p>

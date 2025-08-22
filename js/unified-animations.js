@@ -552,9 +552,9 @@ export class UnifiedAnimationManager {
    * 画面シェイクエフェクト（ダメージ量に応じて強度可変）
    */
   async animateScreenShake(damage = 0) {
-    // ダメージ量に応じてシェイク強度を計算
-    const intensity = Math.min(Math.max(damage / 20, 1), 8); // 1-8の範囲
-    const duration = Math.min(300 + damage * 2, 800); // 300-800msの範囲
+    // ダメージ量に応じてシェイク強度を計算（小刻み調整）
+    const intensity = Math.min(Math.max(damage / 40, 0.5), 4); // 0.5-4の範囲（半減）
+    const duration = Math.min(200 + damage * 1.5, 600); // 200-600msの範囲（短縮）
     
     const gameBoard = document.getElementById('game-board') || document.body;
     const originalTransform = gameBoard.style.transform || '';
@@ -571,8 +571,9 @@ export class UnifiedAnimationManager {
           return;
         }
         
-        const offsetX = (Math.random() - 0.5) * intensity;
-        const offsetY = (Math.random() - 0.5) * intensity;
+        // 上下小刻み地震風エフェクト（X軸移動なし、Y軸のみ）
+        const offsetX = 0; // X軸移動を無効化
+        const offsetY = (Math.random() - 0.5) * Math.min(intensity * 0.5, 2); // Y軸のみ、最大±2px
         gameBoard.style.transform = `${originalTransform} translate(${offsetX}px, ${offsetY}px)`;
         
         shakeCount++;

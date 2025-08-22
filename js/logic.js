@@ -442,30 +442,76 @@ export function checkForKnockout(state, defendingPlayerId) {
     // ベンチにポケモンがいるかチェック
     const hasBenchPokemon = defenderState.bench.some(p => p !== null);
 
+    // プレイヤー種別による処理分離
+    if (defendingPlayerId === 'player') {
+        // プレイヤー気絶: 手動ベンチ選択
+        newState = {
+            ...newState,
+            phase: hasBenchPokemon ? GAME_PHASES.AWAITING_NEW_ACTIVE : newState.phase,
+            playerToAct: hasBenchPokemon ? defendingPlayerId : null,
+            prompt: {
+                message: hasBenchPokemon 
+                    ? `あなたのバトルポケモンがきぜつした。ベンチから新しいポケモンを選んでください。`
+                    : newState.prompt?.message,
+            },
+        };
+    } else {
+        // CPU気絶: 自動ベンチ選択
+        if (hasBenchPokemon) {
+            // 最初の有効なベンチポケモンを自動選択
+            const newActiveIndex = defenderState.bench.findIndex(p => p !== null);
+            const newActive = defenderState.bench[newActiveIndex];
+            const newBench = [...defenderState.bench];
+            newBench[newActiveIndex] = null;
+            
+            newState = {
+                ...newState,
+                players: {
+                    ...newState.players,
+                    [defendingPlayerId]: {
+                        ...defenderState,
+                        active: newActive,
+                        bench: newBench,
+                        discard: newDiscard,
+                    }
+                }
+            };
+            newState = addLogEntry(newState, { message: `相手は${newActive.name_ja}をバトル場に出した。` });
+        } else {
+            newState = {
+                ...newState,
+                prompt: {
+                    message: newState.prompt?.message,
+                },
+            };
+        }
+    }
+
+    // プライズ処理（共通）
+    const prizeCount = defender.rule_box === 'ex' || defender.rule_box === 'V' || defender.rule_box === 'VMAX' ? 2 : 1;
     newState = {
         ...newState,
-        phase: hasBenchPokemon ? GAME_PHASES.AWAITING_NEW_ACTIVE : newState.phase, // Only change phase if bench has pokemon
-        playerToAct: hasBenchPokemon ? defendingPlayerId : null, // 行動すべきプレイヤーを記録
-        prompt: {
-            message: hasBenchPokemon 
-                ? `${defendingPlayerId === 'player' ? 'あなた' : '相手'}のバトルポケモンがきぜつした。ベンチから新しいポケモンを選んでください。`
-                : newState.prompt?.message,
-        },
         players: {
             ...newState.players,
-            [defendingPlayerId]: {
-                ...defenderState,
-                active: null,
-                discard: newDiscard,
-            },
+            [defendingPlayerId]: defendingPlayerId === 'player' && hasBenchPokemon 
+                ? newState.players[defendingPlayerId] // プレイヤーの場合は既に処理済み
+                : {
+                    ...defenderState,
+                    active: defendingPlayerId === 'cpu' && hasBenchPokemon 
+                        ? newState.players[defendingPlayerId].active // CPU自動選択済み
+                        : null,
+                    bench: defendingPlayerId === 'cpu' && hasBenchPokemon 
+                        ? newState.players[defendingPlayerId].bench // CPU自動選択済み
+                        : defenderState.bench,
+                    discard: newDiscard,
+                },
             [attackingPlayerId]: {
                 ...attackerState,
-                prizeRemaining: attackerState.prizeRemaining - (defender.rule_box === 'ex' || defender.rule_box === 'V' || defender.rule_box === 'VMAX' ? 2 : 1),
-                prizesToTake: (attackerState.prizesToTake || 0) + (defender.rule_box === 'ex' || defender.rule_box === 'V' || defender.rule_box === 'VMAX' ? 2 : 1),
+                prizeRemaining: attackerState.prizeRemaining - prizeCount,
+                prizesToTake: (attackerState.prizesToTake || 0) + prizeCount,
             },
         },
     };
-    const prizeCount = defender.rule_box === 'ex' || defender.rule_box === 'V' || defender.rule_box === 'VMAX' ? 2 : 1;
     newState = addLogEntry(newState, { message: `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドを${prizeCount}枚とった！` });
     return newState;
 }
