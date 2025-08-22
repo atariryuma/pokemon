@@ -14,11 +14,19 @@ export class ActionHUDManager {
         this.buttonStates = new Map();
         this.buttonHandlers = new Map();
         
+        // 処理中フラグとdebounce管理
+        this.processingButtons = new Set();
+        this.debounceTimers = new Map();
+        this.lastClickTimes = new Map();
+        
         // HUDコンテナの参照
         this.hudContainer = null;
         
         // 初期化フラグ
         this.isInitialized = false;
+        
+        // デバッグログ設定
+        this.debugEnabled = true;
     }
 
     /**
@@ -315,6 +323,21 @@ export class ActionHUDManager {
         const button = document.getElementById(buttonId);
         if (!button) return;
 
+        // 処理中の場合は強制終了
+        if (this.processingButtons.has(buttonId)) {
+            this.processingButtons.delete(buttonId);
+            this._setButtonProcessingState(buttonId, false);
+            if (this.debugEnabled) {
+                console.warn(`⚠️ Force cleared processing button: ${buttonId}`);
+            }
+        }
+
+        // debounce timer クリア
+        if (this.debounceTimers.has(buttonId)) {
+            clearTimeout(this.debounceTimers.get(buttonId));
+            this.debounceTimers.delete(buttonId);
+        }
+
         // 既存のハンドラーを削除
         if (this.buttonHandlers.has(buttonId)) {
             const oldHandler = this.buttonHandlers.get(buttonId);
@@ -324,6 +347,9 @@ export class ActionHUDManager {
 
         // onclickもクリア
         button.onclick = null;
+        
+        // 最後のクリック時間もクリア
+        this.lastClickTimes.delete(buttonId);
     }
 
     /**
@@ -335,10 +361,51 @@ export class ActionHUDManager {
         const button = document.getElementById(buttonId);
         if (!button) return;
 
-        const wrappedCallback = (e) => {
+        const wrappedCallback = async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            callback();
+            
+            // デバッグログ
+            if (this.debugEnabled) {
+                console.log(`🔘 Button clicked: ${buttonId}`);
+            }
+            
+            // 処理中チェック
+            if (this.processingButtons.has(buttonId)) {
+                if (this.debugEnabled) {
+                    console.warn(`⚠️ Button ${buttonId} is already processing, ignoring click`);
+                }
+                return;
+            }
+            
+            // Debounce チェック（500ms間隔）
+            const now = Date.now();
+            const lastClick = this.lastClickTimes.get(buttonId) || 0;
+            if (now - lastClick < 500) {
+                if (this.debugEnabled) {
+                    console.warn(`⚠️ Button ${buttonId} debounced, ignoring rapid click`);
+                }
+                return;
+            }
+            
+            // 処理開始
+            this.processingButtons.add(buttonId);
+            this.lastClickTimes.set(buttonId, now);
+            this._setButtonProcessingState(buttonId, true);
+            
+            try {
+                await callback();
+            } catch (error) {
+                console.error(`❌ Error in button ${buttonId} callback:`, error);
+            } finally {
+                // 処理完了
+                this.processingButtons.delete(buttonId);
+                this._setButtonProcessingState(buttonId, false);
+                
+                if (this.debugEnabled) {
+                    console.log(`✅ Button ${buttonId} processing completed`);
+                }
+            }
         };
 
         button.addEventListener('click', wrappedCallback);
@@ -356,6 +423,71 @@ export class ActionHUDManager {
         }
         if (options.icon) {
             this.updateButtonIcon(button.id, options.icon);
+        }
+    }
+
+    /**
+     * ボタンの処理中状態を設定
+     * @param {string} buttonId - ボタンID
+     * @param {boolean} isProcessing - 処理中フラグ
+     */
+    _setButtonProcessingState(buttonId, isProcessing) {
+        const button = document.getElementById(buttonId);
+        if (!button) return;
+
+        if (isProcessing) {
+            // 処理中のUIフィードバック
+            button.style.opacity = '0.6';
+            button.style.cursor = 'wait';
+            button.disabled = true;
+            
+            // スピナーアイコンの追加（オプション）
+            const existingSpinner = button.querySelector('.processing-spinner');
+            if (!existingSpinner) {
+                const spinner = document.createElement('div');
+                spinner.className = 'processing-spinner inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2';
+                const textElement = button.querySelector('.pokemon-btn-text');
+                if (textElement) {
+                    textElement.parentNode.insertBefore(spinner, textElement);
+                }
+            }
+        } else {
+            // 処理完了のUIリセット
+            button.style.opacity = '';
+            button.style.cursor = '';
+            button.disabled = false;
+            
+            // スピナーアイコンの削除
+            const spinner = button.querySelector('.processing-spinner');
+            if (spinner) {
+                spinner.remove();
+            }
+        }
+
+        // 状態の更新
+        const state = this.buttonStates.get(buttonId) || {};
+        state.processing = isProcessing;
+        this.buttonStates.set(buttonId, state);
+    }
+
+    /**
+     * 全ボタンの処理状態をリセット（エラー回復用）
+     */
+    resetAllButtonStates() {
+        this.processingButtons.clear();
+        this.debounceTimers.forEach(timer => clearTimeout(timer));
+        this.debounceTimers.clear();
+        this.lastClickTimes.clear();
+        
+        // 全ボタンの視覚状態もリセット
+        this.buttonStates.forEach((state, buttonId) => {
+            if (state.processing) {
+                this._setButtonProcessingState(buttonId, false);
+            }
+        });
+        
+        if (this.debugEnabled) {
+            console.log('🔄 All button states reset');
         }
     }
 }

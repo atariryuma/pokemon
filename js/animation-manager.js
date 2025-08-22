@@ -333,7 +333,7 @@ export const animationManager = {
     // 旧メソッドを新APIにリダイレクト
     animateDrawCard: (element) => animate.card.deckToHand('player', null, { element }),
     animateDamage: (element) => animate.combat.damage(50, null, { element }),
-    createUnifiedKnockoutAnimation: (playerId, pokemonId) => animate.combat.knockout(pokemonId),
+    createUnifiedKnockoutAnimation: (playerId, pokemonId) => animate.knockout(pokemonId),
     animateScreenShake: (intensity) => animate.combat.screenShake(intensity),
     
     // 手札エントリー

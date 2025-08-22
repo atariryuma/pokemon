@@ -330,8 +330,12 @@ export class TurnManager {
     const targetId = defenderAfter ? defenderAfter.id : null;
     
     if (targetId) {
+      // Get the actual attacker Pokemon ID
+      const attackerPokemon = newState.players[attacker].active;
+      const attackerId = attackerPokemon ? attackerPokemon.id : null;
+      
       await animate.attackSequence(primaryType.toLowerCase(), finalDamage, targetId, {
-        attackerId: attacker.id,
+        attackerId: attackerId,
         attackIndex
       });
     }
@@ -341,8 +345,8 @@ export class TurnManager {
     const isKnockout = defenderStateBeforeKO.active && defenderStateBeforeKO.active.damage >= defenderStateBeforeKO.active.hp;
     
     if (isKnockout) {
-      // Play knockout animation with new API
-      await animate.combat.knockout(defenderStateBeforeKO.active.id, {
+      // Play knockout animation with unified API
+      await animate.knockout(defenderStateBeforeKO.active.id, {
         playerId: defender
       });
       

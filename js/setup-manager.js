@@ -164,13 +164,10 @@ export class SetupManager {
       message: '両プレイヤーが初期手札を引きました。'
     });
     
-    // 手札配布完了後、1.5秒待機してCPUの初期ポケモン配置を自動実行（非ブロッキング）
-    setTimeout(() => {
-      if (window.gameInstance) {
-        // プレイヤー操作をブロックしない非同期実行
-        this.startNonBlockingCpuSetup();
-      }
-    }, 1500);
+    // 手札配布完了後、Promise-based非同期実行でCPUの初期ポケモン配置
+    this._scheduleCPUInitialSetup().catch(error => {
+      console.error('❌ Error in CPU initial setup:', error);
+    });
     
     // Note: アニメーションはGame.jsでview.render()の後に呼ばれる
     // ここでは状態の更新のみを行い、アニメーションは別途実行する
@@ -704,6 +701,15 @@ export class SetupManager {
     // CPUの初期ポケモンが未配置の場合は自動配置
     if (!newState.players.cpu.active) {
       newState = await this.setupCpuInitialPokemon(newState);
+      
+      // CPU側のポケモン配置完了後、CPU側サイドアニメーションをトリガー
+      if (window.gameInstance && newState.players.cpu.active) {
+        noop('🤖 CPU Pokemon setup completed, triggering CPU prize animation');
+        // Promise-based非同期処理で確実な完了を保証
+        this._scheduleCPUPrizeAnimation().catch(error => {
+          console.error('❌ Error in CPU prize animation:', error);
+        });
+      }
     }
 
     // 両プレイヤーがたねポケモンを持っているか最終確認
@@ -830,6 +836,41 @@ export class SetupManager {
    */
   reset() {
     this.mulliganCount = 0;
+    this.currentSetupPhase = null;
+  }
+
+  /**
+   * CPU初期セットアップのPromise-based スケジューリング
+   * @returns {Promise} セットアップ完了Promise
+   */
+  async _scheduleCPUInitialSetup() {
+    // 1.5秒待機してからCPU設定実行（UX改善のため）
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    if (window.gameInstance) {
+      noop('🤖 Executing CPU initial setup via Promise chain');
+      await this.startNonBlockingCpuSetup();
+      noop('✅ CPU initial setup completed successfully');
+    } else {
+      throw new Error('gameInstance not available for CPU initial setup');
+    }
+  }
+
+  /**
+   * CPU側サイドアニメーションのPromise-based スケジューリング
+   * @returns {Promise} アニメーション完了Promise
+   */
+  async _scheduleCPUPrizeAnimation() {
+    // 1秒待機してからアニメーション実行（UX改善のため）
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    if (window.gameInstance) {
+      noop('🤖 Executing CPU prize animation via Promise chain');
+      await window.gameInstance._animateCPUPrizeCardSetup();
+      noop('✅ CPU prize animation completed successfully');
+    } else {
+      throw new Error('gameInstance not available for CPU prize animation');
+    }
   }
 
   /**

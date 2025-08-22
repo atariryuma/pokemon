@@ -40,6 +40,12 @@ export class Game {
         this.prizeAnimationCompleted = false; // サイドアニメーション完了フラグ
         this.cardRevealAnimationExecuted = false;
         
+        // Prize animation status tracking (separated for player and CPU)
+        this.prizeAnimationStatus = {
+            player: false,  // プレイヤー側サイド配布完了
+            cpu: false      // CPU側サイド配布完了
+        };
+        
         // レンダリング最適化用
         this.renderQueue = [];
         this.isRenderScheduled = false;
@@ -49,18 +55,280 @@ export class Game {
         this.animationQueue = [];
         this.isAnimating = false;
         this.animationPromises = new Set();
+        this.animationCompletionCallbacks = new Map();
     } // End of constructor
 
     _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     } // End of _delay
 
+    /**
+     * アニメーションキューマネージャー
+     * @param {string} animationId - アニメーション識別子
+     * @param {Function} animationFunction - 実行するアニメーション関数
+     * @returns {Promise} アニメーション完了Promise
+     */
+    async _queueAnimation(animationId, animationFunction) {
+        return new Promise((resolve, reject) => {
+            const animationTask = {
+                id: animationId,
+                execute: animationFunction,
+                resolve,
+                reject
+            };
+
+            this.animationQueue.push(animationTask);
+            this._processAnimationQueue();
+        });
+    }
+
+    /**
+     * アニメーションキューの処理
+     */
+    async _processAnimationQueue() {
+        if (this.isAnimating || this.animationQueue.length === 0) {
+            return;
+        }
+
+        this.isAnimating = true;
+        const task = this.animationQueue.shift();
+
+        try {
+            noop(`🎬 Starting animation: ${task.id}`);
+            await task.execute();
+            noop(`✅ Animation completed: ${task.id}`);
+            task.resolve();
+        } catch (error) {
+            console.error(`❌ Animation failed: ${task.id}`, error);
+            task.reject(error);
+        } finally {
+            this.isAnimating = false;
+            // 次のアニメーションを処理
+            if (this.animationQueue.length > 0) {
+                setTimeout(() => this._processAnimationQueue(), 100);
+            }
+        }
+    }
+
     resetAnimationFlags() {
         this.setupAnimationsExecuted = false;
         this.prizeCardAnimationExecuted = false;
         this.prizeAnimationCompleted = false;
         this.cardRevealAnimationExecuted = false;
+        
+        // Reset prize animation status
+        this.prizeAnimationStatus = {
+            player: false,
+            cpu: false
+        };
+        
         noop('🔄 Animation flags reset');
+    }
+
+    /**
+     * 状態検証システム - ゲーム状態の整合性をチェック
+     * @param {Object} state - 検証対象のゲーム状態
+     * @param {string} context - 検証コンテキスト（エラー追跡用）
+     * @returns {Object} 検証結果と修正済み状態
+     */
+    _validateGameState(state, context = 'unknown') {
+        const validationResult = {
+            isValid: true,
+            errors: [],
+            warnings: [],
+            fixedState: state
+        };
+
+        if (!state) {
+            validationResult.isValid = false;
+            validationResult.errors.push('State is null or undefined');
+            return validationResult;
+        }
+
+        // プレイヤー状態の検証
+        ['player', 'cpu'].forEach(playerId => {
+            const playerResult = this._validatePlayerState(state.players?.[playerId], playerId, context);
+            validationResult.errors.push(...playerResult.errors);
+            validationResult.warnings.push(...playerResult.warnings);
+            
+            if (playerResult.fixedPlayerState) {
+                validationResult.fixedState.players[playerId] = playerResult.fixedPlayerState;
+            }
+        });
+
+        // ゲーム全体状態の検証
+        const globalResult = this._validateGlobalState(state, context);
+        validationResult.errors.push(...globalResult.errors);
+        validationResult.warnings.push(...globalResult.warnings);
+
+        validationResult.isValid = validationResult.errors.length === 0;
+
+        if (validationResult.errors.length > 0) {
+            console.error(`❌ State validation failed in ${context}:`, validationResult.errors);
+        }
+        if (validationResult.warnings.length > 0) {
+            console.warn(`⚠️ State validation warnings in ${context}:`, validationResult.warnings);
+        }
+
+        return validationResult;
+    }
+
+    /**
+     * プレイヤー状態の検証
+     */
+    _validatePlayerState(playerState, playerId, context) {
+        const result = {
+            errors: [],
+            warnings: [],
+            fixedPlayerState: null
+        };
+
+        if (!playerState) {
+            result.errors.push(`Player ${playerId} state is missing`);
+            return result;
+        }
+
+        let fixed = false;
+        const fixedState = { ...playerState };
+
+        // 手札の検証と修復
+        if (!Array.isArray(playerState.hand)) {
+            result.warnings.push(`Player ${playerId} hand is not an array, fixing`);
+            fixedState.hand = [];
+            fixed = true;
+        }
+
+        // デッキの検証と修復
+        if (!Array.isArray(playerState.deck)) {
+            result.warnings.push(`Player ${playerId} deck is not an array, fixing`);
+            fixedState.deck = [];
+            fixed = true;
+        }
+
+        // ベンチの検証と修復
+        if (!Array.isArray(playerState.bench)) {
+            result.warnings.push(`Player ${playerId} bench is not an array, fixing`);
+            fixedState.bench = new Array(5).fill(null);
+            fixed = true;
+        } else if (playerState.bench.length !== 5) {
+            result.warnings.push(`Player ${playerId} bench length incorrect (${playerState.bench.length}), fixing to 5`);
+            fixedState.bench = [...playerState.bench];
+            while (fixedState.bench.length < 5) fixedState.bench.push(null);
+            if (fixedState.bench.length > 5) fixedState.bench = fixedState.bench.slice(0, 5);
+            fixed = true;
+        }
+
+        // サイドカードの検証と修復
+        if (!Array.isArray(playerState.prize)) {
+            result.warnings.push(`Player ${playerId} prize is not an array, fixing`);
+            fixedState.prize = new Array(6).fill(null);
+            fixed = true;
+        } else if (playerState.prize.length !== 6) {
+            result.warnings.push(`Player ${playerId} prize length incorrect (${playerState.prize.length}), fixing to 6`);
+            fixedState.prize = [...playerState.prize];
+            while (fixedState.prize.length < 6) fixedState.prize.push(null);
+            if (fixedState.prize.length > 6) fixedState.prize = fixedState.prize.slice(0, 6);
+            fixed = true;
+        }
+
+        // 捨て札の検証と修復
+        if (!Array.isArray(playerState.discard)) {
+            result.warnings.push(`Player ${playerId} discard is not an array, fixing`);
+            fixedState.discard = [];
+            fixed = true;
+        }
+
+        // prizeRemainingの検証と修復
+        if (typeof playerState.prizeRemaining !== 'number' || playerState.prizeRemaining < 0 || playerState.prizeRemaining > 6) {
+            const actualRemaining = fixedState.prize.filter(p => p !== null).length;
+            result.warnings.push(`Player ${playerId} prizeRemaining incorrect, fixing to ${actualRemaining}`);
+            fixedState.prizeRemaining = actualRemaining;
+            fixed = true;
+        }
+
+        if (fixed) {
+            result.fixedPlayerState = fixedState;
+        }
+
+        return result;
+    }
+
+    /**
+     * グローバル状態の検証
+     */
+    _validateGlobalState(state, context) {
+        const result = {
+            errors: [],
+            warnings: []
+        };
+
+        // フェーズの検証
+        if (!state.phase || typeof state.phase !== 'string') {
+            result.errors.push('Game phase is missing or invalid');
+        }
+
+        // ターン数の検証
+        if (typeof state.turn !== 'number' || state.turn < 1) {
+            result.warnings.push(`Turn number invalid (${state.turn}), should be >= 1`);
+        }
+
+        // プロンプトメッセージの検証
+        if (!state.prompt || typeof state.prompt.message !== 'string') {
+            result.warnings.push('Prompt message is missing or invalid');
+        }
+
+        return result;
+    }
+
+    /**
+     * 包括的デバッグログシステム
+     * @param {string} category - ログカテゴリ
+     * @param {string} message - ログメッセージ
+     * @param {Object} data - 追加データ
+     */
+    _debugLog(category, message, data = null) {
+        if (!this.debugEnabled) return;
+        
+        const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+        const prefix = `[${timestamp}] 🔍 ${category.toUpperCase()}:`;
+        
+        if (data) {
+            console.log(`${prefix} ${message}`, data);
+        } else {
+            console.log(`${prefix} ${message}`);
+        }
+    }
+
+    /**
+     * エラー回復機能 - 中断されたフローの自動復旧
+     */
+    async _recoverFromError(error, context) {
+        console.error(`❌ Error in ${context}:`, error);
+        
+        // ActionHUDの状態をリセット
+        if (this.actionHUDManager) {
+            this.actionHUDManager.resetAllButtonStates();
+        }
+        
+        // アニメーションキューをクリア
+        this.animationQueue = [];
+        this.isAnimating = false;
+        
+        // 基本的なエラーメッセージをユーザーに表示
+        if (this.view) {
+            this.view.showGameMessage('エラーが発生しましたが、ゲームを続行します。');
+        }
+        
+        // 状態の検証と修復を試行
+        if (this.state) {
+            const validation = this._validateGameState(this.state, `error-recovery-${context}`);
+            this.state = validation.fixedState;
+        }
+        
+        this._debugLog('error-recovery', `Recovery attempted for ${context}`, {
+            error: error.message,
+            currentPhase: this.state?.phase
+        });
     }
 
     async init() {
@@ -195,17 +463,30 @@ export class Game {
         };
     }
 
-    async _updateState(newState) {
+    async _updateState(newState, context = 'updateState') {
         const previousPhase = this.state?.phase;
-        this.state = newState;
+        
+        // 状態検証と修復
+        const validation = this._validateGameState(newState, context);
+        if (!validation.isValid) {
+            console.error(`❌ Critical state validation error in ${context}, attempting recovery`);
+            // 重大なエラーの場合、前の状態を保持
+            if (this.state) {
+                console.warn('⚠️ Keeping previous state due to validation failure');
+                return;
+            }
+        }
+        
+        // 修復された状態を使用
+        this.state = validation.fixedState;
         
         // Update phase manager
         const oldPhase = this.phaseManager.currentPhase;
-        this.phaseManager.currentPhase = newState.phase;
+        this.phaseManager.currentPhase = validation.fixedState.phase;
         
         // フェーズ遷移アニメーション（必要な場合のみ）
-        if (oldPhase !== newState.phase) {
-            await this.animate.changePhase(oldPhase, newState.phase);
+        if (oldPhase !== validation.fixedState.phase) {
+            await this.animate.changePhase(oldPhase, validation.fixedState.phase);
         }
         
         // Handle CPU prize selection
@@ -220,6 +501,11 @@ export class Game {
         
         // バッチレンダリングをスケジュール（即座に実行せず、まとめて処理）
         this._scheduleRender();
+        
+        // デバッグログ（重要な状態変更のみ）
+        if (validation.warnings.length > 0 || previousPhase !== validation.fixedState.phase) {
+            noop(`🔄 State updated in ${context}: ${previousPhase} → ${validation.fixedState.phase}`);
+        }
     } // End of _updateState
     
     /**
@@ -2231,32 +2517,20 @@ export class Game {
         let newState = await this.setupManager.confirmSetup(this.state);
         this.state = newState; // 状態のみ更新、レンダリングはまだしない
         
-        // サイドカード配布が完了した後でアニメーション実行
+        // サイドカード配布が完了した後でプレイヤー側アニメーションのみ実行
         if (newState.phase === GAME_PHASES.GAME_START_READY) {
-            noop('🎯 Prize cards setup completed, starting animation');
+            noop('🎯 Prize cards setup completed, starting PLAYER animation only');
             
-            // 1. サイドカードアニメーション実行
-            noop('🔥 About to call _animatePrizeCardSetup');
-            await this._animatePrizeCardSetup();
-            noop('✅ Prize card animation completed');
+            // 1. プレイヤー側サイドカードアニメーション実行
+            noop('🔥 About to call _animatePlayerPrizeCardSetup');
+            await this._animatePlayerPrizeCardSetup();
+            noop('✅ Player prize card animation completed');
             
-            // 2. アニメーション完了後にレンダリング
-            this._updateState(this.state);
+            // 2. プレイヤー側アニメーション完了後のメッセージ
+            this.view.showGameMessage('あなたのサイドカード配布完了！相手の準備を待っています...');
             
-            // 3. アニメーション完了後に準備完了メッセージとスタートボタンを表示
-            await this._delay(500); // アニメーション完了を待つ
-            
-            this.view.showGameMessage(
-                '準備完了！「ゲームスタート」を押してバトルを開始してください。'
-            );
-            
-            // ゲームスタートフェーズのボタンを表示
-            this.actionHUDManager.showPhaseButtons('gameStart', {
-                startActualGame: () => {
-                    noop('🔥 GAME START BUTTON CLICKED - Starting actual game');
-                    this._startActualGame();
-                }
-            });
+            // Note: ゲームスタートボタンの表示は _checkBothPrizeAnimationsComplete() で処理される
+            // CPU側のアニメーションはCPUポケモン配置完了時に自動実行される
         }
     }
 
@@ -2391,8 +2665,8 @@ export class Game {
             // 手札のアニメーション
             await this._animateInitialHandDraw();
             
-            // サイドカードアニメーション
-            await this._animatePrizeCardSetup();
+            // サイドカードアニメーション - 新システムでは個別実行されるためコメントアウト
+            // await this._animatePrizeCardSetup();
             
             // Note: CPUの初期ポケモン配置はプレイヤーの操作後に実行
         } catch (error) {
@@ -2474,33 +2748,31 @@ export class Game {
     }
 
     /**
-     * サイドカード配置アニメーション
+     * プレイヤー側サイドカード配置アニメーション
      */
-    async _animatePrizeCardSetup() {
+    async _animatePlayerPrizeCardSetup() {
         // 重複実行防止
-        if (this.prizeCardAnimationExecuted) {
-            noop('🔄 Prize card animation already executed, skipping');
+        if (this.prizeAnimationStatus.player) {
+            noop('🔄 Player prize card animation already executed, skipping');
             return;
         }
         
-        this.prizeCardAnimationExecuted = true;
-        noop('🎯 Starting prize card animation');
+        noop('🎯 Starting PLAYER prize card animation');
         
         // アニメーション用に裏面カードを事前作成
-        await this._createPrizeBackCardsForAnimation();
+        await this._createPrizeBackCardsForAnimation('player');
         
-        // 実際にカード要素が入っているスロットの子要素を取得
+        // プレイヤー側のサイドスロット要素を取得
         const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
-        const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
 
-        if (playerPrizeSlots.length === 0 || cpuPrizeSlots.length === 0) {
-            console.warn('⚠️ Prize slots not found, skipping animation');
+        if (playerPrizeSlots.length === 0) {
+            console.warn('⚠️ Player prize slots not found, skipping animation');
             return;
         }
 
         const playerPrizeElements = [];
         playerPrizeSlots.forEach((slot) => {
-            const cardElement = slot.querySelector('.relative, .card'); // Use the same selector as original
+            const cardElement = slot.querySelector('.relative, .card');
             if (cardElement) {
                 playerPrizeElements.push(cardElement);
             } else {
@@ -2508,9 +2780,48 @@ export class Game {
             }
         });
 
+        // プレイヤー側のみアニメーション実行
+        if (playerPrizeElements.length > 0) {
+            await animate.prizeDeal(playerPrizeElements, 'player');
+            this.prizeAnimationStatus.player = true;
+            noop('✅ Player prize card animation completed');
+            
+            // プレイヤー側完了後の状態更新
+            this._updateState(this.state);
+            
+            // 両方完了しているかチェック
+            this._checkBothPrizeAnimationsComplete();
+        } else {
+            console.warn('⚠️ No player prize elements found for animation');
+        }
+    }
+
+    /**
+     * CPU側サイドカード配置アニメーション
+     */
+    async _animateCPUPrizeCardSetup() {
+        // 重複実行防止
+        if (this.prizeAnimationStatus.cpu) {
+            noop('🔄 CPU prize card animation already executed, skipping');
+            return;
+        }
+        
+        noop('🎯 Starting CPU prize card animation');
+        
+        // アニメーション用に裏面カードを事前作成
+        await this._createPrizeBackCardsForAnimation('cpu');
+        
+        // CPU側のサイドスロット要素を取得
+        const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
+
+        if (cpuPrizeSlots.length === 0) {
+            console.warn('⚠️ CPU prize slots not found, skipping animation');
+            return;
+        }
+
         const cpuPrizeElements = [];
         cpuPrizeSlots.forEach((slot) => {
-            const cardElement = slot.querySelector('.relative, .card'); // Use the same selector as original
+            const cardElement = slot.querySelector('.relative, .card');
             if (cardElement) {
                 cpuPrizeElements.push(cardElement);
             } else {
@@ -2518,58 +2829,107 @@ export class Game {
             }
         });
 
-        // Animate prize cards using unified system
-        const allPrizePromises = [];
-        
-        if (playerPrizeElements.length > 0) {
-            allPrizePromises.push(animate.prizeDeal(playerPrizeElements, 'player'));
-        } else {
-            console.warn('⚠️ No player prize elements found for animation');
-        }
-
+        // CPU側のみアニメーション実行
         if (cpuPrizeElements.length > 0) {
-            allPrizePromises.push(animate.prizeDeal(cpuPrizeElements, 'cpu'));
+            await animate.prizeDeal(cpuPrizeElements, 'cpu');
+            this.prizeAnimationStatus.cpu = true;
+            noop('✅ CPU prize card animation completed');
+            
+            // CPU側完了後の状態更新
+            this._updateState(this.state);
+            
+            // 両方完了しているかチェック
+            this._checkBothPrizeAnimationsComplete();
         } else {
             console.warn('⚠️ No CPU prize elements found for animation');
         }
+    }
 
-        // Run prize animations in parallel
-        if (allPrizePromises.length > 0) {
-            await Promise.all(allPrizePromises);
-        }
-
-        // サイドアニメーション完了を記録し、再レンダリングして表示
+    /**
+     * サイドカード配置アニメーション（レガシー版、下位互換のため保持）
+     */
+    async _animatePrizeCardSetup() {
+        // 新しい分離されたアニメーションシステムを使用
+        await Promise.all([
+            this._animatePlayerPrizeCardSetup(),
+            this._animateCPUPrizeCardSetup()
+        ]);
+        
+        // レガシーフラグも設定（互換性のため）
+        this.prizeCardAnimationExecuted = true;
         this.prizeAnimationCompleted = true;
-        noop('🎯 Prize card animation completed, re-rendering to show cards');
-        this._updateState(this.state); // 再レンダリングしてサイドカードを表示
+    }
+
+    /**
+     * 両方のサイドアニメーション完了チェック
+     */
+    _checkBothPrizeAnimationsComplete() {
+        const { player, cpu } = this.prizeAnimationStatus;
+        
+        noop('🔍 Checking prize animations completion:', { player, cpu });
+        
+        if (player && cpu) {
+            noop('🎉 Both prize animations completed! Showing game start button');
+            
+            // 両方完了時のメッセージ表示
+            this.view.showGameMessage(
+                '準備完了！「ゲームスタート」を押してバトルを開始してください。'
+            );
+            
+            // ゲームスタートボタンを表示
+            this.actionHUDManager.showPhaseButtons('gameStart', {
+                startActualGame: () => {
+                    noop('🔥 GAME START BUTTON CLICKED - Starting actual game');
+                    this._startActualGame();
+                }
+            });
+            
+            // ログエントリを追加
+            this.state = addLogEntry(this.state, {
+                type: 'all_prize_animations_complete',
+                message: '両陣営のサイドカード配布が完了しました！'
+            });
+            
+        } else if (player && !cpu) {
+            // プレイヤー完了、CPU待ち
+            this.view.showGameMessage('相手の準備を待っています...');
+            
+        } else if (!player && cpu) {
+            // CPU完了、プレイヤー待ち（通常は発生しない）
+            this.view.showGameMessage('あなたの配置確定を待っています...');
+        }
     }
 
     /**
      * アニメーション用に裏面サイドカードを事前作成
+     * @param {string} targetPlayer - 'player', 'cpu', または省略時は両方
      */
-    async _createPrizeBackCardsForAnimation() {
-        noop('🎯 Creating back cards for prize animation');
+    async _createPrizeBackCardsForAnimation(targetPlayer = 'both') {
+        noop(`🎯 Creating back cards for ${targetPlayer} prize animation`);
         
-        const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
-        const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
+        if (targetPlayer === 'player' || targetPlayer === 'both') {
+            // プレイヤー用裏面カード作成
+            const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
+            playerPrizeSlots.forEach((slot, index) => {
+                if (index < 6) {
+                    slot.innerHTML = ''; // 既存内容をクリア
+                    const backCard = this._createPrizeBackCard('player', index);
+                    slot.appendChild(backCard);
+                }
+            });
+        }
         
-        // プレイヤー用裏面カード作成
-        playerPrizeSlots.forEach((slot, index) => {
-            if (index < 6) {
-                slot.innerHTML = ''; // 既存内容をクリア
-                const backCard = this._createPrizeBackCard('player', index);
-                slot.appendChild(backCard);
-            }
-        });
-        
-        // CPU用裏面カード作成
-        cpuPrizeSlots.forEach((slot, index) => {
-            if (index < 6) {
-                slot.innerHTML = ''; // 既存内容をクリア
-                const backCard = this._createPrizeBackCard('cpu', index);
-                slot.appendChild(backCard);
-            }
-        });
+        if (targetPlayer === 'cpu' || targetPlayer === 'both') {
+            // CPU用裏面カード作成
+            const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
+            cpuPrizeSlots.forEach((slot, index) => {
+                if (index < 6) {
+                    slot.innerHTML = ''; // 既存内容をクリア
+                    const backCard = this._createPrizeBackCard('cpu', index);
+                    slot.appendChild(backCard);
+                }
+            });
+        }
         
         // DOM更新を待つ
         await new Promise(resolve => requestAnimationFrame(resolve));
