@@ -77,127 +77,22 @@ class AnimationManager {
     }
 
 
-    /**
-     * 攻撃アニメーション（統一API）
-     */
-    async animateAttack(attackerElement, defenderElement) {
-        return new Promise(resolve => {
-            if (!attackerElement || !defenderElement) return resolve();
-            
-            const atk = attackerElement.querySelector('.relative') || attackerElement;
-            const def = defenderElement.querySelector('.relative') || defenderElement;
-            
-            atk.classList.add('animate-attack');
-            setTimeout(() => {
-                def.classList.add('animate-damage');
-                setTimeout(() => {
-                    atk.classList.remove('animate-attack');
-                    def.classList.remove('animate-damage');
-                    resolve();
-                }, 600);
-            }, 400);
-        });
-    }
+    // ※コンバットアニメーションはcombat.jsとeffects.jsに移管しました
 
     /**
-     * スクリーンシェイクアニメーション
-     */
-    async animateScreenShake(damage = 0) {
-        const intensity = Math.min(Math.max(damage / 40, 0.5), 4);
-        const duration = Math.min(200 + damage * 1.5, 600);
-        
-        const gameBoard = document.getElementById('game-board') || document.body;
-        const originalTransform = gameBoard.style.transform || '';
-        
-        return new Promise(resolve => {
-            let shakeCount = 0;
-            const maxShakes = Math.floor(duration / 50);
-            
-            const shakeInterval = setInterval(() => {
-                if (shakeCount >= maxShakes) {
-                    gameBoard.style.transform = originalTransform;
-                    clearInterval(shakeInterval);
-                    resolve();
-                    return;
-                }
-                
-                const offsetY = (Math.random() - 0.5) * Math.min(intensity * 0.5, 2);
-                gameBoard.style.transform = `${originalTransform} translateY(${offsetY}px)`;
-                
-                shakeCount++;
-            }, 50);
-        });
-    }
-
-    /**
-     * タイプ別攻撃エフェクト
-     */
-    async animateTypeBasedAttack(attackerElement, defenderElement, energyType = 'Colorless') {
-        const effects = {
-            Fire: { color: '#ff4444', effect: 'flame' },
-            Water: { color: '#4488ff', effect: 'water' },
-            Lightning: { color: '#ffff44', effect: 'electric' },
-            Grass: { color: '#44ff44', effect: 'leaf' },
-            Psychic: { color: '#ff44ff', effect: 'psychic' },
-            Fighting: { color: '#ff8844', effect: 'fighting' },
-            Darkness: { color: '#444444', effect: 'dark' },
-            Metal: { color: '#888888', effect: 'metal' },
-            Fairy: { color: '#ffaaff', effect: 'fairy' },
-            Dragon: { color: '#4444ff', effect: 'dragon' },
-            Colorless: { color: '#ffffff', effect: 'normal' }
-        };
-        
-        const effect = effects[energyType] || effects.Colorless;
-        
-        // 攻撃者にタイプカラーのグロー効果
-        if (attackerElement) {
-            attackerElement.style.boxShadow = `0 0 20px ${effect.color}`;
-            attackerElement.style.transition = 'box-shadow 0.3s ease';
-            
-            setTimeout(() => {
-                attackerElement.style.boxShadow = '';
-            }, 600);
-        }
-        
-        // 守備側にタイプエフェクト
-        if (defenderElement) {
-            const overlay = document.createElement('div');
-            overlay.className = 'absolute inset-0 pointer-events-none';
-            overlay.style.background = `radial-gradient(circle, ${effect.color}33 0%, transparent 70%)`;
-            overlay.style.animation = 'pulse 0.5s ease-in-out';
-            
-            defenderElement.style.position = 'relative';
-            defenderElement.appendChild(overlay);
-            
-            setTimeout(() => {
-                overlay.remove();
-            }, 500);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-    }
-
-    /**
-     * カードハイライト表示
+     * カードハイライト表示（UIアニメーションと統合）
      */
     highlightCard(cardElement) {
         if (!cardElement) return;
-        
-        cardElement.classList.add('card-highlighted');
-        cardElement.style.transform = 'scale(1.05)';
-        cardElement.style.transition = 'transform 200ms ease, box-shadow 200ms ease';
-        cardElement.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
+        return this.execute(() => this.ui.highlight(cardElement, true));
     }
 
     /**
-     * カードハイライト解除
+     * カードハイライト解除（UIアニメーションと統合）
      */
     unhighlightCard(cardElement) {
         if (!cardElement) return;
-        
-        cardElement.classList.remove('card-highlighted');
-        cardElement.style.transform = '';
-        cardElement.style.boxShadow = '';
+        return this.execute(() => this.ui.highlight(cardElement, false));
     }
 
     /**
@@ -285,48 +180,33 @@ class AnimationManager {
 
     /**
      * 攻撃アニメーション（統一API）
-     * 優先順位: combat.js → フォールバック
+     * combat.jsの高度なアニメーションを使用
      */
     async attack(attackerType, damage, targetId, options = {}) {
-        try {
-            // まず combat.js の高度な攻撃アニメーションを試す
-            return await this.execute(() => this.combat.attack(attackerType, damage, targetId, options));
-        } catch (error) {
-            console.warn('Combat animation failed, using fallback:', error);
-            // フォールバック: 基本的な攻撃アニメーション
-            const attackerElement = options.attackerElement || this.findPokemonElement(options.attackerId);
-            const defenderElement = this.findPokemonElement(targetId);
-            return this.execute(() => this.animateAttack(attackerElement, defenderElement));
-        }
+        return await this.execute(() => this.combat.attack(attackerType, damage, targetId, options));
     }
 
     /**
      * ダメージアニメーション（統一API）
-     * 優先順位: combat.js → フォールバック
+     * combat.jsの高度なアニメーションを使用
      */
     async damage(damage, targetId, options = {}) {
-        try {
-            // まず combat.js の高度なダメージアニメーションを試す
-            return await this.execute(() => this.combat.damage(damage, targetId));
-        } catch (error) {
-            console.warn('Combat damage animation failed, using fallback:', error);
-            // フォールバック: 基本的なスクリーンシェイク
-            return this.execute(() => this.animateScreenShake(damage));
-        }
+        return await this.execute(() => this.combat.damage(damage, targetId));
     }
 
     /**
      * スクリーンシェイク（統一API）
      */
     async screenShake(damage = 0) {
-        return this.execute(() => this.animateScreenShake(damage));
+        const intensity = Math.min(Math.max(damage / 50, 0.5), 3.0);
+        return this.execute(() => this.combat.screenShake(intensity));
     }
 
     /**
      * タイプ別攻撃エフェクト（統一API）
      */
     async typeAttack(attackerElement, defenderElement, energyType = 'Colorless') {
-        return this.execute(() => this.animateTypeBasedAttack(attackerElement, defenderElement, energyType));
+        return this.execute(() => this.combat.typeEffect(energyType.toLowerCase(), defenderElement, attackerElement));
     }
 
     /**
@@ -373,6 +253,13 @@ class AnimationManager {
      */
     async attachEnergy(energyType, pokemonId, options = {}) {
         return this.execute(() => this.effect.energy(energyType, pokemonId, options));
+    }
+
+    /**
+     * 特殊状態の適用
+     */
+    async applySpecialCondition(pokemonId, condition) {
+        return this.execute(() => this.effect.condition(condition, pokemonId));
     }
 
     /**
@@ -723,18 +610,36 @@ export const unifiedAnimationManager = {
     // 戦闘系
     animateTypeBasedAttack: (attackerEl, defenderEl, type) => {
         const targetId = defenderEl?.dataset?.cardId;
-        return animate.combat.typeEffect(type, document.querySelector(`[data-card-id="${targetId}"]`));
+        return animate.combat.typeEffect(type.toLowerCase(), defenderEl, attackerEl);
     },
     
-    animateScreenShake: (damage) => animate.combat.screenShake(damage / 50),
+    animateScreenShake: (damage) => {
+        const intensity = Math.min(Math.max(damage / 50, 0.5), 3.0);
+        return animate.combat.screenShake(intensity);
+    },
+    
+    // 特殊状態系
+    animateSpecialCondition: (condition, pokemonId) => {
+        return animate.effect.condition(condition, pokemonId);
+    },
     
     // UI系
     animatePhaseTransition: (from, to) => animate.ui.phase(from, to),
     
-    // エネルギー配布
+    // エネルギー系
     animateEnergyAttach: (energyCardElement, pokemonElement) => {
         if (!energyCardElement || !pokemonElement) return Promise.resolve();
         
+        const energyType = energyCardElement.dataset?.energyType || 'colorless';
+        const pokemonId = pokemonElement.dataset?.cardId;
+        
+        if (pokemonId) {
+            return animate.effect.energy(energyType, pokemonId, {
+                energyCardId: energyCardElement.dataset?.cardId
+            });
+        }
+        
+        // フォールバック: 旧アニメーション
         return new Promise(resolve => {
             const img = energyCardElement.querySelector('img') || energyCardElement;
             img.classList.add('animate-energy-attach');

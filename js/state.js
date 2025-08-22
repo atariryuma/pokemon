@@ -20,14 +20,22 @@ function createDeck() {
     const pokemon = cardMasterList.filter(c => c.card_type === 'Pokémon');
     for (let i = 0; i < 20; i++) {
         const randomPokemon = pokemon[Math.floor(Math.random() * pokemon.length)];
-        deck.push({ ...randomPokemon, id: `card-${cardId++}` });
+        // Create a copy and add unique runtime ID while preserving original card's id
+        deck.push({ 
+            ...randomPokemon, 
+            runtimeId: `card-${cardId++}` // For runtime tracking, keep original id for template
+        });
     }
 
     // Add Energy
     const energy = cardMasterList.filter(c => c.card_type === 'Basic Energy');
     for (let i = 0; i < 40; i++) {
         const randomEnergy = energy[Math.floor(Math.random() * energy.length)];
-        deck.push({ ...randomEnergy, id: `card-${cardId++}` });
+        // Create a copy and add unique runtime ID while preserving original card's id
+        deck.push({ 
+            ...randomEnergy, 
+            runtimeId: `card-${cardId++}` // For runtime tracking, keep original id for template
+        });
     }
 
     return shuffle(deck);

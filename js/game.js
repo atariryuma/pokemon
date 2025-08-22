@@ -89,8 +89,8 @@ export class Game {
             noop('🎨 Rendering initial game state with deck...');
             this.view.render(this.state);
 
-            // Show game start message instead of auto-starting
-            this.setupManager.showGameStartModal(this.view);
+            // Show game start message and enable action HUD button
+            this.view.showGameMessage('手札を7枚引くボタンを押してゲームを開始してください。');
             
             // Make game instance globally accessible for modal callbacks
             window.gameInstance = this;
@@ -523,6 +523,27 @@ export class Game {
                 noop('✅ Floating end turn button handler bound');
             } else {
                 noop('⚠️ Floating end turn button not found');
+            }
+
+            // 初期ゲーム開始ボタン（手札を7枚引く）
+            const initialStartButton = document.getElementById('start-game-button-float');
+            if (initialStartButton) {
+                // 既存のハンドラーをクリア
+                initialStartButton.onclick = null;
+                
+                // 新しいハンドラーを設定
+                initialStartButton.addEventListener('click', async () => {
+                    console.log('🎴 Initial game start button clicked - dealing 7 cards');
+                    try {
+                        await this.setupManager.handleStartDealCards();
+                        console.log('✅ handleStartDealCards completed');
+                    } catch (error) {
+                        console.error('❌ Error in handleStartDealCards:', error);
+                    }
+                });
+                noop('✅ Initial game start button handler bound');
+            } else {
+                noop('⚠️ Initial game start button not found');
             }
         };
 

@@ -83,12 +83,51 @@ export class CombatAnimations extends AnimationCore {
      * タイプ別攻撃エフェクト
      * @param {string} type - ポケモンタイプ
      * @param {Element} targetElement - 対象要素
+     * @param {Element} attackerElement - 攻撃者要素（オプション）
      */
-    async typeEffect(type, targetElement) {
+    async typeEffect(type, targetElement, attackerElement = null) {
         if (!targetElement) return;
 
-        const effectClass = `anim-type-${type.toLowerCase()}`;
-        await this.animate(targetElement, effectClass, ANIMATION_TIMING.combat);
+        const effects = {
+            fire: { color: '#ff4444', effect: 'flame' },
+            water: { color: '#4488ff', effect: 'water' },
+            lightning: { color: '#ffff44', effect: 'electric' },
+            grass: { color: '#44ff44', effect: 'leaf' },
+            psychic: { color: '#ff44ff', effect: 'psychic' },
+            fighting: { color: '#ff8844', effect: 'fighting' },
+            darkness: { color: '#444444', effect: 'dark' },
+            metal: { color: '#888888', effect: 'metal' },
+            fairy: { color: '#ffaaff', effect: 'fairy' },
+            dragon: { color: '#4444ff', effect: 'dragon' },
+            colorless: { color: '#ffffff', effect: 'normal' }
+        };
+        
+        const effect = effects[type.toLowerCase()] || effects.colorless;
+        
+        // 攻撃者にタイプカラーのグロー効果
+        if (attackerElement) {
+            attackerElement.style.boxShadow = `0 0 20px ${effect.color}`;
+            attackerElement.style.transition = 'box-shadow 0.3s ease';
+            
+            this.scheduleCleanup(() => {
+                attackerElement.style.boxShadow = '';
+            }, 600);
+        }
+        
+        // 守備側にタイプエフェクト
+        const overlay = document.createElement('div');
+        overlay.className = 'absolute inset-0 pointer-events-none';
+        overlay.style.background = `radial-gradient(circle, ${effect.color}33 0%, transparent 70%)`;
+        overlay.style.animation = 'pulse 0.5s ease-in-out';
+        
+        targetElement.style.position = 'relative';
+        targetElement.appendChild(overlay);
+        
+        this.scheduleCleanup(() => {
+            overlay.remove();
+        }, 500);
+        
+        await this.delay(300);
     }
 
     /**
@@ -131,9 +170,40 @@ export class CombatAnimations extends AnimationCore {
         }
     }
 
+    /**
+     * 特殊状態エフェクト
+     * @param {string} condition - 特殊状態名
+     * @param {string} pokemonId - 対象ポケモンID
+     */
+    async specialCondition(condition, pokemonId) {
+        const pokemonElement = this.findPokemonElement(pokemonId);
+        if (!pokemonElement) return;
+
+        const conditionEffects = {
+            poisoned: { color: '#9c27b0', animation: 'anim-condition-poison' },
+            burned: { color: '#ff5722', animation: 'anim-condition-burn' },
+            asleep: { color: '#3f51b5', animation: 'anim-condition-sleep' },
+            paralyzed: { color: '#ffeb3b', animation: 'anim-condition-paralyze' },
+            confused: { color: '#e91e63', animation: 'anim-condition-confuse' }
+        };
+        
+        const effect = conditionEffects[condition.toLowerCase()];
+        if (!effect) return;
+        
+        // 特殊状態の視覚効果を適用
+        pokemonElement.style.boxShadow = `0 0 15px ${effect.color}`;
+        await this.animate(pokemonElement, effect.animation, ANIMATION_TIMING.normal);
+        
+        // エフェクトをクリーンアップ
+        this.scheduleCleanup(() => {
+            pokemonElement.style.boxShadow = '';
+        }, 1000);
+    }
+
     // ヘルパー関数
     findPokemonElement(pokemonId) {
-        return document.querySelector(`[data-card-id="${pokemonId}"]`);
+        return document.querySelector(`[data-card-id="${pokemonId}"]`) ||
+               document.querySelector(`[data-pokemon-id="${pokemonId}"]`);
     }
 
     findHPElement(pokemonId) {

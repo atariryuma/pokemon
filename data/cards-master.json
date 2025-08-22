@@ -1,25 +1,36 @@
 [
   {
-    "card_type": "Pokémon",
+    "id": "01",
     "name_en": "Akamayabato",
     "name_ja": "アカメバト",
-    "stage": "BASIC",
+    "card_type": "Pokemon",
+    "stage": "Basic",
     "hp": 130,
-    "type": "Colorless",
+    "types": [
+      "Colorless"
+    ],
+    "weakness": [
+      {
+        "type": "Darkness",
+        "value": "×2"
+      }
+    ],
+    "resistance": {
+      "type": "None"
+    },
+    "retreat_cost": 1,
     "attacks": [
       {
-        "name_en": "Scratch",
         "name_ja": "ひっかく",
+        "name_en": "Scratch",
         "cost": [
           "Lightning"
         ],
-        "damage": 90,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 90
       },
       {
-        "name_en": "Recover",
         "name_ja": "回ふく",
+        "name_en": "Recover",
         "cost": [
           "Lightning",
           "Grass",
@@ -27,29 +38,18 @@
           "Colorless"
         ],
         "damage": 0,
-        "effect_en": "Fully heal this Pokémon. The opponent's next attack does 70 less damage.",
-        "effect_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。"
+        "text_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。",
+        "text_en": "Fully heal this Pokémon. The opponent's next attack does 70 less damage."
       }
     ],
-    "ability": null,
-    "weakness": {
-      "type": "Darkness",
-      "value": "×2"
-    },
-    "resistance": {
-      "type": "None",
-      "value": ""
-    },
-    "retreat_cost": 1,
-    "image": ""
+    "image_file": "Akamayabato.webp"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Cat exv",
     "name_ja": "猫exv",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 200,
-    "type": "Colorless",
     "attacks": [
       {
         "name_en": "Assault",
@@ -61,8 +61,8 @@
           "Colorless"
         ],
         "damage": 150,
-        "effect_en": "Set the opponent's attack to 0. Their next attack also does 0 damage.",
-        "effect_ja": "相手の攻撃を0にする。次の攻撃も0にする。"
+        "text_en": "Set the opponent's attack to 0. Their next attack also does 0 damage.",
+        "text_ja": "相手の攻撃を0にする。次の攻撃も0にする。"
       },
       {
         "name_en": "Slam",
@@ -71,30 +71,33 @@
           "Colorless",
           "Colorless"
         ],
-        "damage": 80,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 80
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fighting",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fighting",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "None",
       "value": ""
     },
     "retreat_cost": 2,
-    "image": ""
+    "image": "",
+    "types": [
+      "Colorless"
+    ],
+    "id": "002"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Glasswing Butterfly Larva",
     "name_ja": "イシガケチョウ 幼虫",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 30,
-    "type": "Grass",
     "attacks": [
       {
         "name_en": "Pound",
@@ -102,9 +105,7 @@
         "cost": [
           "Grass"
         ],
-        "damage": 10,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 10
       },
       {
         "name_en": "Evade",
@@ -114,29 +115,34 @@
           "Colorless"
         ],
         "damage": 0,
-        "effect_en": "Reduce the opponent's next attack by 50.",
-        "effect_ja": "相手の次の攻撃を50小さくする。"
+        "text_en": "Reduce the opponent's next attack by 50.",
+        "text_ja": "相手の次の攻撃を50小さくする。"
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Grass"
+    ],
+    "id": "003"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Glasswing Butterfly Larva",
     "name_ja": "イシガケチョウ 幼虫",
-    "stage": "STAGE1",
+    "stage": "Stage1",
     "hp": 50,
-    "type": "Grass",
     "attacks": [
       {
         "name_en": "Leaf Munch",
@@ -147,8 +153,8 @@
           "Water"
         ],
         "damage": 40,
-        "effect_en": "If used, this attack does 50 more damage.",
-        "effect_ja": "このワザを使ったなら、＋50ダメージ。"
+        "text_en": "If used, this attack does 50 more damage.",
+        "text_ja": "このワザを使ったなら、＋50ダメージ。"
       },
       {
         "name_en": "Charge",
@@ -157,30 +163,33 @@
           "Lightning",
           "Lightning"
         ],
-        "damage": 50,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 50
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Grass"
+    ],
+    "id": "004"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Glasswing Butterfly",
     "name_ja": "イシガケチョウ",
-    "stage": "STAGE2",
+    "stage": "Stage2",
     "hp": 70,
-    "type": "Grass",
     "attacks": [
       {
         "name_en": "Gust",
@@ -189,9 +198,7 @@
           "Grass",
           "Colorless"
         ],
-        "damage": 30,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 30
       },
       {
         "name_en": "Nectar Sip",
@@ -202,29 +209,34 @@
           "Colorless"
         ],
         "damage": 60,
-        "effect_en": "Heal 50 HP from this Pokémon.",
-        "effect_ja": "自分のHPを50回ふくする。"
+        "text_en": "Heal 50 HP from this Pokémon.",
+        "text_ja": "自分のHPを50回ふくする。"
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Grass"
+    ],
+    "id": "005"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Kobane Inago",
     "name_ja": "コバネイナゴ",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 50,
-    "type": "Grass",
     "attacks": [
       {
         "name_en": "Charge",
@@ -232,35 +244,38 @@
         "cost": [
           "Fire"
         ],
-        "damage": 60,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 60
       }
     ],
     "ability": {
       "name_en": "Hide",
       "name_ja": "隠れる",
-      "effect_en": "Negate the next 5 attacks from the opponent.",
-      "effect_ja": "相手の次の5回の攻撃を無効化する。"
+      "text_en": "Negate the next 5 attacks from the opponent.",
+      "text_ja": "相手の次の5回の攻撃を無効化する。"
     },
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Grass"
+    ],
+    "id": "006"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Orange Spider",
     "name_ja": "オレンジぐも",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 30,
-    "type": "Grass",
     "attacks": [
       {
         "name_en": "Spit Silk",
@@ -269,35 +284,38 @@
           "Grass",
           "Colorless"
         ],
-        "damage": 40,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 40
       }
     ],
     "ability": {
       "name_en": "Set Web",
       "name_ja": "糸をはる",
-      "effect_en": "Negate the opponent's next attack.",
-      "effect_ja": "相手の次の攻撃を無効化する。"
+      "text_en": "Negate the opponent's next attack.",
+      "text_ja": "相手の次の攻撃を無効化する。"
     },
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Grass"
+    ],
+    "id": "007"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Tsumamurasaki Madara",
     "name_ja": "つまむらさきまだら",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 190,
-    "type": "Psychic",
     "attacks": [
       {
         "name_en": "Wing Beat",
@@ -307,35 +325,38 @@
           "Colorless",
           "Colorless"
         ],
-        "damage": 100,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 100
       }
     ],
     "ability": {
       "name_en": "Cheat",
       "name_ja": "チート",
-      "effect_en": "Take one of your Prize cards.",
-      "effect_ja": "自分のサイドを1つとる。"
+      "text_en": "Take one of your Prize cards.",
+      "text_ja": "自分のサイドを1つとる。"
     },
-    "weakness": {
-      "type": "Darkness",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Darkness",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 2,
-    "image": ""
+    "image": "",
+    "types": [
+      "Psychic"
+    ],
+    "id": "008"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Grey Dagger Moth Larva",
     "name_ja": "ハイイロヒトリの幼虫",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 90,
-    "type": "Grass",
     "attacks": [
       {
         "name_en": "Poison Spray",
@@ -345,8 +366,8 @@
           "Darkness"
         ],
         "damage": 50,
-        "effect_en": "The opponent becomes Poisoned.",
-        "effect_ja": "相手をどく状態にする。"
+        "text_en": "The opponent becomes Poisoned.",
+        "text_ja": "相手をどく状態にする。"
       },
       {
         "name_en": "Heal",
@@ -358,29 +379,34 @@
           "Colorless"
         ],
         "damage": 10,
-        "effect_en": "Flip 2 coins. If both are heads, fully heal this Pokémon.",
-        "effect_ja": "コインを2回投げ、すべてオモテなら、HPをすべて回ふく。"
+        "text_en": "Flip 2 coins. If both are heads, fully heal this Pokémon.",
+        "text_ja": "コインを2回投げ、すべてオモテなら、HPをすべて回ふく。"
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Grass"
+    ],
+    "id": "009"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Short-horned Grasshopper",
     "name_ja": "ショウヨウバッタ",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 80,
-    "type": "Grass",
     "attacks": [
       {
         "name_en": "Jump",
@@ -389,8 +415,8 @@
           "Grass"
         ],
         "damage": 10,
-        "effect_en": "If in danger, it leaps away to escape.",
-        "effect_ja": "あぶなくなったら、とびはねてにげる。"
+        "text_en": "If in danger, it leaps away to escape.",
+        "text_ja": "あぶなくなったら、とびはねてにげる。"
       },
       {
         "name_en": "Slam",
@@ -400,29 +426,34 @@
           "Colorless"
         ],
         "damage": 10,
-        "effect_en": "Flip 2 coins. For each heads, add +20 damage.",
-        "effect_ja": "コインを2回投げ、オモテの数×20ダメージ追加。"
+        "text_en": "Flip 2 coins. For each heads, add +20 damage.",
+        "text_ja": "コインを2回投げ、オモテの数×20ダメージ追加。"
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 2,
-    "image": ""
+    "image": "",
+    "types": [
+      "Grass"
+    ],
+    "id": "010"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Haiirohitori",
     "name_ja": "ハイイロヒトリ",
-    "stage": "STAGE1",
+    "stage": "Stage1",
     "hp": 120,
-    "type": "Psychic",
     "attacks": [
       {
         "name_en": "Attack Up",
@@ -434,8 +465,8 @@
           "Darkness"
         ],
         "damage": 120,
-        "effect_en": "Flip a coin. If heads, this attack does 60 more damage.",
-        "effect_ja": "コインを1回投げ、オモテならこの攻撃は+60ダメージ。"
+        "text_en": "Flip a coin. If heads, this attack does 60 more damage.",
+        "text_ja": "コインを1回投げ、オモテならこの攻撃は+60ダメージ。"
       },
       {
         "name_en": "Charge",
@@ -445,29 +476,34 @@
           "Colorless"
         ],
         "damage": 10,
-        "effect_en": "Skip 2 turns; on the 3rd turn this attack does +150 damage.",
-        "effect_ja": "2ターンスキップ。3ターン目に＋150ダメージ。"
+        "text_en": "Skip 2 turns; on the 3rd turn this attack does +150 damage.",
+        "text_ja": "2ターンスキップ。3ターン目に＋150ダメージ。"
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Darkness",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Darkness",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Psychic"
+    ],
+    "id": "011"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Tateha Butterfly",
     "name_ja": "タテハチョウ",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 90,
-    "type": "Fire",
     "attacks": [
       {
         "name_en": "Startle",
@@ -478,8 +514,8 @@
           "Fire"
         ],
         "damage": 120,
-        "effect_en": "The opponent skips their next 2 turns.",
-        "effect_ja": "相手は次の2ターンをとばす。"
+        "text_en": "The opponent skips their next 2 turns.",
+        "text_ja": "相手は次の2ターンをとばす。"
       },
       {
         "name_en": "Hide",
@@ -487,30 +523,33 @@
         "cost": [
           "Darkness"
         ],
-        "damage": 30,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 30
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Grass",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Grass",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 2,
-    "image": ""
+    "image": "",
+    "types": [
+      "Fire"
+    ],
+    "id": "012"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Caterpillar exz",
     "name_ja": "毛虫exz",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 200,
-    "type": "Fighting",
     "attacks": [
       {
         "name_en": "Thunderbolt",
@@ -522,8 +561,8 @@
           "Fire"
         ],
         "damage": 200,
-        "effect_en": "Negates the opponent's attack.",
-        "effect_ja": "相手の攻撃をむこう。"
+        "text_en": "Negates the opponent's attack.",
+        "text_ja": "相手の攻撃をむこう。"
       },
       {
         "name_en": "Poison Sting",
@@ -531,30 +570,33 @@
         "cost": [
           "Colorless"
         ],
-        "damage": 120,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 120
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Water",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Water",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "None",
       "value": ""
     },
     "retreat_cost": 2,
-    "image": ""
+    "image": "",
+    "types": [
+      "Fighting"
+    ],
+    "id": "013"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Taiwan Clouded Yellow",
     "name_ja": "タイワンキチョウ",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 90,
-    "type": "Water",
     "attacks": [
       {
         "name_en": "Butterfly Swarm",
@@ -564,8 +606,8 @@
           "Grass"
         ],
         "damage": 60,
-        "effect_en": "Add +100 damage to your attack.",
-        "effect_ja": "自分の攻撃に＋100ダメージ。"
+        "text_en": "Add +100 damage to your attack.",
+        "text_ja": "自分の攻撃に＋100ダメージ。"
       },
       {
         "name_en": "Jump",
@@ -575,30 +617,33 @@
           "Darkness",
           "Fire"
         ],
-        "damage": 30,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 30
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Lightning",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Lightning",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Water"
+    ],
+    "id": "014"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Kurohime Crane Fly",
     "name_ja": "クロヒメガガンボモドキ",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 110,
-    "type": "Colorless",
     "attacks": [
       {
         "name_en": "Guard",
@@ -607,8 +652,8 @@
           "Psychic"
         ],
         "damage": 0,
-        "effect_en": "Reduce the opponent's attack by 20.",
-        "effect_ja": "相手の攻撃を20小さくする。"
+        "text_en": "Reduce the opponent's attack by 20.",
+        "text_ja": "相手の攻撃を20小さくする。"
       },
       {
         "name_en": "Jump",
@@ -616,30 +661,33 @@
         "cost": [
           "Grass"
         ],
-        "damage": 10,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 10
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Psychic",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Psychic",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Grass",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Colorless"
+    ],
+    "id": "015"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Snail",
     "name_ja": "カタツムリ",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 80,
-    "type": "Fire",
     "attacks": [
       {
         "name_en": "Guard",
@@ -649,8 +697,8 @@
           "Grass"
         ],
         "damage": 0,
-        "effect_en": "Negates the opponent's attack.",
-        "effect_ja": "相手の攻撃をむこう。"
+        "text_en": "Negates the opponent's attack.",
+        "text_ja": "相手の攻撃をむこう。"
       },
       {
         "name_en": "Tackle",
@@ -659,30 +707,33 @@
           "Colorless",
           "Colorless"
         ],
-        "damage": 60,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 60
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Water",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Water",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "None",
       "value": ""
     },
     "retreat_cost": 2,
-    "image": ""
+    "image": "",
+    "types": [
+      "Fire"
+    ],
+    "id": "016"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Bee ex",
     "name_ja": "ミツバチex",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 190,
-    "type": "Darkness",
     "attacks": [
       {
         "name_en": "Nectar Sip",
@@ -693,8 +744,8 @@
           "Colorless"
         ],
         "damage": 100,
-        "effect_en": "Fully heal and deal +30 more damage.",
-        "effect_ja": "ぜん回ふくし、＋30ダメージ。"
+        "text_en": "Fully heal and deal +30 more damage.",
+        "text_ja": "ぜん回ふくし、＋30ダメージ。"
       },
       {
         "name_en": "Poison Spray",
@@ -702,30 +753,33 @@
         "cost": [
           "Darkness"
         ],
-        "damage": 90,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 90
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Grass",
       "value": "-20"
     },
     "retreat_cost": 2,
-    "image": ""
+    "image": "",
+    "types": [
+      "Darkness"
+    ],
+    "id": "017"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Hosohari Stinkbug ex",
     "name_ja": "ホソヘリカメムシex",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 180,
-    "type": "Water",
     "attacks": [
       {
         "name_en": "Stealth Attack",
@@ -736,8 +790,8 @@
           "Colorless"
         ],
         "damage": 120,
-        "effect_en": "Set opponent's attack to 0 and add +70 damage.",
-        "effect_ja": "相手の攻撃を0にし、＋70ダメージ。"
+        "text_en": "Set opponent's attack to 0 and add +70 damage.",
+        "text_ja": "相手の攻撃を0にし、＋70ダメージ。"
       },
       {
         "name_en": "Stink",
@@ -746,29 +800,34 @@
           "Colorless"
         ],
         "damage": 0,
-        "effect_en": "Reduce opponent's HP to 0.",
-        "effect_ja": "相手のHPを0にする。"
+        "text_en": "Reduce opponent's HP to 0.",
+        "text_ja": "相手のHPを0にする。"
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Lightning",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Lightning",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Fighting",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Water"
+    ],
+    "id": "018"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Aokanabun",
     "name_ja": "アオカナブン",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 180,
-    "type": "Metal",
     "attacks": [
       {
         "name_en": "Guard",
@@ -778,8 +837,8 @@
           "Colorless"
         ],
         "damage": 10,
-        "effect_en": "Set the opponent's attack to 0.",
-        "effect_ja": "相手の攻撃を0にする。"
+        "text_en": "Set the opponent's attack to 0.",
+        "text_ja": "相手の攻撃を0にする。"
       },
       {
         "name_en": "Charge",
@@ -790,30 +849,33 @@
           "Psychic",
           "Colorless"
         ],
-        "damage": 150,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 150
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Grass",
       "value": "-20"
     },
     "retreat_cost": 2,
-    "image": ""
+    "image": "",
+    "types": [
+      "Metal"
+    ],
+    "id": "019"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Tonosama Grasshopper",
     "name_ja": "トノサマバッタ",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 130,
-    "type": "Lightning",
     "attacks": [
       {
         "name_en": "Fly Away",
@@ -823,9 +885,7 @@
           "Psychic",
           "Darkness"
         ],
-        "damage": 100,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 100
       },
       {
         "name_en": "Kick",
@@ -833,30 +893,33 @@
         "cost": [
           "Lightning"
         ],
-        "damage": 30,
-        "effect_en": "",
-        "effect_ja": ""
+        "damage": 30
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fighting",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fighting",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Metal",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Lightning"
+    ],
+    "id": "020"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Rainbow Skink",
     "name_ja": "ニホントカゲ（レインボー）",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 170,
-    "type": "Metal",
     "attacks": [
       {
         "name_en": "Hide",
@@ -866,29 +929,34 @@
           "Colorless"
         ],
         "damage": 100,
-        "effect_en": "The opponent's next attack does 0 damage.",
-        "effect_ja": "相手の次の攻撃を0にする。"
+        "text_en": "The opponent's next attack does 0 damage.",
+        "text_ja": "相手の次の攻撃を0にする。"
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fighting",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fighting",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Grass",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Metal"
+    ],
+    "id": "021"
   },
   {
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "name_en": "Longhorn Beetle",
     "name_ja": "カミキリムシ",
-    "stage": "BASIC",
+    "stage": "Basic",
     "hp": 70,
-    "type": "Darkness",
     "attacks": [
       {
         "name_en": "Eat Fruit",
@@ -897,24 +965,30 @@
           "Water"
         ],
         "damage": 40,
-        "effect_en": "This attack does +30 more damage.",
-        "effect_ja": "このワザは＋30ダメージ。"
+        "text_en": "This attack does +30 more damage.",
+        "text_ja": "このワザは＋30ダメージ。"
       }
     ],
     "ability": null,
-    "weakness": {
-      "type": "Fire",
-      "value": "×2"
-    },
+    "weakness": [
+      {
+        "type": "Fire",
+        "value": "×2"
+      }
+    ],
     "resistance": {
       "type": "Grass",
       "value": "-20"
     },
     "retreat_cost": 1,
-    "image": ""
+    "image": "",
+    "types": [
+      "Darkness"
+    ],
+    "id": "022"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Colorless Energy",
     "name_ja": "無色 エネルギー",
     "energy_type": "Colorless",
@@ -922,10 +996,11 @@
     "effect_ja": "Colorlessのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "023"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Grass Energy",
     "name_ja": "くさ エネルギー",
     "energy_type": "Grass",
@@ -933,10 +1008,11 @@
     "effect_ja": "Grassのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "024"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Fire Energy",
     "name_ja": "ほのお エネルギー",
     "energy_type": "Fire",
@@ -944,10 +1020,11 @@
     "effect_ja": "Fireのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "025"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Water Energy",
     "name_ja": "みず エネルギー",
     "energy_type": "Water",
@@ -955,10 +1032,11 @@
     "effect_ja": "Waterのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "026"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Lightning Energy",
     "name_ja": "でんき エネルギー",
     "energy_type": "Lightning",
@@ -966,10 +1044,11 @@
     "effect_ja": "Lightningのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "027"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Psychic Energy",
     "name_ja": "エスパー エネルギー",
     "energy_type": "Psychic",
@@ -977,10 +1056,11 @@
     "effect_ja": "Psychicのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "028"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Fighting Energy",
     "name_ja": "かくとう エネルギー",
     "energy_type": "Fighting",
@@ -988,10 +1068,11 @@
     "effect_ja": "Fightingのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "029"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Darkness Energy",
     "name_ja": "あく エネルギー",
     "energy_type": "Darkness",
@@ -999,10 +1080,11 @@
     "effect_ja": "Darknessのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "030"
   },
   {
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "name_en": "Metal Energy",
     "name_ja": "はがね エネルギー",
     "energy_type": "Metal",
@@ -1010,6 +1092,7 @@
     "effect_ja": "Metalのエネルギーを1個ぶん供給する。",
     "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
     "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": ""
+    "image": "",
+    "id": "031"
   }
 ]

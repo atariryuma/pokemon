@@ -740,10 +740,16 @@ export class TurnManager {
           player: playerId,
           message: `${playerState.active.name_ja}が毒ダメージを受けました`
         });
+        
+        // 毒アニメーションを実行
+        animate.effect.condition('poisoned', playerState.active.id).catch(console.warn);
       }
 
       // 火傷判定
       if (conditions.includes('Burned')) {
+        // 火傷アニメーションを実行
+        animate.effect.condition('burned', playerState.active.id).catch(console.warn);
+        
         // コイントス（簡略化）
         if (Math.random() < 0.5) {
           playerState.active.damage = (playerState.active.damage || 0) + 20;

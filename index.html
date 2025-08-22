@@ -37,7 +37,9 @@
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
             overflow-x: hidden; /* 横スクロールを防止 */
             perspective: 1500px; /* 3D効果を復活 */
-            padding: 6rem 0; /* 上下の余白を十分に確保 */
+            padding: 0rem 0; /* 上下の余白を十分に確保 */
+            transform: scale(1.0); 
+            transform-origin: center top; /* 拡大の基準点を上中央に */
         }
 
         /* ==========================================
@@ -2147,9 +2149,13 @@
 
 <!-- Floating Action HUD (Bottom-left) -->
 <div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
-    <button type="button" id="start-game-button-float" class="pokemon-action-btn hidden">
-        <span class="pokemon-btn-icon">▶️</span>
-        <span class="pokemon-btn-text">ゲームスタート</span>
+    <button type="button" id="start-game-button-float" class="pokemon-action-btn">
+        <span class="pokemon-btn-icon">🎴</span>
+        <span class="pokemon-btn-text">手札を7枚引く</span>
+    </button>
+    <button type="button" id="card-editor-button-float" class="pokemon-action-btn">
+        <span class="pokemon-btn-icon">🎴</span>
+        <span class="pokemon-btn-text">カードエディタ</span>
     </button>
     <button type="button" id="confirm-setup-button-float" class="pokemon-action-btn hidden">
         <span class="pokemon-btn-icon">✅</span>
@@ -2409,6 +2415,14 @@
                     updateLayout();
                 }, 100);
             });
+            
+            // カードエディタボタンのイベントハンドラ
+            const cardEditorButton = document.getElementById('card-editor-button-float');
+            if (cardEditorButton) {
+                cardEditorButton.addEventListener('click', () => {
+                    window.open('card_viewer.html', '_blank');
+                });
+            }
         });
     </script>
     <!-- Action Modal -->

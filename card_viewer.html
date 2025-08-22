@@ -29,7 +29,10 @@
       background: radial-gradient(1200px 600px at 10% -10%, #2945b5 0%, transparent 60%),
                   radial-gradient(1200px 600px at 110% 10%, #4026a7 0%, transparent 60%),
                   var(--bg);
-      overflow: hidden; /* 画面全体の上下スクロールを抑止 */
+      overflow: hidden; /* スクロールを完全に無効 */
+      font-size: 14px;
+      height: 100vh; /* 高さを画面全体に固定 */
+      width: 100vw; /* 幅を画面全体に固定 */
     }
 
     header {
@@ -37,13 +40,28 @@
       background: linear-gradient(180deg, rgba(15,18,38,.95) 0%, rgba(15,18,38,.75) 100%);
       backdrop-filter: blur(6px);
       border-bottom: 1px solid var(--border);
-      padding: 14px 20px;
-      display: grid;
-      grid-template-columns: 1fr auto auto auto;
-      gap: 12px;
+      padding: 10px 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    header h1 {
+      flex: 1;
+      min-width: 200px;
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: .5px;
+    }
+    
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
       align-items: center;
     }
-    header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
     .muted { color: var(--muted); }
 
     .btn {
@@ -67,9 +85,17 @@
 
     .toolbar { display: flex; gap: 8px; align-items: center; }
     .spacer { flex: 1; }
-    .kbd { background: var(--chip); padding: 2px 6px; border-radius: 6px; border:1px solid var(--border); font-size: 12px; }
+    .kbd { background: var(--chip); padding: 3px 8px; border-radius: 6px; border:1px solid var(--border); font-size: 14px; }
 
-    .container { display: grid; grid-template-columns: minmax(360px, 40vw) 1fr; gap: 12px; padding: 10px 14px; height: calc(100vh - 60px); }
+    .container { 
+      display: grid; 
+      gap: 8px; 
+      padding: 8px; 
+      height: calc(100vh - 60px); /* ヘッダー分を引いて固定高 */
+      grid-template-columns: 1fr;
+      width: 100%;
+      overflow: hidden; /* コンテナ内スクロール無効 */
+    }
     .panel {
       background: linear-gradient(180deg, rgba(21,25,58,.85) 0%, rgba(28,34,82,.85) 100%);
       border: 1px solid var(--border);
@@ -78,15 +104,17 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      min-height: 0; /* 子のoverflow:autoに高さ配分 */
+      min-height: 0;
+      height: 100%; /* パネル高さを親に合わせる */
+      max-height: 100%; /* 最大高さ制限 */
     }
-    .panel h2 { font-size: 14px; margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.15); }
+    .panel h2 { font-size: 16px; margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.15); }
     .panel .content { padding: 10px 12px; flex: 1; overflow: auto; min-height: 0; }
 
     .row { display: flex; gap: 8px; align-items: center; }
     .row > * { flex: 1; }
     .field { display: grid; gap: 6px; margin-bottom: 10px; }
-    .field label { font-size: 12px; color: var(--muted); }
+    .field label { font-size: 13px; color: var(--muted); font-weight: 600; }
     .field input, .field select, .field textarea {
       width: 100%;
       background: rgba(0,0,0,.2);
@@ -97,7 +125,7 @@
     .field textarea { min-height: 70px; resize: vertical; }
     .chips { display:flex; flex-wrap: wrap; gap:6px; }
     .chip { background: var(--chip); padding: 4px 8px; border-radius: 20px; border:1px solid var(--border); font-size: 12px; }
-    .hint { color: var(--muted); font-size: 12px; }
+    .hint { color: var(--muted); font-size: 14px; }
 
     .list-toolbar { padding: 10px; border-bottom: 1px solid var(--border); display:flex; gap:8px; align-items:center; }
     .search { flex: 1; }
@@ -107,28 +135,28 @@
     .card-item { display:grid; grid-template-columns: auto 1fr auto; gap:10px; align-items:center; padding: 8px 10px; border-bottom:1px solid var(--border); cursor:pointer; }
     .card-item:hover { background: rgba(255,255,255,.04); }
     .card-item.active { background: rgba(110,168,255,.15); }
-    .badge { padding: 2px 8px; border-radius: 14px; font-size: 11px; border:1px solid var(--border); background: rgba(255,255,255,.06); }
+    .badge { padding: 3px 10px; border-radius: 16px; font-size: 13px; border:1px solid var(--border); background: rgba(255,255,255,.06); }
     .badge.pokemon { color:#ffd2d2; border-color: rgba(255,107,107,.4) }
     .badge.energy { color:#fff0b6; border-color: rgba(241,196,15,.4) }
     .badge.trainer{ color:#b8e1ff; border-color: rgba(142,246,255,.4) }
-    .count { font-size: 12px; color: var(--muted); padding: 0 10px 10px; }
+    .count { font-size: 14px; color: var(--muted); padding: 0 10px 10px; }
 
     .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
     .flex-row { display:flex; gap:8px; }
     .right { text-align: right; }
 
     .section { margin: 8px 0 14px; padding-top: 8px; border-top:1px dashed var(--border); }
-    .section h3 { font-size: 12px; margin: 0 0 8px; color: var(--muted); }
+    .section h3 { font-size: 15px; margin: 0 0 8px; color: var(--muted); font-weight: 600; }
 
     .attacks { display: grid; gap: 8px; }
     .attack-box { border:1px solid var(--border); background: rgba(0,0,0,.15); border-radius: 10px; padding: 10px; }
     .attack-grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; }
 
     .footer { padding: 12px 16px; display:flex; gap: 8px; align-items:center; border-top:1px solid var(--border); background: rgba(0,0,0,.15); }
-    .status { font-size: 12px; color: var(--muted); }
+    .status { font-size: 14px; color: var(--muted); }
 
     .danger-zone { border:1px solid rgba(255,107,107,.3); background: rgba(255,107,107,.06); border-radius: 12px; padding: 10px; }
-    .small { font-size: 12px; }
+    .small { font-size: 14px; }
 
     .invisible { display:none; }
 
@@ -136,7 +164,7 @@
     #preview-wrap { display:flex; flex-direction: column; min-height: 0; }
     #preview-stage { position: relative; flex: 1; min-height: 260px; background: repeating-conic-gradient(#1a1f4a 0 25%, #10143a 0 50%) 50% / 18px 18px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display:flex; align-items:center; justify-content:center; }
     #preview-img { max-width: 100%; max-height: 100%; transform-origin: center center; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
-    #preview-empty { position: absolute; color: var(--muted); font-size: 12px; }
+    #preview-empty { position: absolute; color: var(--muted); font-size: 15px; }
 
     /* Drawer */
     #drawer { position: fixed; inset: 0; pointer-events: none; }
@@ -149,9 +177,111 @@
     /* Header unsaved indicator */
     header h1::after { content: var(--unsaved-dot, ""); margin-left: 8px; color: var(--warn); }
   
-    @media (max-width: 1024px) {
-      .container { grid-template-columns: 1fr; height: calc(100vh - 60px); }
-      #preview-stage { min-height: 200px; }
+    /* レスポンシブメディアクエリ */
+    
+    /* 大画面: デスクトップ・TV (1400px以上) */
+    @media (min-width: 1400px) {
+      .container {
+        grid-template-columns: minmax(420px, 40vw) 1fr;
+        gap: 12px;
+        padding: 12px;
+        height: calc(100vh - 70px);
+      }
+      header {
+        padding: 12px 20px;
+      }
+    }
+    
+    /* 中大画面: デスクトップ (1000px - 1399px) */
+    @media (min-width: 1000px) and (max-width: 1399px) {
+      .container {
+        grid-template-columns: minmax(380px, 45vw) 1fr;
+        gap: 10px;
+        padding: 10px;
+        height: calc(100vh - 65px);
+      }
+    }
+    
+    /* 中画面: タブレット横 (768px - 999px) */
+    @media (min-width: 768px) and (max-width: 999px) {
+      .container {
+        grid-template-columns: minmax(320px, 50vw) 1fr;
+        gap: 8px;
+        padding: 8px;
+        height: calc(100vh - 60px);
+      }
+      header {
+        padding: 8px 12px;
+      }
+    }
+    
+    /* 小画面: タブレット縦・大きめスマホ (600px - 767px) */
+    @media (min-width: 600px) and (max-width: 767px) {
+      header {
+        padding: 6px 10px;
+        flex-direction: column;
+        gap: 6px;
+        height: 80px;
+      }
+      header h1 {
+        text-align: center;
+      }
+      .container {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        padding: 6px;
+        height: calc(100vh - 80px);
+      }
+      .grid-2 {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+    }
+    
+    /* 極小画面: スマホ (599px以下) */
+    @media (max-width: 599px) {
+      header {
+        padding: 4px 6px;
+        flex-direction: column;
+        gap: 4px;
+        height: 90px;
+      }
+      header h1 {
+        text-align: center;
+      }
+      header h1 .muted {
+        display: none;
+      }
+      .toolbar {
+        justify-content: center;
+        gap: 4px;
+      }
+      .container {
+        grid-template-columns: 1fr;
+        padding: 4px;
+        gap: 4px;
+        height: calc(100vh - 90px);
+      }
+      .panel {
+        border-radius: 6px;
+      }
+      .panel h2 {
+        padding: 6px 8px;
+      }
+      .field input, .field select, .field textarea {
+        padding: 4px 6px;
+      }
+      .grid-2 {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+      .drawer-panel {
+        width: 100vw;
+        left: -100vw;
+      }
+      #drawer.open .drawer-panel {
+        left: 0;
+      }
     }
   </style>
 </head>
@@ -159,13 +289,11 @@
   <header>
     <h1>ポケモンカード エディタ <span class="muted small">(cards-master.json / data/cards)</span></h1>
     <div class="toolbar">
+      <button class="btn primary" id="btn-back-to-game">🎮 ゲームに戻る</button>
+      <div class="spacer"></div>
       <button class="btn" id="btn-open-drawer">カード一覧 (Ctrl+K)</button>
-      <button class="btn" id="btn-connect">フォルダ接続</button>
       <button class="btn" id="btn-open-master">master読込</button>
       <button class="btn primary" id="btn-save-master">master保存</button>
-      <button class="btn warn" id="btn-validate">互換チェック</button>
-      <div class="spacer"></div>
-      <button class="btn" id="btn-export">バックアップ書き出し</button>
     </div>
   </header>
 
@@ -199,7 +327,7 @@
       <div class="content">
         <form id="cardForm">
           <div class="grid-2">
-            <div class="field"><label>ID</label><input id="id" required /></div>
+            <div class="field"><label>ID（自動生成）</label><input id="id" required readonly style="background-color: rgba(0,0,0,0.3); cursor: not-allowed;" /></div>
             <div class="field"><label>カード種別</label>
               <select id="card_type" required>
                 <option value="Pokemon">Pokemon</option>
@@ -303,7 +431,7 @@
             <div class="flex-row" style="align-items:center; gap:8px; margin-top:6px;">
               <button type="button" class="btn" id="btn-pick-image">画像を選ぶ</button>
               <button type="button" class="btn" id="btn-guess-image">英名から推測</button>
-              <span class="hint">assets/cards/{pokemon|energy|trainer}/ に保存可能 (File System Access対応ブラウザ)</span>
+              <span class="hint">画像アップロード → ファイル名自動推測 → Chrome/Edgeでassets/cards/に自動保存</span>
             </div>
           </div>
         </form>
@@ -311,7 +439,6 @@
       <div class="footer">
         <div class="toolbar">
           <button class="btn primary" id="btn-save">このカードを保存</button>
-          <button class="btn" id="btn-save-card-json">個別JSON</button>
           <button class="btn" id="btn-duplicate">複製</button>
           <button class="btn danger" id="btn-delete">削除</button>
         </div>
@@ -354,11 +481,6 @@
     let filtered = [];
     let activeIndex = -1;
 
-    // File System Access handles (任意)
-    let dataDirHandle = null;              // data/
-    let masterFileHandle = null;           // data/cards-master.json
-    let perCardDirHandle = null;           // data/cards/
-    let assetsDirHandle = null;            // assets/cards/
     let unsaved = false;                   // 未保存フラグ
 
     // Preview state
@@ -373,6 +495,26 @@
     const $$ = (sel) => Array.from(document.querySelectorAll(sel));
     const byId = (id) => document.getElementById(id);
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    // --------- ID自動生成
+    function generateNextId() {
+      const existingIds = cards.map(c => c.id).filter(Boolean);
+      const numericIds = existingIds
+        .map(id => parseInt(id, 10))
+        .filter(n => !isNaN(n))
+        .sort((a, b) => a - b);
+      
+      let nextId = 1;
+      for (const id of numericIds) {
+        if (id === nextId) {
+          nextId++;
+        } else {
+          break;
+        }
+      }
+      
+      return String(nextId).padStart(3, '0'); // 001, 002, 003...
+    }
 
     const schemaGuard = (obj) => {
       // 入力フォーム → スキーマ整形
@@ -610,46 +752,168 @@
     // --------- CRUD
     function newCard(){
       const c = defaultCard();
+      c.id = generateNextId(); // 自動ID生成
       activeIndex = cards.push(c) - 1;
       writeForm(c);
       renderList();
       updatePreview();
       markUnsaved(true);
+      setStatus(`新しいカード (ID: ${c.id}) を作成しました。情報を入力して「このカードを保存」→「master保存」してください。`);
+      // 新規作成時は名前入力フィールドにフォーカス
+      setTimeout(() => {
+        const nameInput = byId('name_en');
+        if (nameInput) nameInput.focus();
+      }, 100);
     }
 
     function saveCurrentIntoList(){
       const data = readForm();
+      
+      // 基本必須項目チェック
       if (!data || !data.id || !data.name_en || !data.name_ja || !data.card_type){
-        alert('必須: id / name_en / name_ja / card_type');
+        alert('❌ 必須項目が未入力です:\n• ID\n• 英語名 (name_en)\n• 日本語名 (name_ja)\n• カード種別 (card_type)');
         return false;
       }
+      
+      // IDは自動生成されるため重複チェック不要（念のため警告のみ）
       const dup = cards.findIndex((c, i) => c.id === data.id && i !== activeIndex);
       if (dup !== -1){
-        alert('同じIDが既に存在します: ' + data.id);
+        console.warn(`⚠️ ID重複検出（通常発生しない）: ${data.id}`);
+      }
+      
+      // カード種別別の詳細チェック
+      const validationErrors = validateCardData(data);
+      if (validationErrors.length > 0) {
+        const errorMsg = '❌ 以下の項目に問題があります:\n\n' + validationErrors.join('\n');
+        alert(errorMsg);
         return false;
       }
+      
+      // 画像ファイル名と英語名の整合性チェック（警告のみ）
+      const imageWarnings = checkImageConsistency(data);
+      if (imageWarnings.length > 0) {
+        const proceed = confirm(
+          '⚠️ 画像に関する警告があります:\n\n' + 
+          imageWarnings.join('\n') + 
+          '\n\nそのまま保存しますか？'
+        );
+        if (!proceed) return false;
+      }
+      
       if (activeIndex === -1){
         activeIndex = cards.push(data) - 1;
       } else {
         cards[activeIndex] = data;
       }
-      setStatus('ローカルに保存 (未ファイル保存)');
+      setStatus('✅ カードをリストに保存しました。「master保存」でファイルに保存できます。');
       renderList();
       updatePreview();
-      markUnsaved(true);
+      markUnsaved(false); // 修正: 保存後は保存済み状態にする
       return true;
+    }
+    
+    function validateCardData(data) {
+      const errors = [];
+      
+      if (data.card_type === 'Pokemon') {
+        // ポケモンカードの必須チェック
+        if (!data.stage) {
+          errors.push('• ポケモンカード: ステージが未設定');
+        }
+        if (!data.hp || data.hp <= 0) {
+          errors.push('• ポケモンカード: HPが未設定または0以下');
+        }
+        if (!data.types || data.types.length === 0) {
+          errors.push('• ポケモンカード: タイプが未設定');
+        }
+        if (data.retreat_cost === undefined || data.retreat_cost < 0) {
+          errors.push('• ポケモンカード: にげるエネルギーが未設定');
+        }
+        // 攻撃が1つも設定されていない場合
+        if (!data.attacks || data.attacks.length === 0) {
+          errors.push('• ポケモンカード: 攻撃が1つも設定されていません');
+        } else {
+          // 攻撃の内容チェック
+          data.attacks.forEach((attack, idx) => {
+            if (!attack.name_ja && !attack.name_en) {
+              errors.push(`• 攻撃${idx + 1}: 技名が未設定`);
+            }
+            if (!attack.cost || attack.cost.length === 0) {
+              errors.push(`• 攻撃${idx + 1}: エネルギーコストが未設定`);
+            }
+          });
+        }
+      } else if (data.card_type === 'Energy') {
+        // エネルギーカードの必須チェック
+        if (!data.energy_type) {
+          errors.push('• エネルギーカード: エネルギータイプが未設定');
+        }
+        if (data.is_basic === undefined) {
+          errors.push('• エネルギーカード: 基本エネルギーかどうかが未設定');
+        }
+      } else if (data.card_type === 'Trainer') {
+        // トレーナーカードの必須チェック
+        if (!data.trainer_type) {
+          errors.push('• トレーナーカード: トレーナータイプが未設定');
+        }
+        if (!data.text_ja && !data.text_en) {
+          errors.push('• トレーナーカード: 効果テキストが未設定');
+        }
+      }
+      
+      return errors;
+    }
+    
+    function checkImageConsistency(data) {
+      const warnings = [];
+      const imageFile = data.image_file || '';
+      
+      if (!imageFile) {
+        warnings.push('• 画像ファイル名が設定されていません');
+        return warnings;
+      }
+      
+      // .webp拡張子チェック
+      if (!imageFile.toLowerCase().endsWith('.webp')) {
+        warnings.push('• 画像ファイルが.webp形式ではありません (推奨: .webp)');
+      }
+      
+      // 英語名との整合性チェック（ポケモンカードの場合）
+      if (data.card_type === 'Pokemon' && data.name_en) {
+        const expectedFileName = data.name_en.replace(/[^A-Za-z0-9]+/g, '_') + '.webp';
+        const fileNameWithoutExt = imageFile.replace(/\.[^.]+$/, '');
+        const nameEnNormalized = data.name_en.replace(/[^A-Za-z0-9]+/g, '_');
+        
+        // ファイル名と英語名が大きく異なる場合
+        if (!fileNameWithoutExt.toLowerCase().includes(nameEnNormalized.toLowerCase()) && 
+            !nameEnNormalized.toLowerCase().includes(fileNameWithoutExt.toLowerCase())) {
+          warnings.push(`• 画像ファイル名「${imageFile}」と英語名「${data.name_en}」が一致しません\n  推奨ファイル名: ${expectedFileName}`);
+        }
+      }
+      
+      // エネルギーカードの場合の命名チェック
+      if (data.card_type === 'Energy' && data.energy_type) {
+        const expectedFileName = `Energy_${data.energy_type}.webp`;
+        if (imageFile !== expectedFileName) {
+          warnings.push(`• エネルギーカードの画像ファイル名が標準と異なります\n  推奨ファイル名: ${expectedFileName}`);
+        }
+      }
+      
+      return warnings;
     }
 
     function duplicateCard(){
       if (activeIndex < 0) return;
       const src = JSON.parse(JSON.stringify(cards[activeIndex]));
-      src.id = src.id + '_copy';
+      const originalName = src.name_ja || src.name_en || src.id;
+      src.id = generateNextId(); // 自動ID生成
       cards.splice(activeIndex+1, 0, src);
       activeIndex = activeIndex+1;
       writeForm(src);
       renderList();
       updatePreview();
       markUnsaved(true);
+      setStatus(`「${originalName}」を複製しました (新ID: ${src.id})。必要に応じて編集してください。`);
     }
 
     function deleteCard(){
@@ -664,28 +928,7 @@
       markUnsaved(true);
     }
 
-    // --------- 読み込み/保存（File System Access API + フォールバック）
-    function supportsFS(){ return 'showOpenFilePicker' in window || 'showDirectoryPicker' in window; }
-
-    async function connectFolders(){
-      if (!supportsFS()){
-        alert('このブラウザはFile System Access APIに未対応です。\n保存は「バックアップ書き出し(ダウンロード)」をご利用ください。');
-        return;
-      }
-      try {
-        dataDirHandle = await window.showDirectoryPicker({ id: 'pokemon-data-dir' });
-        // 探索: master ファイル
-        try { masterFileHandle = await dataDirHandle.getFileHandle('cards-master.json', { create: true }); } catch {}
-        // サブフォルダ
-        try { perCardDirHandle = await dataDirHandle.getDirectoryHandle('cards', { create: true }); } catch {}
-        // 画像 (assets/cards)
-        assetsDirHandle = await window.showDirectoryPicker({ id: 'pokemon-assets-dir' });
-        setStatus('フォルダ接続完了');
-      } catch (e) {
-        console.warn(e);
-        alert('フォルダ接続をキャンセル/失敗しました');
-      }
-    }
+    // --------- 読み込み/保存（シンプル化）
 
     function normalizeToSpec(arr){
       if (!Array.isArray(arr)) return [];
@@ -750,30 +993,29 @@
         }
       } catch {}
 
-      // 2) File System Access API から
-      if (!supportsFS()){
-        alert('cards-master.json を読み込めません。サーバー経由で開くか、対応ブラウザでフォルダ接続してください。');
-        return;
-      }
+      // 2) ファイル選択で読み込み
       try {
-        if (!masterFileHandle){
-          const [fileHandle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]});
-          masterFileHandle = fileHandle;
-        }
-        const file = await masterFileHandle.getFile();
-        const text = await file.text();
-        cards = normalizeToSpec(JSON.parse(text));
-        if (!Array.isArray(cards)) cards = [];
-        if (cards.length > 0) {
-          activeIndex = 0;
-          writeForm(cards[0]);
-        } else {
-          activeIndex = -1;
-          writeForm(defaultCard());
-        }
-        renderList();
-        setStatus('master を読み込みました');
-        updatePreview();
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const text = await file.text();
+          cards = normalizeToSpec(JSON.parse(text));
+          if (!Array.isArray(cards)) cards = [];
+          if (cards.length > 0) {
+            activeIndex = 0;
+            writeForm(cards[0]);
+          } else {
+            activeIndex = -1;
+            writeForm(defaultCard());
+          }
+          renderList();
+          setStatus('master を読み込みました');
+          updatePreview();
+        };
+        input.click();
       } catch (e) {
         console.error(e);
         alert('master の読み込みに失敗しました');
@@ -784,23 +1026,8 @@
       if (!saveCurrentIntoList()) return;
       // master JSON 文字列
       const json = JSON.stringify(cards, null, 2);
-
-      // File System Access 優先
-      if (supportsFS()){
-        try {
-          if (!masterFileHandle){
-            const suggestedName = 'cards-master.json';
-            masterFileHandle = await (window.showSaveFilePicker ? window.showSaveFilePicker({ suggestedName }) : dataDirHandle.getFileHandle(suggestedName, { create: true }));
-          }
-          const writable = await masterFileHandle.createWritable();
-          await writable.write(json);
-          await writable.close();
-          setStatus('master を保存しました');
-          markUnsaved(false);
-          return;
-        } catch (e){ console.warn('FS write failed, fallback download', e); }
-      }
-      // フォールバック: ダウンロード
+      
+      // ダウンロードで保存
       const blob = new Blob([json], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -811,39 +1038,60 @@
       markUnsaved(false);
     }
 
-    async function saveCurrentCardAsFile(){
-      if (!saveCurrentIntoList()) return;
-      if (!supportsFS() || !perCardDirHandle){
-        alert('フォルダ接続が必要です (data/cards)。または master 保存をご利用ください。');
-        return;
-      }
-      const c = cards[activeIndex];
-      const fileName = (c.id || 'card') + '.json';
-      const handle = await perCardDirHandle.getFileHandle(fileName, { create: true });
-      const writable = await handle.createWritable();
-      await writable.write(JSON.stringify(c, null, 2));
-      await writable.close();
-      setStatus('個別カードJSONを保存: ' + fileName);
-      markUnsaved(false);
-    }
 
     async function saveImageIfSelected(){
       const fileInput = byId('image_upload');
       if (!fileInput.files || fileInput.files.length === 0) return;
-      if (!supportsFS() || !assetsDirHandle){
-        alert('画像保存には assets/cards/* へのフォルダ接続が必要です');
-        return;
-      }
+      
       const file = fileInput.files[0];
-      const sub = (byId('card_type').value || 'Pokemon').toLowerCase();
-      const subDir = await assetsDirHandle.getDirectoryHandle('cards', { create: true });
-      const typeDir = await subDir.getDirectoryHandle(sub, { create: true });
-      const fileName = byId('image_file').value.trim() || (byId('id').value.trim() + '.' + (file.name.split('.').pop() || 'webp'));
-      const handle = await typeDir.getFileHandle(fileName, { create: true });
-      const writable = await handle.createWritable();
-      await writable.write(await file.arrayBuffer());
-      await writable.close();
-      setStatus('画像を保存: ' + fileName);
+      const cardType = (byId('card_type').value || 'Pokemon').toLowerCase();
+      const cardId = byId('id').value.trim();
+      const nameEn = byId('name_en').value.trim();
+      
+      // ファイル名を自動生成（既に設定されている場合はそれを使用）
+      let fileName = byId('image_file').value.trim();
+      if (!fileName) {
+        // IDベースでファイル名を生成（確実にユニーク）
+        if (cardType === 'energy') {
+          const energyType = byId('energy_type').value.trim();
+          fileName = energyType ? `${cardId}_Energy_${energyType}.webp` : `${cardId}.webp`;
+        } else {
+          // IDをプレフィックスとして使用
+          const safeName = nameEn ? nameEn.replace(/[^A-Za-z0-9]+/g, '_') : 'Card';
+          fileName = `${cardId}_${safeName}.webp`;
+        }
+        byId('image_file').value = fileName; // UI に反映
+      }
+      
+      // File System Access API を使って保存を試みる
+      if ('showDirectoryPicker' in window) {
+        try {
+          // assets/cards フォルダを選択させる
+          const assetsHandle = await window.showDirectoryPicker({
+            id: 'pokemon-assets-cards',
+            startIn: 'downloads'
+          });
+          
+          // pokemon/energy/trainer フォルダを取得または作成
+          const typeDir = await assetsHandle.getDirectoryHandle(cardType, { create: true });
+          
+          // ファイルを保存
+          const fileHandle = await typeDir.getFileHandle(fileName, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(file);
+          await writable.close();
+          
+          setStatus(`✅ 画像を保存しました: assets/cards/${cardType}/${fileName}`);
+          return true;
+        } catch (error) {
+          console.warn('File System Access API での保存に失敗:', error);
+          setStatus(`⚠️ 画像の自動保存に失敗しました。ファイル「${fileName}」を手動で assets/cards/${cardType}/ に保存してください。`);
+        }
+      } else {
+        setStatus(`⚠️ ブラウザが自動保存に対応していません。ファイル「${fileName}」を手動で assets/cards/${cardType}/ に保存してください。`);
+      }
+      
+      return false;
     }
 
     // --------- 初期化
@@ -853,13 +1101,13 @@
       byId('btn-new').addEventListener('click', newCard);
       byId('btn-duplicate').addEventListener('click', duplicateCard);
       byId('btn-delete').addEventListener('click', deleteCard);
-      byId('btn-save').addEventListener('click', async () => { if (saveCurrentIntoList()){ await saveImageIfSelected(); markUnsaved(true); }});
+      byId('btn-save').addEventListener('click', async () => { if (saveCurrentIntoList()){ await saveImageIfSelected(); markUnsaved(false); }});
       byId('btn-save-master').addEventListener('click', saveMaster);
-      byId('btn-save-card-json').addEventListener('click', saveCurrentCardAsFile);
-      byId('btn-connect').addEventListener('click', connectFolders);
       byId('btn-open-master').addEventListener('click', openMaster);
-      byId('btn-export').addEventListener('click', exportBackup);
-      byId('btn-validate').addEventListener('click', validateAllCards);
+      byId('btn-back-to-game').addEventListener('click', () => {
+        if (unsaved && !confirm('未保存の変更があります。ゲームに戻りますか？')) return;
+        window.close() || (window.location.href = 'index.html');
+      });
       byId('card_type').addEventListener('change', () => { onTypeChange(); updatePreview(); markUnsaved(true); });
       byId('btn-add-attack').addEventListener('click', () => {
         byId('attacks').appendChild(createAttackBox());
@@ -873,6 +1121,21 @@
       // Preview controls
       byId('btn-prev').addEventListener('click', goPrev);
       byId('btn-next').addEventListener('click', goNext);
+      byId('image_upload').addEventListener('change', () => { 
+        // 画像アップロード時に自動でファイル名を推測
+        const input = byId('image_upload');
+        if (input.files && input.files[0]) {
+          const currentFileName = byId('image_file').value.trim();
+          if (!currentFileName) {
+            const guessedName = guessImageFile();
+            if (guessedName) {
+              byId('image_file').value = guessedName;
+            }
+          }
+        }
+        updatePreview(); 
+        markUnsaved(true); 
+      });
       byId('btn-pick-image').addEventListener('click', openImagePicker);
       byId('btn-guess-image').addEventListener('click', () => { const guess = guessImageFile(); if (guess){ byId('image_file').value = guess; updatePreview(); markUnsaved(true);} });
       byId('zoom').addEventListener('input', (e) => { zoomLevel = Number(e.target.value); applyTransform(); });
@@ -915,16 +1178,6 @@
       window.addEventListener('beforeunload', (e) => { if (unsaved){ e.preventDefault(); e.returnValue = ''; } });
     }
 
-    async function exportBackup(){
-      const json = JSON.stringify(cards, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'cards-master.backup.json';
-      a.click();
-      URL.revokeObjectURL(a.href);
-      setStatus('バックアップを書き出しました');
-    }
 
     async function boot(){
       bind();
@@ -947,12 +1200,8 @@
       cards = [];
       renderList();
       writeForm(defaultCard());
-      setStatus('新規作成を開始できます。 master読込 も可');
+      setStatus('新規作成を開始できます。master読込ボタンでJSONファイルを選択できます。');
       updatePreview();
-      // If fetch failed and FS API is available, prompt to open master
-      if (supportsFS()) {
-        try { await openMaster(); } catch {}
-      }
     }
 
     document.addEventListener('DOMContentLoaded', boot);
@@ -967,8 +1216,17 @@
       const header = document.querySelector('header');
       const container = document.querySelector('.container');
       if (!header || !container) return;
+      
+      // ヘッダーの実際の高さを取得して、コンテナ高を調整
       const h = header.getBoundingClientRect().height;
-      container.style.height = `${Math.max(320, window.innerHeight - h)}px`;
+      container.style.height = `${window.innerHeight - h}px`;
+      
+      // 画面サイズに応じた微調整（メディアクエリと合わせる）
+      if (window.innerWidth <= 599) {
+        container.style.height = `${window.innerHeight - h}px`;
+      } else if (window.innerWidth <= 767) {
+        container.style.height = `${window.innerHeight - h}px`;
+      }
     }
 
     // ---------- Preview helpers
@@ -1028,96 +1286,54 @@
     }
     // ---------- Image helpers
     function guessImageFile(){
-      const t = (byId('card_type').value || 'Pokemon').toLowerCase();
-      if (t === 'energy'){
-        const et = (byId('energy_type').value || '').trim();
-        return et ? `Energy_${et}.webp` : '';
+      const cardType = (byId('card_type').value || 'Pokemon').toLowerCase();
+      const cardId = (byId('id').value || '').trim();
+      const nameEn = (byId('name_en').value || '').trim();
+      
+      if (!cardId) return ''; // IDが必須
+      
+      if (cardType === 'energy'){
+        const energyType = (byId('energy_type').value || '').trim();
+        return energyType ? `${cardId}_Energy_${energyType}.webp` : `${cardId}.webp`;
       }
-      if (t === 'pokemon'){
-        const en = (byId('name_en').value || '').trim();
-        return en ? en.replace(/[^A-Za-z0-9]+/g,'_') + '.webp' : '';
+      
+      if (cardType === 'pokemon' || cardType === 'trainer'){
+        if (!nameEn) return `${cardId}.webp`; // 名前がない場合はIDのみ
+        
+        // 特別な名前のマッピングをチェック
+        const specialNames = {
+          "Glasswing Butterfly Larva": "Glasswing_Butterfly_Larva",
+          "Cat exv": "Cat_exv",
+          "Grey Dagger Moth Larva": "Grey_Dagger_Moth_Larva",
+          "Short-horned Grasshopper": "Shorthorned_Grasshopper",
+          "Tateha Butterfly": "Tateha_Butterfly",
+          "Caterpillar exz": "Caterpillar_exz",
+          "Taiwan Clouded Yellow": "Taiwan_Clouded_Yellow",
+          "Kurohime Crane Fly": "Kurohime_Crane_Fly",
+          "Bee ex": "Bee_ex",
+          "Hosohari Stinkbug ex": "Hosohari_Stinkbug_ex",
+          "Tonosama Grasshopper": "Tonosama_Grasshopper",
+          "Rainbow Skink": "Rainbow_Skink",
+          "Longhorn Beetle": "Longhorn_Beetle",
+          "Tsumamurasaki Madara": "Tsumamurasaki_Madara",
+          "Kobane Inago": "Kobane_Inago",
+          "Orange Spider": "Orange_Spider"
+        };
+        
+        const fileName = specialNames[nameEn] || nameEn.replace(/[^A-Za-z0-9]+/g, '_');
+        return `${cardId}_${fileName}.webp`;
       }
-      return '';
+      
+      return `${cardId}.webp`;
     }
-    async function openImagePicker(){
-      if (!supportsFS() || !assetsDirHandle){ alert('画像を選ぶには assets フォルダへの接続が必要です'); return; }
-      const t = (byId('card_type').value || 'Pokemon').toLowerCase();
-      const list = await listImagesInAssets(t);
-      if (!list.length){ alert('対象フォルダに画像が見つかりません'); return; }
-      const html = [`<div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;\"><h3>画像を選択 (${t})</h3><button class=\"btn ghost\" id=\"modal-close\">✕</button></div>`,
-        `<div class=\"hint\">${list.length} 件</div>`,
-        '<div style=\"margin-top:8px; border:1px solid var(--border); border-radius:10px; overflow:auto; max-height:60vh;\">',
-        ...list.map(name => `<div class=\"card-item\" data-name=\"${name}\">${name}</div>`),
-        '</div>'].join('');
-      openModal(html);
-      const panel = byId('modal-panel');
-      const closer = panel.querySelector('#modal-close');
-      if (closer) closer.addEventListener('click', closeModal);
-      panel.querySelectorAll('.card-item').forEach(el => {
-        el.addEventListener('click', () => {
-          const name = el.getAttribute('data-name');
-          byId('image_file').value = name;
-          updatePreview();
-          markUnsaved(true);
-          closeModal();
-        });
-      });
-    }
-    async function listImagesInAssets(type){
-      const out = [];
-      try {
-        const cardsRoot = await assetsDirHandle.getDirectoryHandle('cards', { create: true });
-        const dir = await cardsRoot.getDirectoryHandle(type, { create: true });
-        for await (const entry of dir.values()){
-          if (entry.kind === 'file' && /\.webp$/i.test(entry.name)) out.push(entry.name);
-        }
-      } catch {}
-      return out.sort((a,b)=>a.localeCompare(b));
+    function openImagePicker(){
+      // シンプルなファイル選択
+      const input = byId('image_upload');
+      input.click();
     }
     // ---------- Modal
     function openModal(html){ const panel = byId('modal-panel'); const modal = byId('modal'); if (!panel||!modal) return; panel.innerHTML = html; modal.classList.remove('invisible'); const mb = byId('modal-backdrop'); if (mb) mb.onclick = closeModal; }
     function closeModal(){ const modal = byId('modal'); if (modal) modal.classList.add('invisible'); }
-    // ---------- Validate
-    function validateAllCards(){
-      const gf = cards.map(toGameFormatCard);
-      const issues = [];
-      let basicCount = 0;
-      gf.forEach((c, idx) => {
-        if (c.card_type === 'Pokémon' && c.stage === 'BASIC') basicCount++;
-        if (!c.id) issues.push({ idx, sev:'error', msg:'id が未設定' });
-        if (!c.name_en) issues.push({ idx, sev:'error', msg:'name_en が未設定' });
-        if (!c.card_type) issues.push({ idx, sev:'error', msg:'card_type が未設定' });
-        if (c.card_type === 'Pokémon'){
-          if (!['BASIC','STAGE1','STAGE2'].includes(c.stage||'')) issues.push({ idx, sev:'error', msg:'stage が不正' });
-          if (typeof c.hp !== 'number') issues.push({ idx, sev:'warn', msg:'hp が未設定/数値でない' });
-        }
-        if (c.card_type === 'Basic Energy' && !c.energy_type) issues.push({ idx, sev:'error', msg:'energy_type が未設定' });
-        // Image hint
-        const card = cards[idx];
-        const t = (card.card_type||'Pokemon').toLowerCase();
-        const current = (card.image_file||'').trim();
-        if (!current){
-          const guess = guessNameFromCard(card);
-          if (guess) issues.push({ idx, sev:'hint', msg:`画像ファイル名の候補: ${guess}` });
-          else issues.push({ idx, sev:'warn', msg:'画像ファイル名が未設定' });
-        }
-      });
-      if (basicCount === 0) issues.unshift({ idx:-1, sev:'error', msg:'BASIC ポケモンが1枚もありません' });
-      const summary = `${issues.filter(i=>i.sev==='error').length}件のエラー、${issues.filter(i=>i.sev==='warn').length}件の警告、${issues.filter(i=>i.sev==='hint').length}件のヒント`;
-      const listHtml = issues.map(i => {
-        const title = i.idx>=0 ? `${cards[i.idx].name_ja||cards[i.idx].name_en||cards[i.idx].id}` : '全体';
-        const btn = i.idx>=0 ? `<button class=\"btn small\" data-idx=\"${i.idx}\">選択</button>` : '';
-        return `<div class=\"detail-row\"><span class=\"detail-label\">${i.sev.toUpperCase()}</span><span class=\"detail-value\">${title}: ${i.msg}</span>${btn}</div>`;
-      }).join('');
-      openModal(`<div style=\"display:flex;justify-content:space-between;align-items:center;\"><h3>互換チェック</h3><button class=\"btn ghost\" id=\"modal-close\">✕</button></div><div class=\"hint\">${summary}</div><div class=\"section\">${listHtml||'<div class=\"hint\">問題は見つかりませんでした。</div>'}</div>`);
-      const panel = byId('modal-panel');
-      if (panel){
-        const closer = panel.querySelector('#modal-close'); if (closer) closer.addEventListener('click', closeModal);
-        panel.querySelectorAll('button[data-idx]').forEach(b => {
-          b.addEventListener('click', () => { const i = Number(b.getAttribute('data-idx')); if (!isNaN(i)){ activeIndex = i; writeForm(cards[i]); updatePreview(); closeModal(); openDrawer(); } });
-        });
-      }
-    }
     function guessNameFromCard(card){
       const t = (card.card_type||'Pokemon').toLowerCase();
       if (t==='energy' && card.energy_type) return `Energy_${card.energy_type}.webp`;

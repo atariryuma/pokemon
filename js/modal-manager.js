@@ -586,3 +586,105 @@ if (document.readyState === 'loading') {
         modalManager.init();
     }
 }
+
+
+/**
+ * カード情報モーダル表示
+ * @param {object} card - 表示するカードオブジェクト
+ * @param {object} state - 現在のゲーム状態
+ * @param {object} actions - モーダル内で実行可能なアクションのリスト
+ */
+export function showCardInfoModal(card, state, actions = []) {
+    const modalContent = document.createElement('div');
+    modalContent.className = 'flex flex-col md:flex-row gap-6 w-full';
+
+    // 左側: カード画像
+    const imageContainer = document.createElement('div');
+    imageContainer.className = 'flex-shrink-0 w-full md:w-1/2 flex items-center justify-center';
+    imageContainer.style.minHeight = '400px'; // コンテナ自体の最小高さ
+    const img = document.createElement('img');
+    img.src = getCardImagePath(card.name_en, card);
+    img.alt = card.name_ja;
+    img.className = 'w-full h-auto rounded-lg shadow-lg object-contain max-h-[80vh]';
+    img.style.maxWidth = '100%';
+    imageContainer.appendChild(img);
+
+    // 右側: カード詳細情報
+    const infoContainer = document.createElement('div');
+    infoContainer.className = 'flex-grow text-white md:w-1/2';
+
+    // カード名 (日本語/英語)
+    const nameEl = document.createElement('h2');
+    nameEl.className = 'text-3xl font-bold mb-1';
+    nameEl.textContent = card.name_ja;
+    const subNameEl = document.createElement('p');
+    subNameEl.className = 'text-lg text-gray-400 mb-4';
+    subNameEl.textContent = card.name_en;
+    infoContainer.appendChild(nameEl);
+    infoContainer.appendChild(subNameEl);
+
+    // カードタイプと基本情報
+    const typeInfo = document.createElement('div');
+    typeInfo.className = 'flex items-center gap-4 mb-4 text-sm';
+    typeInfo.innerHTML = `
+        <span class="bg-gray-700 px-3 py-1 rounded-full">${card.card_type}</span>
+        ${card.card_type === 'Pokemon' ? `<span class="font-semibold">HP: ${card.hp}</span>` : ''}
+        ${card.card_type === 'Pokemon' && card.types ? `<span class="font-semibold">Type: ${card.types.join(', ')}</span>` : ''}
+    `;
+    infoContainer.appendChild(typeInfo);
+
+    // 説明テキスト (技、特性、効果など)
+    const descriptionContainer = document.createElement('div');
+    descriptionContainer.className = 'space-y-4';
+
+    if (card.card_type === 'Pokemon') {
+        // 特性
+        if (card.ability) {
+            const abilityEl = document.createElement('div');
+            abilityEl.innerHTML = `
+                <h4 class="text-lg font-semibold text-yellow-400">特性: ${card.ability.name_ja}</h4>
+                <p class="text-gray-300">${card.ability.text_ja}</p>
+            `;
+            descriptionContainer.appendChild(abilityEl);
+        }
+        // 技
+        if (card.attacks) {
+            card.attacks.forEach(attack => {
+                const attackEl = document.createElement('div');
+                const cost = attack.cost.join('');
+                attackEl.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-lg font-semibold">${attack.name_ja}</h4>
+                        <span class="text-xl font-bold">${attack.damage || ''}</span>
+                    </div>
+                    <p class="text-sm text-gray-400">コスト: ${cost}</p>
+                    ${attack.text_ja ? `<p class="text-gray-300 mt-1">${attack.text_ja}</p>` : ''}
+                `;
+                descriptionContainer.appendChild(attackEl);
+            });
+        }
+    } else {
+        // トレーナーズ、エネルギー
+        const textEl = document.createElement('p');
+        textEl.className = 'text-gray-300';
+        textEl.textContent = card.text_ja;
+        descriptionContainer.appendChild(textEl);
+    }
+    infoContainer.appendChild(descriptionContainer);
+
+    modalContent.appendChild(imageContainer);
+    modalContent.appendChild(infoContainer);
+
+    // モーダルアクション
+    const modalActions = [
+        ...actions,
+        { text: '閉じる', className: 'px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg', callback: () => modalManager.closeCentralModal() }
+    ];
+
+    modalManager.showCentralModal({
+        title: 'カード詳細',
+        message: modalContent,
+        actions: modalActions,
+        allowHtml: true
+    });
+}

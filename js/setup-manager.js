@@ -809,33 +809,20 @@ export class SetupManager {
     return newState;
   }
 
-  /**
-   * ゲーム開始モーダルを表示
-   */
-  showGameStartModal(view) {
-    // ゲーム開始は重要な意思決定なので中央モーダル
-    view.showInteractiveMessage(
-      'ポケモンカードゲーム',
-      [
-        {
-          text: '🚀 ゲームスタート',
-          callback: () => {
-            this.handleStartDealCards();
-          },
-          className: 'w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg'
-        }
-      ],
-      'central' // 重要な意思決定なので中央モーダル
-    );
-  }
 
   /**
    * 手札配布開始の処理
    */
   async handleStartDealCards() {
+    console.log('🃏 handleStartDealCards called');
     // No need to update modal content here, as it's handled by the new message system
     // Just trigger the initial setup
-    window.gameInstance?.triggerInitialSetup();
+    if (window.gameInstance) {
+      console.log('✅ Calling triggerInitialSetup on gameInstance');
+      await window.gameInstance.triggerInitialSetup();
+    } else {
+      console.error('❌ window.gameInstance not found');
+    }
   }
 
   /**

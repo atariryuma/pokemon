@@ -993,7 +993,10 @@ export class View {
         img.className = 'card-image w-full h-full object-contain rounded-lg';
         // CSSで .card-image { transform: translateZ(0); } を適用
         const shouldShowBack = isFaceDown || card.isPrizeCard;
-        img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en, card);
+        if (!shouldShowBack && !card.name_en) {
+            console.warn('⚠️ Card missing name_en:', card);
+        }
+        img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en || 'Unknown', card);
         img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
         container.appendChild(img);
 

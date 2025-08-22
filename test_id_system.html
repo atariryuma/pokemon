@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ID-Based Card System Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f0f0f0; 
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .card-info {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 8px;
+            border-left: 3px solid #007bff;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>ID-Based Card System Test</h1>
+    
+    <div class="test-section">
+        <h2>🔬 Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        import { loadCardsFromJSON, getCardImagePath, getCardMasterList } from './js/data-manager.js';
+        import { createInitialState } from './js/state.js';
+
+        const resultsDiv = document.getElementById('results');
+
+        function addResult(message, type = 'success') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+        }
+
+        function addCardInfo(cardData) {
+            const div = document.createElement('div');
+            div.className = 'card-info';
+            div.innerHTML = `ID: ${cardData.id || 'NONE'} | Name: ${cardData.name_en} | Type: ${cardData.card_type} | Image: ${getCardImagePath(cardData.name_en, cardData)}`;
+            resultsDiv.appendChild(div);
+        }
+
+        async function runTests() {
+            try {
+                addResult('📋 Starting ID-based card system tests...', 'warning');
+                
+                // Test 1: Load card data
+                addResult('🔄 Loading card data from JSON...');
+                const cards = await loadCardsFromJSON();
+                addResult(`✅ Loaded ${cards.length} cards successfully`);
+
+                // Test 2: Check ID consistency
+                addResult('🔍 Checking ID consistency...');
+                const idsPresent = cards.filter(c => c.id).length;
+                const idsMissing = cards.filter(c => !c.id).length;
+                
+                if (idsMissing > 0) {
+                    addResult(`⚠️ ${idsMissing} cards missing IDs, ${idsPresent} cards have IDs`, 'warning');
+                } else {
+                    addResult(`✅ All ${idsPresent} cards have IDs`);
+                }
+
+                // Test 3: Check card types after normalization
+                addResult('🔄 Testing card type normalization...');
+                const pokemon = cards.filter(c => c.card_type === 'Pokémon' || c.card_type === 'Pokemon');
+                const basicEnergy = cards.filter(c => c.card_type === 'Basic Energy');
+                const allEnergy = cards.filter(c => c.card_type === 'Energy');
+                
+                addResult(`🐾 Pokémon cards: ${pokemon.length}`);
+                addResult(`⚡ Basic Energy cards: ${basicEnergy.length}`);
+                addResult(`⚡ Raw Energy cards: ${allEnergy.length}`);
+
+                // Test 4: Image path generation
+                addResult('🖼️ Testing image path generation...');
+                
+                // Test some specific cards
+                const testCards = [
+                    cards.find(c => c.name_en === 'Akamayabato'),
+                    cards.find(c => c.name_en === 'Cat exv'),
+                    cards.find(c => c.name_en === 'Colorless Energy'),
+                    cards.find(c => c.name_en === 'Grass Energy')
+                ].filter(Boolean);
+
+                testCards.forEach(card => {
+                    addCardInfo(card);
+                });
+
+                // Test 5: Game state creation
+                addResult('🎮 Testing game state creation...');
+                const gameState = createInitialState();
+                const playerDeck = gameState.players.player.deck;
+                const cpuDeck = gameState.players.cpu.deck;
+                
+                addResult(`✅ Player deck: ${playerDeck.length} cards`);
+                addResult(`✅ CPU deck: ${cpuDeck.length} cards`);
+                
+                // Check for runtime IDs
+                const cardsWithRuntimeId = playerDeck.filter(c => c.runtimeId).length;
+                addResult(`✅ Cards with runtime IDs: ${cardsWithRuntimeId}/${playerDeck.length}`);
+
+                // Test 6: Check for card type consistency in deck
+                const pokemonInDeck = playerDeck.filter(c => c.card_type === 'Pokémon').length;
+                const energyInDeck = playerDeck.filter(c => c.card_type === 'Basic Energy').length;
+                
+                addResult(`🐾 Pokémon in deck: ${pokemonInDeck}`);
+                addResult(`⚡ Energy in deck: ${energyInDeck}`);
+
+                addResult('🎉 All tests completed!', 'success');
+
+            } catch (error) {
+                addResult(`❌ Test failed: ${error.message}`, 'error');
+                console.error('Test error:', error);
+            }
+        }
+
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html>

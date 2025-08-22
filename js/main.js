@@ -1,6 +1,7 @@
 import { Game } from './game.js';
 import { errorHandler } from './error-handler.js';
 import { animate } from './animation-manager.js';
+import { enableAutoRefresh } from './data-manager.js';
 
 const noop = () => {};
 
@@ -25,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Make animation manager globally accessible for debugging
         window.animate = animate;
         noop('Game instance created.');
+        
+        // Enable auto-refresh for card data when returning from editor
+        enableAutoRefresh();
+        noop('Auto-refresh enabled for card data.');
+        
         game.init();
         noop('game.init() called.');
     }

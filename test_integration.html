@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Integration Test</title>
+    <script type="module">
+        import { loadCardsFromJSON, normalizeCardData } from './js/data-manager.js';
+        
+        async function testIntegration() {
+            console.log('🧪 Testing card data integration...');
+            
+            try {
+                // Test card loading
+                const cards = await loadCardsFromJSON();
+                console.log(`✅ Loaded ${cards.length} cards`);
+                
+                // Test first card normalization
+                if (cards.length > 0) {
+                    console.log('✅ First card:', cards[0]);
+                    console.log('✅ Card type:', cards[0].card_type);
+                    console.log('✅ Stage:', cards[0].stage);
+                }
+                
+                // Test navigation elements
+                const cardEditorBtn = document.getElementById('card-editor-test');
+                const backToGameBtn = document.getElementById('back-to-game-test');
+                
+                if (cardEditorBtn && backToGameBtn) {
+                    console.log('✅ Navigation buttons found');
+                } else {
+                    console.log('❌ Navigation buttons missing');
+                }
+                
+                console.log('🎉 Integration test completed!');
+                
+            } catch (error) {
+                console.error('❌ Integration test failed:', error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', testIntegration);
+    </script>
+</head>
+<body>
+    <h1>Integration Test</h1>
+    <button id="card-editor-test">Test Card Editor Button</button>
+    <button id="back-to-game-test">Test Back to Game Button</button>
+    <div id="results">Check console for results</div>
+</body>
+</html>

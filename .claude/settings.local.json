@@ -27,7 +27,11 @@
       "Bash(npm start:*)",
       "WebFetch(domain:speckyboy.com)",
       "WebFetch(domain:codepen.io)",
-      "WebFetch(domain:pokecardlab.com)"
+      "WebFetch(domain:pokecardlab.com)",
+      "Bash(git log:*)",
+      "Bash(rg:*)",
+      "Bash(powershell:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": [],

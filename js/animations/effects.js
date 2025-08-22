@@ -23,17 +23,40 @@ export class EffectAnimations extends AnimationCore {
         
         if (!pokemonElement) return;
 
-        // 1. エネルギーカード縮小（手札から）
+        // エネルギータイプに応じた色とエフェクト
+        const energyColors = {
+            fire: '#ff6b35',
+            water: '#4fc3f7',
+            grass: '#66bb6a',
+            lightning: '#ffeb3b',
+            psychic: '#ab47bc',
+            fighting: '#f57c00',
+            darkness: '#424242',
+            metal: '#90a4ae',
+            colorless: '#bdbdbd'
+        };
+        
+        const color = energyColors[energyType.toLowerCase()] || energyColors.colorless;
+
+        // 1. エネルギーカードのスライドアニメーション（手札から）
         if (energyElement) {
-            await this.animate(energyElement, 'anim-energy-shrink', ANIMATION_TIMING.fast);
+            await this.createEnergySlideEffect(energyElement, pokemonElement, energyType, color);
         }
 
         // 2. ポケモンへのエネルギーグロー
         const glowClass = `anim-energy-glow-${energyType.toLowerCase()}`;
+        pokemonElement.style.boxShadow = `0 0 20px ${color}`;
         await this.animate(pokemonElement, glowClass, ANIMATION_TIMING.normal);
 
         // 3. エネルギー統合エフェクト
+        pokemonElement.classList.add('energy-effect', `energy-effect-${energyType}`);
         await this.animate(pokemonElement, 'anim-energy-integrate', ANIMATION_TIMING.normal);
+        
+        // クリーンアップ
+        this.scheduleCleanup(() => {
+            pokemonElement.style.boxShadow = '';
+            pokemonElement.classList.remove('energy-effect', `energy-effect-${energyType}`);
+        }, 400);
     }
 
     /**
@@ -69,8 +92,29 @@ export class EffectAnimations extends AnimationCore {
         
         if (!pokemonElement) return;
 
+        const conditionEffects = {
+            poisoned: { color: '#9c27b0', intensity: 'medium', duration: 2000 },
+            burned: { color: '#ff5722', intensity: 'high', duration: 1500 },
+            asleep: { color: '#3f51b5', intensity: 'low', duration: 3000 },
+            paralyzed: { color: '#ffeb3b', intensity: 'medium', duration: 1000 },
+            confused: { color: '#e91e63', intensity: 'high', duration: 2500 }
+        };
+        
+        const effect = conditionEffects[condition.toLowerCase()];
+        if (!effect) return;
+        
+        // 特殊状態の視覚効果
+        pokemonElement.style.boxShadow = `0 0 15px ${effect.color}`;
+        pokemonElement.classList.add('special-condition', `condition-${condition}`);
+        
         const conditionClass = `anim-condition-${condition}`;
         await this.animate(pokemonElement, conditionClass, ANIMATION_TIMING.normal);
+        
+        // 持続的エフェクトのスケジュール
+        this.scheduleCleanup(() => {
+            pokemonElement.style.boxShadow = '';
+            pokemonElement.classList.remove('special-condition', `condition-${condition}`);
+        }, effect.duration);
     }
 
     /**
@@ -163,9 +207,71 @@ export class EffectAnimations extends AnimationCore {
         await this.animate(gameBoard, 'anim-screen-flash', ANIMATION_TIMING.fast);
     }
 
+    /**
+     * エネルギーカードスライドエフェクト
+     * @private
+     */
+    async createEnergySlideEffect(energyElement, pokemonElement, energyType, color) {
+        // エネルギーカード画像マップ
+        const energyImageMap = {
+            fire: 'assets/cards/energy/Energy_Fire.webp',
+            water: 'assets/cards/energy/Energy_Water.webp',
+            grass: 'assets/cards/energy/Energy_Grass.webp',
+            lightning: 'assets/cards/energy/Energy_Lightning.webp',
+            psychic: 'assets/cards/energy/Energy_Psychic.webp',
+            fighting: 'assets/cards/energy/Energy_Fighting.webp',
+            darkness: 'assets/cards/energy/Energy_Darkness.webp',
+            metal: 'assets/cards/energy/Energy_Colorless.webp',
+            colorless: 'assets/cards/energy/Energy_Colorless.webp'
+        };
+        
+        const cardImageSrc = energyImageMap[energyType.toLowerCase()] || energyImageMap.colorless;
+        
+        // エネルギーカードのスライドアニメーション要素を作成
+        const slideCard = document.createElement('div');
+        slideCard.className = 'energy-slide-card absolute';
+        slideCard.style.cssText = `
+            bottom: -35px;
+            right: -25px;
+            width: 73px;
+            height: 104px;
+            z-index: var(--z-animations);
+            opacity: 0;
+            background-image: url('${cardImageSrc}');
+            background-size: cover;
+            background-position: center;
+            border-radius: 6px;
+            border: 1px solid ${color};
+            box-shadow: 0 0 8px ${color};
+            animation: slideToTarget 700ms ease-out forwards;
+        `;
+        
+        // 相対位置を確保
+        const originalPosition = pokemonElement.style.position;
+        if (getComputedStyle(pokemonElement).position === 'static') {
+            pokemonElement.style.position = 'relative';
+        }
+        
+        pokemonElement.appendChild(slideCard);
+        
+        // 700ms後にスライドカードを削除
+        return new Promise(resolve => {
+            this.scheduleCleanup(() => {
+                slideCard.remove();
+                if (originalPosition) {
+                    pokemonElement.style.position = originalPosition;
+                } else {
+                    pokemonElement.style.position = '';
+                }
+                resolve();
+            }, 700);
+        });
+    }
+
     // ヘルパー関数
     findPokemonElement(pokemonId) {
-        return document.querySelector(`[data-card-id="${pokemonId}"]`);
+        return document.querySelector(`[data-card-id="${pokemonId}"]`) ||
+               document.querySelector(`[data-pokemon-id="${pokemonId}"]`);
     }
 
     findEnergyCard(cardId) {
