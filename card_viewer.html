@@ -39,6 +39,7 @@
       position: sticky; top: 0; z-index: 10;
       background: linear-gradient(180deg, rgba(15,18,38,.95) 0%, rgba(15,18,38,.75) 100%);
       backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       border-bottom: 1px solid var(--border);
       padding: 10px 15px;
       display: flex;
@@ -163,7 +164,7 @@
     /* Preview styles */
     #preview-wrap { display:flex; flex-direction: column; min-height: 0; }
     #preview-stage { position: relative; flex: 1; min-height: 260px; background: repeating-conic-gradient(#1a1f4a 0 25%, #10143a 0 50%) 50% / 18px 18px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display:flex; align-items:center; justify-content:center; }
-    #preview-img { max-width: 100%; max-height: 100%; transform-origin: center center; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
+    #preview-img { max-width: 100%; max-height: 100%; transform-origin: center center; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; image-rendering: auto; }
     #preview-empty { position: absolute; color: var(--muted); font-size: 15px; }
 
     /* Drawer */
@@ -289,11 +290,11 @@
   <header>
     <h1>ポケモンカード エディタ <span class="muted small">(cards-master.json / data/cards)</span></h1>
     <div class="toolbar">
-      <button class="btn primary" id="btn-back-to-game">🎮 ゲームに戻る</button>
+      <button type="button" class="btn primary" id="btn-back-to-game">🎮 ゲームに戻る</button>
       <div class="spacer"></div>
-      <button class="btn" id="btn-open-drawer">カード一覧 (Ctrl+K)</button>
-      <button class="btn" id="btn-open-master">master読込</button>
-      <button class="btn primary" id="btn-save-master">master保存</button>
+      <button type="button" class="btn" id="btn-open-drawer">カード一覧 (Ctrl+K)</button>
+      <button type="button" class="btn" id="btn-open-master">master読込</button>
+      <button type="button" class="btn primary" id="btn-save-master">master保存</button>
     </div>
   </header>
 
@@ -307,16 +308,16 @@
         </div>
         <div class="flex-row" style="align-items:center; margin-top:8px;">
           <div class="toolbar">
-            <button class="btn" id="btn-zoom-out">-</button>
-            <input type="range" id="zoom" min="0.5" max="3" value="1" step="0.1" style="width:160px"/>
-            <button class="btn" id="btn-zoom-in">+</button>
-            <button class="btn" id="btn-fit">フィット</button>
-            <button class="btn" id="btn-actual">等倍</button>
+            <button type="button" class="btn" id="btn-zoom-out">-</button>
+            <input type="range" id="zoom" min="0.5" max="3" value="1" step="0.1" title="ズーム" aria-label="ズーム" style="width:160px"/>
+            <button type="button" class="btn" id="btn-zoom-in">+</button>
+            <button type="button" class="btn" id="btn-fit">フィット</button>
+            <button type="button" class="btn" id="btn-actual">等倍</button>
           </div>
           <div class="spacer"></div>
           <div class="toolbar">
-            <button class="btn" id="btn-prev">← 前へ</button>
-            <button class="btn" id="btn-next">次へ →</button>
+            <button type="button" class="btn" id="btn-prev">← 前へ</button>
+            <button type="button" class="btn" id="btn-next">次へ →</button>
           </div>
         </div>
       </div>
@@ -327,9 +328,9 @@
       <div class="content">
         <form id="cardForm">
           <div class="grid-2">
-            <div class="field"><label>ID（自動生成）</label><input id="id" required readonly style="background-color: rgba(0,0,0,0.3); cursor: not-allowed;" /></div>
-            <div class="field"><label>カード種別</label>
-              <select id="card_type" required>
+            <div class="field"><label for="id">ID（自動生成）</label><input id="id" required readonly title="自動生成されるID" style="background-color: rgba(0,0,0,0.3); cursor: not-allowed;" /></div>
+            <div class="field"><label for="card_type">カード種別</label>
+              <select id="card_type" required title="カードの種別を選択">
                 <option value="Pokemon">Pokemon</option>
                 <option value="Energy">Energy</option>
                 <option value="Trainer">Trainer</option>
@@ -337,31 +338,31 @@
             </div>
           </div>
           <div class="grid-2">
-            <div class="field"><label>英名 (name_en)</label><input id="name_en" required /></div>
-            <div class="field"><label>和名 (name_ja)</label><input id="name_ja" required /></div>
+            <div class="field"><label for="name_en">英名 (name_en)</label><input id="name_en" required title="英語名" /></div>
+            <div class="field"><label for="name_ja">和名 (name_ja)</label><input id="name_ja" required title="日本語名" /></div>
           </div>
 
           <div id="pokemonFields" class="section">
             <h3>ポケモン</h3>
             <div class="grid-2">
-              <div class="field"><label>ステージ</label>
-                <select id="stage">
+              <div class="field"><label for="stage">ステージ</label>
+                <select id="stage" title="進化ステージ">
                   <option value="">-</option>
                   <option value="Basic">Basic</option>
                   <option value="Stage1">Stage1</option>
                   <option value="Stage2">Stage2</option>
                 </select>
               </div>
-              <div class="field"><label>HP</label><input id="hp" type="number" min="0" /></div>
+              <div class="field"><label for="hp">HP</label><input id="hp" type="number" min="0" title="ヒットポイント" /></div>
             </div>
             <div class="grid-2">
-              <div class="field"><label>進化前 (evolves_from)</label><input id="evolves_from"/></div>
-              <div class="field"><label>進化先 (evolves_to, カンマ区切り)</label><input id="evolves_to"/></div>
+              <div class="field"><label for="evolves_from">進化前 (evolves_from)</label><input id="evolves_from" title="進化前のポケモン名"/></div>
+              <div class="field"><label for="evolves_to">進化先 (evolves_to, カンマ区切り)</label><input id="evolves_to" title="進化先のポケモン名（複数はカンマ区切り）"/></div>
             </div>
             <div class="grid-2">
-              <div class="field"><label>タイプ (types, カンマ区切り)</label><input id="types" placeholder="Grass, Colorless 等"/></div>
-              <div class="field"><label>ルールボックス</label>
-                <select id="rule_box">
+              <div class="field"><label for="types">タイプ (types, カンマ区切り)</label><input id="types" placeholder="Grass, Colorless 等" title="ポケモンのタイプ（複数はカンマ区切り）"/></div>
+              <div class="field"><label for="rule_box">ルールボックス</label>
+                <select id="rule_box" title="ルールボックスの種類">
                   <option value="">なし</option>
                   <option value="ex">ex</option>
                   <option value="V">V</option>
@@ -370,12 +371,12 @@
               </div>
             </div>
             <div class="grid-2">
-              <div class="field"><label>弱点 (例: Lightning:x2; Fire:+)</label><input id="weakness" placeholder="type:value; type:value"/></div>
-              <div class="field"><label>抵抗力 (例: Fighting:-30)</label><input id="resistance" placeholder="type:value (1つのみ)"/></div>
+              <div class="field"><label for="weakness">弱点 (例: Lightning:x2; Fire:+)</label><input id="weakness" placeholder="type:value; type:value" title="弱点設定"/></div>
+              <div class="field"><label for="resistance">抵抗力 (例: Fighting:-30)</label><input id="resistance" placeholder="type:value (1つのみ)" title="抵抗力設定"/></div>
             </div>
             <div class="grid-2">
-              <div class="field"><label>にげるエネ数 (retreat_cost)</label><input id="retreat_cost" type="number" min="0" max="5"/></div>
-              <div class="field"><label>特性 名 (ability.name_ja / en)</label><input id="ability_name"/></div>
+              <div class="field"><label for="retreat_cost">にげるエネ数 (retreat_cost)</label><input id="retreat_cost" type="number" min="0" max="5" title="にげるのに必要なエネルギー数"/></div>
+              <div class="field"><label for="ability_name">特性 名 (ability.name_ja / en)</label><input id="ability_name" title="特性の名前"/></div>
             </div>
             <div class="field"><label>特性 テキスト (text_ja / text_en)</label><textarea id="ability_text" placeholder="日/英はスラッシュ区切り (日本語 / English)"></textarea></div>
 
@@ -391,8 +392,8 @@
           <div id="energyFields" class="section">
             <h3>エネルギー</h3>
             <div class="grid-2">
-              <div class="field"><label>エネルギータイプ</label>
-                <select id="energy_type">
+              <div class="field"><label for="energy_type">エネルギータイプ</label>
+                <select id="energy_type" title="エネルギーの種類">
                   <option value="">-</option>
                   <option>Grass</option><option>Fire</option><option>Water</option>
                   <option>Lightning</option><option>Psychic</option><option>Fighting</option>
@@ -400,8 +401,8 @@
                   <option>Dragon</option><option>Colorless</option>
                 </select>
               </div>
-              <div class="field"><label>基本エネ?</label>
-                <select id="is_basic"><option value="true">true</option><option value="false">false</option></select>
+              <div class="field"><label for="is_basic">基本エネ?</label>
+                <select id="is_basic" title="基本エネルギーかどうか"><option value="true">true</option><option value="false">false</option></select>
               </div>
             </div>
             <div class="field"><label>テキスト (text_ja / text_en)</label><textarea id="energy_text" placeholder="日本語 / English"></textarea></div>
@@ -410,8 +411,8 @@
           <div id="trainerFields" class="section">
             <h3>トレーナー</h3>
             <div class="grid-2">
-              <div class="field"><label>トレーナータイプ</label>
-                <select id="trainer_type">
+              <div class="field"><label for="trainer_type">トレーナータイプ</label>
+                <select id="trainer_type" title="トレーナーカードの種類">
                   <option value="">-</option>
                   <option>Item</option>
                   <option>Supporter</option>
@@ -425,8 +426,8 @@
           <div class="section">
             <h3>画像ファイル</h3>
             <div class="grid-2">
-              <div class="field"><label>画像ファイル名 (任意)</label><input id="image_file" placeholder="例: SV1-001.webp"/></div>
-              <div class="field"><label>画像アップロード</label><input id="image_upload" type="file" accept="image/*"/></div>
+              <div class="field"><label for="image_file">画像ファイル名 (任意)</label><input id="image_file" placeholder="例: SV1-001.webp" title="画像ファイル名"/></div>
+              <div class="field"><label for="image_upload">画像アップロード</label><input id="image_upload" type="file" accept="image/*" title="画像ファイルを選択"/></div>
             </div>
             <div class="flex-row" style="align-items:center; gap:8px; margin-top:6px;">
               <button type="button" class="btn" id="btn-pick-image">画像を選ぶ</button>
@@ -438,9 +439,9 @@
       </div>
       <div class="footer">
         <div class="toolbar">
-          <button class="btn primary" id="btn-save">このカードを保存</button>
-          <button class="btn" id="btn-duplicate">複製</button>
-          <button class="btn danger" id="btn-delete">削除</button>
+          <button type="button" class="btn primary" id="btn-save">このカードを保存</button>
+          <button type="button" class="btn" id="btn-duplicate">複製</button>
+          <button type="button" class="btn danger" id="btn-delete">削除</button>
         </div>
         <div class="spacer"></div>
         <div class="status" id="status">準備中...</div>
@@ -459,8 +460,8 @@
           <option value="Energy">エネルギー</option>
           <option value="Trainer">トレーナー</option>
         </select>
-        <button class="btn" id="btn-new">新規</button>
-        <button class="btn ghost" id="btn-close-drawer">✕</button>
+        <button type="button" class="btn" id="btn-new">新規</button>
+        <button type="button" class="btn ghost" id="btn-close-drawer">✕</button>
       </div>
       <div class="count" id="count"></div>
       <div class="list" id="cardList"></div>

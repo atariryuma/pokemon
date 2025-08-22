@@ -1,7 +1,11 @@
 import { getCardMasterList } from './data-manager.js';
 import { GAME_PHASES } from './phase-manager.js';
 
-// Fisher-Yates shuffle algorithm
+/**
+ * Fisher-Yates shuffle algorithm - 配列をランダムにシャッフルする
+ * @param {Array} array - シャッフルする配列
+ * @returns {Array} シャッフル済みの配列（元配列を変更）
+ */
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -10,6 +14,10 @@ function shuffle(array) {
     return array;
 }
 
+/**
+ * ランダムなデッキを作成する（ポケモン20枚、エネルギー40枚）
+ * @returns {Array} 作成されたデッキ（シャッフル済み）
+ */
 function createDeck() {
     const deck = [];
     let cardId = 0;
@@ -41,6 +49,10 @@ function createDeck() {
     return shuffle(deck);
 }
 
+/**
+ * 初期プレイヤー状態を作成する
+ * @returns {Object} 初期化されたプレイヤー状態オブジェクト
+ */
 function createPlayerState() {
     const deck = createDeck(); // Deck is already shuffled by createDeck
     // Hand and prize will be populated by Logic.setupGame
@@ -56,6 +68,10 @@ function createPlayerState() {
     };
 }
 
+/**
+ * ゲームの初期状態を作成する
+ * @returns {Object} 初期化されたゲーム状態オブジェクト
+ */
 export function createInitialState() {
     return {
         // Core game state

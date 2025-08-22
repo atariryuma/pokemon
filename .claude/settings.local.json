@@ -31,7 +31,8 @@
       "Bash(git log:*)",
       "Bash(rg:*)",
       "Bash(powershell:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [],

@@ -73,11 +73,17 @@ export class PhaseManager {
     const player = state.players.player;
     const cpu = state.players.cpu;
     
+    // Null安全性の確保
+    const playerHand = Array.isArray(player.hand) ? player.hand : [];
+    const cpuHand = Array.isArray(cpu.hand) ? cpu.hand : [];
+    const playerPrize = Array.isArray(player.prize) ? player.prize : [];
+    const cpuPrize = Array.isArray(cpu.prize) ? cpu.prize : [];
+    
     return (
-      player.hand.length === 7 &&
-      cpu.hand.length === 7 &&
-      player.prize.length === 6 &&
-      cpu.prize.length === 6
+      playerHand.length === 7 &&
+      cpuHand.length === 7 &&
+      playerPrize.length === 6 &&
+      cpuPrize.length === 6
     );
   }
 
