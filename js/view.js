@@ -7,6 +7,7 @@ import { modalManager } from './modal-manager.js';
 
 // Z-index定数 (CSS変数と連携) - 最小限に削減
 const Z_INDEX = {
+    CARD: '25',               // カード通常（--z-card）
     HAND: '50',               // 手札通常（--z-hand）
     HAND_HOVER: '55',         // 手札ホバー（--z-hand-hover）
     CARD_EFFECTS: '40',       // カード付与効果（--z-card-effects）
@@ -34,9 +35,7 @@ export class View {
         if (this.playerHand) {
             this.playerHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
         }
-        if (this.cpuHand) {
-            this.cpuHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
-        }
+        // CPU手札はクリック無効（プレイヤー操作対象外）
 
         // Modal elements
         // Modal elements removed - showInteractiveMessageシステムに統一済み
@@ -333,6 +332,7 @@ export class View {
             if (deckArr.length > 0) {
                 const count = document.createElement('div');
                 count.className = 'absolute bottom-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
+                count.style.zIndex = Z_INDEX.CARD_EFFECTS; // カード付与効果レイヤー
                 count.textContent = deckArr.length;
                 deckSlot.appendChild(count);
                 noop(`  🏷️ Added deck count badge: ${deckArr.length} cards`);
@@ -787,7 +787,8 @@ export class View {
             container.classList.add('cpu-card');
         }
         if (zone === 'deck') {
-            container.classList.add('deck-stack');
+            // デッキカードは通常のカードレイヤーに配置
+            container.style.zIndex = Z_INDEX.CARD; // --z-card 相当
         }
         // CPUの裏向きカード操作を無効化するクラス
         if (playerType === 'cpu' && isFaceDown) {

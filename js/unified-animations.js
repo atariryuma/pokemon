@@ -291,7 +291,7 @@ export class UnifiedAnimationManager {
     cardElement.style.transform = 'scale(1.05)';
     cardElement.style.transition = 'transform 200ms ease, box-shadow 200ms ease';
     cardElement.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
-    cardElement.style.zIndex = MODAL_PRIORITY.CENTRAL;
+    cardElement.style.zIndex = MODAL_PRIORITY.CENTRAL; // モーダル表示時のみ最前面
   }
 
   /**
@@ -307,7 +307,7 @@ export class UnifiedAnimationManager {
     // スタイルをリセット
     cardElement.style.transform = '';
     cardElement.style.boxShadow = '';
-    cardElement.style.zIndex = '';
+    cardElement.style.zIndex = ''; // 元のz-indexに戻す
   }
 
   /**
