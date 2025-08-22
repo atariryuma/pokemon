@@ -1335,7 +1335,7 @@ export class UnifiedAnimationManager {
       right: -25px;
       width: 73px;
       height: 104px;
-      z-index: var(--z-hand-area);
+      z-index: var(--z-animations);
       opacity: 0;
       background-image: url('${cardImageSrc}');
       background-size: cover;
@@ -1374,6 +1374,12 @@ export class UnifiedAnimationManager {
       document.head.appendChild(style);
     }
 
+    // ポケモン要素の位置設定を確保（アニメーションのため）
+    const originalPosition = pokemonElement.style.position;
+    if (getComputedStyle(pokemonElement).position === 'static') {
+      pokemonElement.style.position = 'relative';
+    }
+    
     pokemonElement.appendChild(energyCardElement);
     
     // メモリ管理のためのトラッキング
@@ -1392,6 +1398,14 @@ export class UnifiedAnimationManager {
         // 400ms後に光を消す
         memoryManager.setTimeout(() => {
           pokemonElement.classList.remove('energy-effect', effectClass);
+          
+          // 位置設定を元に戻す
+          if (originalPosition) {
+            pokemonElement.style.position = originalPosition;
+          } else if (getComputedStyle(pokemonElement).position === 'relative') {
+            pokemonElement.style.position = '';
+          }
+          
           resolve();
         }, 400);
       }, 700);

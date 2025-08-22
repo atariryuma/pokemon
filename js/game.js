@@ -34,6 +34,7 @@ export class Game {
         // Animation control flags
         this.setupAnimationsExecuted = false;
         this.prizeCardAnimationExecuted = false;
+        this.prizeAnimationCompleted = false; // サイドアニメーション完了フラグ
         this.cardRevealAnimationExecuted = false;
     } // End of constructor
 
@@ -44,6 +45,7 @@ export class Game {
     resetAnimationFlags() {
         this.setupAnimationsExecuted = false;
         this.prizeCardAnimationExecuted = false;
+        this.prizeAnimationCompleted = false;
         this.cardRevealAnimationExecuted = false;
         noop('🔄 Animation flags reset');
     }
@@ -901,8 +903,9 @@ export class Game {
             return;
         }
 
-        // 相手ポケモンの画像パスを取得
-        const defenderImagePath = defender.imagePath || `assets/cards/${defender.name_en.replace(/\s+/g, '_').toLowerCase()}.webp`;
+        // 相手ポケモンの画像パスを確実に取得
+        const defenderImagePath = this._getReliableCardImagePath(defender);
+        noop('🖼️ Battle modal defender image path:', defenderImagePath, 'for card:', defender.name_ja);
         
         // バトル画面のHTMLを構築（右側に相手のポケモン画像を追加）
         const battleHtml = `
@@ -954,7 +957,10 @@ export class Game {
                 <!-- Right: Opponent Pokemon Card Image -->
                 <div class="battle-right-panel">
                     <div class="opponent-card-display">
-                        <img src="${defenderImagePath}" alt="${defender.name_ja}" class="opponent-card-image" />
+                        <img src="${defenderImagePath}" 
+                             alt="${defender.name_ja}" 
+                             class="opponent-card-image" 
+                             onerror="this.src='assets/card-back.jpg'; this.onerror=null;" />
                         <div class="card-overlay">
                             <h4>${defender.name_ja}</h4>
                             <div class="card-hp">HP: ${Math.max(0, defender.hp - (defender.damage || 0))}/${defender.hp}</div>
@@ -1484,6 +1490,45 @@ export class Game {
     }
 
     /**
+     * カード画像パスを確実に取得
+     */
+    _getReliableCardImagePath(card) {
+        if (!card) return 'assets/card-back.jpg'; // デフォルト画像
+        
+        // 複数のパスを試行する配列を作成
+        const possiblePaths = [];
+        
+        // 1. 既にimagePath があれば最優先
+        if (card.imagePath) {
+            possiblePaths.push(card.imagePath);
+        }
+        
+        // 2. name_en から複数パターン生成
+        if (card.name_en) {
+            const cleanName = card.name_en.replace(/\s+/g, '_').toLowerCase();
+            possiblePaths.push(`assets/cards/${cleanName}.webp`);
+            possiblePaths.push(`assets/cards/${cleanName}.png`);
+            possiblePaths.push(`assets/cards/${cleanName}.jpg`);
+        }
+        
+        // 3. name_ja から生成
+        if (card.name_ja) {
+            const cleanName = card.name_ja.replace(/\s+/g, '_');
+            possiblePaths.push(`assets/cards/${cleanName}.webp`);
+        }
+        
+        // 4. ID から生成
+        if (card.id) {
+            possiblePaths.push(`assets/cards/${card.id}.webp`);
+            possiblePaths.push(`assets/cards/${card.id}.png`);
+            possiblePaths.push(`assets/cards/${card.id}.jpg`);
+        }
+        
+        // 最初のパスを返す（onerrorで他のパスも試行される）
+        return possiblePaths[0] || 'assets/card-back.jpg';
+    }
+
+    /**
      * 新しいゲーム開始
      */
     async _startNewGame() {
@@ -2010,6 +2055,9 @@ export class Game {
         this.prizeCardAnimationExecuted = true;
         noop('🎯 Starting prize card animation');
         
+        // アニメーション用に裏面カードを事前作成
+        await this._createPrizeBackCardsForAnimation();
+        
         // 実際にカード要素が入っているスロットの子要素を取得
         const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
         const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
@@ -2058,6 +2106,65 @@ export class Game {
         if (allPrizePromises.length > 0) {
             await Promise.all(allPrizePromises);
         }
+
+        // サイドアニメーション完了を記録し、再レンダリングして表示
+        this.prizeAnimationCompleted = true;
+        noop('🎯 Prize card animation completed, re-rendering to show cards');
+        this._updateState(this.state); // 再レンダリングしてサイドカードを表示
+    }
+
+    /**
+     * アニメーション用に裏面サイドカードを事前作成
+     */
+    async _createPrizeBackCardsForAnimation() {
+        noop('🎯 Creating back cards for prize animation');
+        
+        const playerPrizeSlots = document.querySelectorAll('.player-self .side-left .card-slot');
+        const cpuPrizeSlots = document.querySelectorAll('.opponent-board .side-right .card-slot');
+        
+        // プレイヤー用裏面カード作成
+        playerPrizeSlots.forEach((slot, index) => {
+            if (index < 6) {
+                slot.innerHTML = ''; // 既存内容をクリア
+                const backCard = this._createPrizeBackCard('player', index);
+                slot.appendChild(backCard);
+            }
+        });
+        
+        // CPU用裏面カード作成
+        cpuPrizeSlots.forEach((slot, index) => {
+            if (index < 6) {
+                slot.innerHTML = ''; // 既存内容をクリア
+                const backCard = this._createPrizeBackCard('cpu', index);
+                slot.appendChild(backCard);
+            }
+        });
+        
+        // DOM更新を待つ
+        await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    /**
+     * サイド用裏面カード要素を作成
+     */
+    _createPrizeBackCard(playerType, index) {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'relative w-full h-full card-back-element';
+        cardElement.dataset.zone = 'prize';
+        cardElement.dataset.owner = playerType;
+        cardElement.dataset.prizeIndex = index.toString();
+        
+        // 裏面画像を作成
+        const cardBack = document.createElement('div');
+        cardBack.className = `w-full h-full card-back ${playerType === 'cpu' ? 'cpu-card' : 'player-card'}`;
+        cardBack.style.backgroundImage = 'url("assets/card-back.jpg")';
+        cardBack.style.backgroundSize = 'cover';
+        cardBack.style.backgroundPosition = 'center';
+        cardBack.style.borderRadius = '8px';
+        cardBack.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+        
+        cardElement.appendChild(cardBack);
+        return cardElement;
     }
 
     // ==================== アニメーション関連メソッド ====================

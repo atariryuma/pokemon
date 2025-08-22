@@ -317,8 +317,10 @@ export class View {
             discardSlot.appendChild(this._createCardElement(topCard, playerType, 'discard', 0));
         }
 
-        // Prizes
-        this._renderPrizeArea(boardElement, prize, playerType);
+        // Prizes - サイド配布アニメーション完了後のみ表示
+        if (this._shouldRenderPrizes()) {
+            this._renderPrizeArea(boardElement, prize, playerType);
+        }
 
         // Deck - HTMLのクラス名に合わせて修正
         const deckSelector = playerType === 'player' ? '.bottom-right-deck' : '.top-left-deck';
@@ -699,6 +701,17 @@ export class View {
         } catch (e) {
             console.warn('Z-ORDER DEBUG failed:', e);
         }
+    }
+
+    /**
+     * サイドカードをレンダリングすべきかどうかを判定
+     */
+    _shouldRenderPrizes() {
+        // ゲームインスタンスからアニメーション状態を取得
+        if (window.game && window.game.prizeAnimationCompleted === false) {
+            return false; // アニメーション中は表示しない
+        }
+        return true; // それ以外は表示
     }
 
     _renderPrizeArea(boardElement, prize, playerType) {
