@@ -2257,22 +2257,26 @@ export class Game {
             // 3. アニメーション完了後に準備完了メッセージとスタートボタンを表示
             await this._delay(500); // アニメーション完了を待つ
             
-            try {
-                this.view.showInteractiveMessage(
-                    '準備完了！「ゲームスタート」を押してバトルを開始してください。',
-                    [
-                        {
-                            text: 'ゲームスタート',
-                            callback: () => {
-                                noop('🔥 GAME START BUTTON CLICKED - Starting actual game');
-                                this._startActualGame();
-                            }
-                        }
-                    ],
-                    'central' // ゲームスタートは重要な意思決定なので中央モーダル
-                );
-            } catch (e) {
-                console.warn('Failed to show game start modal, fallback to side button.', e);
+            this.view.showGameMessage(
+                '準備完了！「ゲームスタート」を押してバトルを開始してください。'
+            );
+            
+            // 確定ボタンを非表示にする
+            this._hideFloatingActionButton('confirm-setup-button-float');
+            
+            // ゲームスタートボタンを表示
+            this._showFloatingActionButton('start-game-button-float', () => {
+                noop('🔥 GAME START BUTTON CLICKED - Starting actual game');
+                this._startActualGame();
+            });
+            
+            // ボタンテキストを更新
+            const startButton = document.getElementById('start-game-button-float');
+            if (startButton) {
+                const textElement = startButton.querySelector('.pokemon-btn-text');
+                if (textElement) {
+                    textElement.textContent = 'ゲームスタート';
+                }
             }
         }
     }
@@ -2287,6 +2291,9 @@ export class Game {
             prizeCardAnimationExecuted: this.prizeCardAnimationExecuted,
             cardRevealAnimationExecuted: this.cardRevealAnimationExecuted
         });
+        
+        // ゲームスタートボタンを非表示にする
+        this._hideFloatingActionButton('start-game-button-float');
         
         // 重複実行を防ぐため、既にゲーム開始済みなら早期return
         if (this.state.phase === GAME_PHASES.PLAYER_MAIN || this.state.phase === GAME_PHASES.PLAYER_TURN) {
