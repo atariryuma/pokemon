@@ -1,4 +1,5 @@
 import { getCardImagePath } from './data-manager.js';
+import { CardOrientationManager } from './card-orientation.js';
 import { animationManager } from './unified-animations.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { BUTTON_IDS, CONTAINER_IDS, CSS_CLASSES } from './ui-constants.js';
@@ -719,7 +720,7 @@ export class View {
         prizeSlots.forEach((slot, index) => {
             slot.innerHTML = ''; // 既存内容をクリア
             
-            if (index < six.length) {
+            if (index < six.length && six[index] !== null) {
                 const card = six[index];
                 const cardEl = this._createCardElement(card, playerType, 'prize', index, true); // 裏向き
                 
@@ -735,6 +736,7 @@ export class View {
                     this._makeSlotClickable(slot, playerType, 'prize', index);
                 }
             }
+            // nullの場合は空のスロットのまま（何も表示しない）
         });
 
         // Badge system removed - prize info now shown in right panel
@@ -773,6 +775,8 @@ export class View {
             const placeholder = document.createElement('div');
             placeholder.className = 'card-placeholder w-full h-full flex items-center justify-center text-xs text-gray-500';
             placeholder.textContent = 'Stadium Zone';
+            // Stadiumプレースホルダーも向き制御を適用
+            CardOrientationManager.applyCardOrientation(placeholder, 'global', 'stadium');
             stadiumEl.appendChild(placeholder);
         }
     }
@@ -784,20 +788,15 @@ export class View {
 
         if (!card) {
             container.classList.add('card-placeholder');
+            // プレースホルダーも向き制御を適用
+            CardOrientationManager.applyCardOrientation(container, playerType, zone);
             return container;
         }
 
-        // --- クラスによる状態管理 ---
-        if (playerType === 'cpu') {
-            container.classList.add('cpu-card');
-        }
+        // --- 向き・所有者は data-* で管理 ---
         if (zone === 'deck') {
             // デッキカードは通常のカードレイヤーに配置
             container.style.zIndex = Z_INDEX.CARD; // --z-card 相当
-        }
-        // CPUの裏向きカード操作を無効化するクラス
-        if (playerType === 'cpu' && isFaceDown) {
-            container.classList.add('is-cpu-facedown');
         }
 
         container.dataset.cardId = card.id;
@@ -807,11 +806,14 @@ export class View {
 
         const img = document.createElement('img');
         img.className = 'card-image w-full h-full object-contain rounded-lg';
-        img.style.transform = 'translateZ(0)'; // 3D空間の基準面に配置
+        // CSSで .card-image { transform: translateZ(0); } を適用
         const shouldShowBack = isFaceDown || card.isPrizeCard;
         img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
         container.appendChild(img);
+
+        // 向きを最終確定（data-orientation を付与）
+        CardOrientationManager.applyCardOrientation(container, playerType, zone);
 
 
         // --- イベントリスナー ---

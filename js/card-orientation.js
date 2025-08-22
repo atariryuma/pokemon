@@ -1,96 +1,55 @@
 /**
- * CARD-ORIENTATION.JS - カード向き制御統一システム
- * 
- * プレイヤー・CPU カードの向き制御を統一管理
- * 重複コードの削除と向き判定の一元化
- * 
- * === 責任分担 ===
- * - view.js の _createCardElement(): 初期カード作成時に向きを設定（メイン責任）
- * - animations.js の flipCardFaceUp(): カードフリップ時の向き制御（特殊ケース）
- * - unified-animations.js の createAnimationCard(): アニメーション用クローンの向き制御
- * - 統一カード配布アニメーション: 向き設定しない（二重適用防止）
- * 
- * === ゾーン別ルール ===
- * - hand: CPU/Player問わず回転なし
-* - deck/active/bench/prize/discard: CPUのみ180度回転、Playerは回転なし
-*/
-
-const noop = () => {};
+ * CARD-ORIENTATION.JS - 統一カード向き制御システム
+ *
+ * ルール:
+ * - CPU: hand以外は180度回転
+ * - CPU: handは未回転
+ * - Player: すべて未回転
+ * - プレースホルダーもルールに従う
+ *
+ * 実装指針:
+ * - data-orientation属性によるCSS制御に完全統一
+ * - プレースホルダーを含む全要素で統一管理
+ */
 
 /**
  * カード向き制御の統一管理クラス
  */
 export class CardOrientationManager {
   /**
-   * カードの向き情報を統一的に取得
+   * カードの向き判定（CPU側のhand以外は反転）
    * @param {string} playerId - プレイヤーID ('player' | 'cpu')
-   * @param {string} zone - ゾーン情報 ('hand' | 'deck' | 'active' | 'bench' | 'prize' | 'discard' | 'stadium')
-   * @param {Element} element - カード要素 (オプション、フォールバック用)
-   * @returns {Object} 向き制御情報
+   * @param {string} zone - ゾーン情報
+   * @param {Element} element - カード要素（プレースホルダー含む）
+   * @returns {boolean} 反転が必要かどうか
    */
-  static getCardOrientation(playerId, zone = null, element = null) {
-    // プレイヤーIDを最優先で判定
-    let isCpu = (playerId === 'cpu');
-    
-    // playerId が null/undefined の場合のみ要素から判定
-    if (playerId === null || playerId === undefined) {
-      isCpu = element?.closest('.opponent-board');
-      noop(`🔍 getCardOrientation: playerId was null, detected from DOM: isCpu=${isCpu}`);
-    }
-    
-    // ゾーン別の向き制御ルール
-    let shouldRotate = false;
-    if (isCpu) {
-      // CPUの場合: 手札は回転なし、プレイマット系は180度回転
-      shouldRotate = zone !== 'hand' && zone !== 'modal';
-    }
-    
-    // 詳細デバッグログ
-    noop(`🎯 getCardOrientation: playerId="${playerId}", zone="${zone}", isCpu=${isCpu}, shouldRotate=${shouldRotate}`);
-    
-    return {
-      isCpu,
-      playerId: isCpu ? 'cpu' : 'player',
-      zone: zone,
-      shouldRotate: shouldRotate,
-      transform: shouldRotate ? 'rotateX(180deg)' : '',
-      baseClass: isCpu ? 'cpu-card' : 'player-card',
-      playerSelector: isCpu ? '.opponent-board' : '.player-self',
-      handSelector: isCpu ? '#cpu-hand' : '#player-hand'
-    };
+  static shouldFlipCard(playerId, zone = null, element = null) {
+    // プレイヤー識別（要素からのフォールバック含む）
+    const isCpu = (playerId === 'cpu') || (!!element?.closest?.('.opponent-board'));
+    const normalizedZone = zone || element?.dataset?.zone || '';
+
+    // CPU は hand と modal 以外を回転（プレースホルダー含む）
+    return isCpu && normalizedZone !== 'hand' && normalizedZone !== 'modal';
   }
 
   /**
-   * カード要素に適切な向きを適用
-   * @param {Element} cardElement - カード要素
+   * カード要素に適切な向きを適用（プレースホルダー含む）
+   * @param {Element} cardElement - カード要素またはプレースホルダー
    * @param {string} playerId - プレイヤーID
    * @param {string} zone - ゾーン情報
-   * @param {boolean} force - 強制適用フラグ
    */
-  static applyCardOrientation(cardElement, playerId, zone = null, force = false) {
+  static applyCardOrientation(cardElement, playerId, zone = null) {
     if (!cardElement) return;
 
-    const imgElement = cardElement.querySelector('img');
-    const orientation = this.getCardOrientation(playerId, zone, cardElement);
+    const shouldFlip = this.shouldFlipCard(playerId, zone, cardElement);
+    // data-orientation属性でCSS制御を統一
+    cardElement.dataset.orientation = shouldFlip ? 'flipped' : 'upright';
     
-    noop(`🎯 CardOrientation detected: playerId=${playerId}, zone=${zone}, isCpu=${orientation.isCpu}, shouldRotate=${orientation.shouldRotate}, transform=${orientation.transform}, hasImg=${!!imgElement}`);
-    
-    // shouldRotateフラグまたは強制適用の場合のみ回転を適用
-    if (orientation.shouldRotate || force) {
-      cardElement.classList.add('cpu-card');
-      cardElement.classList.remove('player-card');
-      noop(`✅ Applied card rotation: CSS .cpu-card class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
-    } else {
-      if (orientation.isCpu) {
-        // CPU手札など回転しないCPUカード
-        cardElement.classList.add('cpu-card-no-rotate');
-        cardElement.classList.remove('player-card', 'cpu-card');
-        noop(`✅ Applied CPU card (no rotation): CSS .cpu-card-no-rotate class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
-      } else {
-        cardElement.classList.add('player-card');
-        cardElement.classList.remove('cpu-card', 'cpu-card-no-rotate');
-        noop(`✅ Applied player card orientation: CSS .player-card class (zone: ${zone}) ${imgElement ? 'with img' : 'placeholder only'}`);
-      }
+    // CSS競合対策：直接スタイル適用で確実な反転を保証
+    if (shouldFlip && cardElement.querySelector('img')) {
+      const img = cardElement.querySelector('img');
+      img.style.transform = 'rotate(180deg) translateZ(0)';
+      img.style.transformStyle = 'preserve-3d';
     }
   }
 
@@ -101,28 +60,10 @@ export class CardOrientationManager {
    * @param {string} zone - ゾーン情報
    */
   static applyBatchCardOrientation(cardElements, playerId, zone = null) {
+    if (!Array.isArray(cardElements)) return;
     cardElements.forEach(element => {
       this.applyCardOrientation(element, playerId, zone);
     });
-  }
-
-  /**
-   * アニメーション後の向き確定処理
-   * @param {Element} cardElement - カード要素
-   * @param {string} playerId - プレイヤーID
-   * @param {string} zone - ゾーン情報
-   */
-  static finalizeCardOrientation(cardElement, playerId, zone = null) {
-    if (!cardElement) return;
-
-    const imgElement = cardElement.querySelector('img');
-    if (!imgElement) return;
-
-    const orientation = this.getCardOrientation(playerId, zone, cardElement);
-
-    // トランジションを削除してから最終的な向きを設定
-    imgElement.style.transition = '';
-    imgElement.style.transform = orientation.transform;
   }
 }
 

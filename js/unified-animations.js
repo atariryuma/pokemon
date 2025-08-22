@@ -514,8 +514,7 @@ export class UnifiedAnimationManager {
    * プレイヤー判定とセレクタ生成の統一
    */
   getPlayerSelector(playerId) {
-    const orientation = CardOrientationManager.getCardOrientation(playerId, null);
-    return orientation.playerSelector;
+    return playerId === 'player' ? '.player-self' : '.opponent-board';
   }
 
   getActiveSelector(playerId) {
@@ -528,8 +527,7 @@ export class UnifiedAnimationManager {
   }
 
   getHandSelector(playerId) {
-    const orientation = CardOrientationManager.getCardOrientation(playerId, 'hand');
-    return orientation.handSelector;
+    return playerId === 'player' ? '#player-hand' : '#cpu-hand';
   }
 
   /**
@@ -723,7 +721,7 @@ export class UnifiedAnimationManager {
   /**
    * 移動元要素の取得
    */
-  getSourceElement(playerId, sourceZone, cardId) {
+  getSourceElement(playerId, sourceZone) {
     switch (sourceZone) {
       case 'hand':
         return document.querySelector(this.getHandSelector(playerId));
@@ -1146,7 +1144,7 @@ export class UnifiedAnimationManager {
               // 最終的な向きを確定
               if (applyOrientation) {
                 const zone = this._getZoneFromAnimationType(animationType);
-                CardOrientationManager.finalizeCardOrientation(element, playerId, zone);
+                CardOrientationManager.applyCardOrientation(element, playerId, zone);
               }
               resolve();
             });
@@ -1317,8 +1315,9 @@ export class UnifiedAnimationManager {
     // プレイヤーIDを特定
     const playerId = pokemonElement.closest('.opponent-board') ? 'cpu' : 'player';
     
-    // カードの向き制御情報を取得
-    const orientation = CardOrientationManager.getCardOrientation(playerId, 'active');
+    // CPU側カードの向き判定
+    const shouldFlip = CardOrientationManager.shouldFlipCard(playerId, 'active');
+    const cardTransform = shouldFlip ? 'rotate(180deg)' : '';
 
     // エネルギータイプに応じたエフェクト色を決定
     const energyType = energyCard.energy_type?.toLowerCase() || 'colorless';
@@ -1344,7 +1343,7 @@ export class UnifiedAnimationManager {
       border-radius: 6px;
       border: 1px solid ${this._getEnergyColor(energyType)};
       box-shadow: 0 0 8px ${this._getEnergyColor(energyType)};
-      transform: ${orientation.transform};
+      transform: ${cardTransform};
       animation: slideToTarget 700ms ease-out forwards;
     `;
 
@@ -1355,19 +1354,19 @@ export class UnifiedAnimationManager {
       style.textContent = `
         @keyframes slideToTarget {
           0% {
-            transform: ${orientation.transform} translate(0px, 0px) scale(1);
+            transform: ${cardTransform} translate(0px, 0px) scale(1);
             opacity: 0;
           }
           30% {
-            transform: ${orientation.transform} translate(-15px, -15px) scale(0.95);
+            transform: ${cardTransform} translate(-15px, -15px) scale(0.95);
             opacity: 1;
           }
           70% {
-            transform: ${orientation.transform} translate(-30px, -30px) scale(0.7);
+            transform: ${cardTransform} translate(-30px, -30px) scale(0.7);
             opacity: 0.9;
           }
           100% {
-            transform: ${orientation.transform} translate(-45px, -45px) scale(0.3);
+            transform: ${cardTransform} translate(-45px, -45px) scale(0.3);
             opacity: 0;
           }
         }

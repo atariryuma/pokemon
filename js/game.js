@@ -1071,30 +1071,149 @@ export class Game {
             'deck_out': '相手の山札がなくなりました！'
         };
         
-        const winnerText = winner === 'player' ? '🎉 あなたの勝利！' : '😢 相手の勝利！';
         const reasonText = reasonMessages[reason] || reason || '不明な理由';
         
         // ゲーム統計情報を取得
         const gameStats = this._getGameStats();
         
-        // ゲーム終了モーダル表示
-        this.view.displayModal({
-            title: 'ゲーム終了',
-            message: `
-                <div class="text-center p-4">
-                    <div class="text-6xl mb-4">${winner === 'player' ? '🎉' : '😢'}</div>
-                    <h2 class="text-3xl font-bold mb-2">${winnerText}</h2>
-                    <p class="text-lg text-gray-400 mb-6">勝因: ${reasonText}</p>
+        // 特別な勝敗リザルトモーダル表示
+        await this._showGameResultModal(winner, reasonText, gameStats);
+    }
+
+    /**
+     * 特別な勝敗リザルトモーダル表示
+     */
+    async _showGameResultModal(winner, reasonText, gameStats) {
+        const isVictory = winner === 'player';
+        
+        // プレイマットエフェクトを維持するため背景ボケを軽減
+        const resultModal = document.createElement('div');
+        resultModal.id = 'game-result-modal';
+        resultModal.className = 'fixed inset-0 flex items-center justify-center game-result-overlay';
+        resultModal.style.zIndex = 'var(--z-modals)';
+        
+        const modalContent = `
+            <div class="game-result-container ${isVictory ? 'victory-result' : 'defeat-result'}">
+                <!-- 背景デコレーション -->
+                <div class="result-background-decoration"></div>
+                
+                <!-- メインコンテンツ -->
+                <div class="result-content">
+                    <!-- 勝敗バナー -->
+                    <div class="result-banner">
+                        <div class="result-icon-container">
+                            ${isVictory ? 
+                                '<div class="victory-crown">👑</div><div class="victory-sparkles">✨🎊✨</div>' : 
+                                '<div class="defeat-cloud">☁️</div><div class="defeat-rain">💧💧💧</div>'
+                            }
+                        </div>
+                        <h1 class="result-title">
+                            ${isVictory ? 'VICTORY!' : 'DEFEAT'}
+                        </h1>
+                        <h2 class="result-subtitle">
+                            ${isVictory ? 'ポケモンマスターへの道' : '次回頑張ろう'}
+                        </h2>
+                    </div>
+                    
+                    <!-- 詳細情報 -->
+                    <div class="result-details">
+                        <div class="result-reason">
+                            <div class="reason-label">勝因</div>
+                            <div class="reason-text">${reasonText}</div>
+                        </div>
+                        
+                        <div class="result-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">ターン数</div>
+                                <div class="stat-value">${gameStats.totalTurns}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">使用カード</div>
+                                <div class="stat-value">${gameStats.cardsPlayed}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">与ダメージ</div>
+                                <div class="stat-value">${gameStats.damageDealt}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- アクションボタン -->
+                    <div class="result-actions">
+                        <button class="result-btn primary-btn" onclick="window.game._startNewGame(); document.getElementById('game-result-modal').remove();">
+                            <span class="btn-icon">🚀</span>
+                            <span class="btn-text">新しいバトル</span>
+                        </button>
+                        <button class="result-btn secondary-btn" onclick="window.game._showDetailedStats(); document.getElementById('game-result-modal').remove();">
+                            <span class="btn-icon">📊</span>
+                            <span class="btn-text">詳細統計</span>
+                        </button>
+                    </div>
                 </div>
-            `,
-            actions: [
-                { 
-                    text: '🚀 新しいゲームを始める', 
-                    callback: () => this._startNewGame(),
-                    className: 'w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg'
-                }
-            ]
+                
+                <!-- アニメーション要素 -->
+                <div class="result-particles">
+                    ${isVictory ? this._generateVictoryParticles() : this._generateDefeatParticles()}
+                </div>
+            </div>
+        `;
+        
+        resultModal.innerHTML = modalContent;
+        document.body.appendChild(resultModal);
+        
+        // アニメーション開始
+        requestAnimationFrame(() => {
+            resultModal.classList.add('result-modal-enter');
         });
+        
+        // 自動削除タイマー（30秒後）
+        setTimeout(() => {
+            if (resultModal.parentNode) {
+                resultModal.classList.add('result-modal-exit');
+                setTimeout(() => resultModal.remove(), 500);
+            }
+        }, 30000);
+    }
+
+    /**
+     * 勝利時のパーティクル生成
+     */
+    _generateVictoryParticles() {
+        const particles = [];
+        for (let i = 0; i < 15; i++) {
+            const delay = Math.random() * 2;
+            const duration = 2 + Math.random() * 3;
+            const size = 0.5 + Math.random() * 1;
+            particles.push(`
+                <div class="victory-particle" style="
+                    animation-delay: ${delay}s;
+                    animation-duration: ${duration}s;
+                    transform: scale(${size});
+                    left: ${Math.random() * 100}%;
+                    --particle-emoji: '${['⭐', '✨', '🎊', '🎉', '💫', '🌟'][Math.floor(Math.random() * 6)]}';
+                "></div>
+            `);
+        }
+        return particles.join('');
+    }
+
+    /**
+     * 敗北時のパーティクル生成
+     */
+    _generateDefeatParticles() {
+        const particles = [];
+        for (let i = 0; i < 8; i++) {
+            const delay = Math.random() * 1.5;
+            const duration = 3 + Math.random() * 2;
+            particles.push(`
+                <div class="defeat-particle" style="
+                    animation-delay: ${delay}s;
+                    animation-duration: ${duration}s;
+                    left: ${Math.random() * 100}%;
+                "></div>
+            `);
+        }
+        return particles.join('');
     }
 
     /**
@@ -1114,65 +1233,254 @@ export class Game {
      * 勝利アニメーション
      */
     async _playVictoryAnimation() {
+        // プレイマット全体に勝利エフェクト
+        const gameBoard = document.getElementById('game-board');
+        if (gameBoard) {
+            gameBoard.style.filter = 'brightness(1.2) saturate(1.3)';
+            gameBoard.style.transition = 'filter 1s ease';
+        }
+
         // プレイヤーのカードを光らせる
         const playerCards = document.querySelectorAll('[data-owner="player"]');
         
-        // 段階的にカードを光らせる
+        // 段階的にカードを光らせる勝利演出
         playerCards.forEach((card, index) => {
             setTimeout(() => {
-                card.classList.add('animate-pulse', 'ring-4', 'ring-yellow-400');
-                // パルス効果とリング効果を追加
-                card.style.boxShadow = '0 0 20px gold, 0 0 40px gold';
-                card.style.transform = 'scale(1.05)';
-                card.style.transition = 'all 0.5s ease';
-            }, index * 100);
+                card.classList.add('victory-celebration');
+                card.style.boxShadow = '0 0 30px rgba(252, 211, 77, 0.8), 0 0 60px rgba(252, 211, 77, 0.4)';
+                card.style.transform = 'scale(1.1)';
+                card.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                card.style.zIndex = 'var(--z-animations)';
+            }, index * 150);
+        });
+
+        // 勝利パーティクルをプレイマットに追加
+        this._createVictoryParticlesOnBoard();
+        
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        // エフェクトクリーンアップ
+        playerCards.forEach(card => {
+            card.classList.remove('victory-celebration');
+            card.style.transform = '';
+            card.style.boxShadow = '';
+            card.style.zIndex = '';
         });
         
-        // 勝利サウンド再生（実装時）
-        // this._playVictorySound();
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (gameBoard) {
+            gameBoard.style.filter = '';
+        }
     }
 
     /**
      * 敗北アニメーション
      */
     async _playDefeatAnimation() {
-        // CPUのカードを光らせる
-        const cpuCards = document.querySelectorAll('[data-owner="cpu"]');
-        
-        // プレイヤーのカードを暗くする
+        // プレイマット全体に敗北エフェクト
+        const gameBoard = document.getElementById('game-board');
+        if (gameBoard) {
+            gameBoard.style.filter = 'grayscale(30%) brightness(0.8) contrast(0.9)';
+            gameBoard.style.transition = 'filter 1.5s ease';
+        }
+
+        // プレイヤーのカードを沈ませる
         const playerCards = document.querySelectorAll('[data-owner="player"]');
-        playerCards.forEach(card => {
-            card.style.filter = 'grayscale(50%) brightness(0.7)';
-            card.style.transition = 'filter 1s ease';
-        });
-        
-        // CPUのカードを強調
-        cpuCards.forEach((card, index) => {
+        playerCards.forEach((card, index) => {
             setTimeout(() => {
-                card.classList.add('animate-pulse', 'ring-4', 'ring-red-400');
-                card.style.boxShadow = '0 0 20px red';
+                card.style.filter = 'grayscale(60%) brightness(0.6) blur(0.5px)';
+                card.style.transform = 'scale(0.95) translateY(5px)';
+                card.style.opacity = '0.7';
+                card.style.transition = 'all 1.2s ease-out';
+                card.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.5)';
             }, index * 100);
         });
         
-        // 敗北サウンド再生（実装時）
-        // this._playDefeatSound();
+        // CPUカードを勝利演出
+        const cpuCards = document.querySelectorAll('[data-owner="cpu"]');
+        cpuCards.forEach((card, index) => {
+            setTimeout(() => {
+                card.style.boxShadow = '0 0 25px rgba(239, 68, 68, 0.6), 0 0 50px rgba(239, 68, 68, 0.3)';
+                card.style.transform = 'scale(1.08)';
+                card.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                card.style.zIndex = 'var(--z-animations)';
+            }, index * 120);
+        });
+
+        // 敗北パーティクルをプレイマットに追加
+        this._createDefeatParticlesOnBoard();
         
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // エフェクトクリーンアップ（敗北時は少し暗いまま残す）
+        cpuCards.forEach(card => {
+            card.style.transform = '';
+            card.style.boxShadow = '';
+            card.style.zIndex = '';
+        });
+    }
+
+    /**
+     * プレイマット上に勝利パーティクルを生成
+     */
+    _createVictoryParticlesOnBoard() {
+        const gameBoard = document.getElementById('game-board');
+        if (!gameBoard) return;
+
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'board-victory-particle';
+            particle.style.position = 'absolute';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.fontSize = (0.8 + Math.random() * 1.2) + 'rem';
+            particle.style.zIndex = 'var(--z-animations)';
+            particle.style.pointerEvents = 'none';
+            particle.innerHTML = ['⭐', '✨', '🎊', '🎉', '💫', '🌟'][Math.floor(Math.random() * 6)];
+            particle.style.animation = `boardVictoryFloat ${2 + Math.random() * 3}s ease-out ${Math.random() * 1}s forwards`;
+
+            gameBoard.appendChild(particle);
+            
+            // 自動削除
+            setTimeout(() => {
+                if (particle.parentNode) particle.remove();
+            }, 5000);
+        }
+    }
+
+    /**
+     * プレイマット上に敗北パーティクルを生成
+     */
+    _createDefeatParticlesOnBoard() {
+        const gameBoard = document.getElementById('game-board');
+        if (!gameBoard) return;
+
+        for (let i = 0; i < 10; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'board-defeat-particle';
+            particle.style.position = 'absolute';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = '0%';
+            particle.style.width = '3px';
+            particle.style.height = '15px';
+            particle.style.background = 'rgba(156, 163, 175, 0.6)';
+            particle.style.borderRadius = '2px';
+            particle.style.zIndex = 'var(--z-animations)';
+            particle.style.pointerEvents = 'none';
+            particle.style.animation = `boardDefeatFall ${3 + Math.random() * 2}s linear ${Math.random() * 0.5}s forwards`;
+
+            gameBoard.appendChild(particle);
+            
+            // 自動削除
+            setTimeout(() => {
+                if (particle.parentNode) particle.remove();
+            }, 6000);
+        }
     }
 
     /**
      * ゲーム統計情報取得
      */
     _getGameStats() {
+        const state = this.state || {};
+        const players = state.players || {};
+        const playerState = players.player || {};
+        const cpuState = players.cpu || {};
+        
         return {
-            turns: this.state.turn || 0,
-            playerPrizes: this.state.players?.player?.prizeRemaining || 0,
-            cpuPrizes: this.state.players?.cpu?.prizeRemaining || 0,
-            winner: this.state.winner || 'unknown',
-            reason: this.state.gameEndReason || 'unknown'
+            totalTurns: state.turn || 0,
+            playerPrizes: playerState.prizeRemaining || 0,
+            cpuPrizes: cpuState.prizeRemaining || 0,
+            cardsPlayed: (playerState.discard?.length || 0),
+            damageDealt: this._calculateTotalDamage(),
+            winner: state.winner || 'unknown',
+            reason: state.gameEndReason || 'unknown'
         };
+    }
+
+    /**
+     * 総ダメージ量計算（概算）
+     */
+    _calculateTotalDamage() {
+        // ログから攻撃ダメージを推定（簡易版）
+        const logs = this.state?.log || [];
+        let totalDamage = 0;
+        
+        logs.forEach(entry => {
+            if (entry.message && entry.message.includes('ダメージ')) {
+                const damageMatch = entry.message.match(/(\d+)ダメージ/);
+                if (damageMatch) {
+                    totalDamage += parseInt(damageMatch[1], 10);
+                }
+            }
+        });
+        
+        return totalDamage;
+    }
+
+    /**
+     * 詳細統計表示
+     */
+    _showDetailedStats() {
+        const stats = this._getGameStats();
+        const logs = this.state?.log || [];
+        
+        modalManager.showCentralModal({
+            title: '📊 バトル統計',
+            content: `
+                <div class="detailed-stats-container">
+                    <div class="stats-section">
+                        <h3 class="stats-section-title">基本情報</h3>
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-label">総ターン数</div>
+                                <div class="stat-value">${stats.totalTurns}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">勝者</div>
+                                <div class="stat-value">${stats.winner === 'player' ? 'プレイヤー' : 'CPU'}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">残りサイド</div>
+                                <div class="stat-value">あなた: ${stats.playerPrizes} / CPU: ${stats.cpuPrizes}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-section">
+                        <h3 class="stats-section-title">プレイ情報</h3>
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-label">使用カード数</div>
+                                <div class="stat-value">${stats.cardsPlayed}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">与えた総ダメージ</div>
+                                <div class="stat-value">${stats.damageDealt}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">ログ記録</div>
+                                <div class="stat-value">${logs.length} 件</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-section">
+                        <h3 class="stats-section-title">最近の行動</h3>
+                        <div class="recent-logs">
+                            ${logs.slice(-5).reverse().map(entry => 
+                                `<div class="log-entry">${entry.message || 'アクション記録なし'}</div>`
+                            ).join('')}
+                        </div>
+                    </div>
+                </div>
+            `,
+            actions: [
+                {
+                    text: '閉じる',
+                    callback: () => modalManager.closeCentralModal()
+                }
+            ]
+        });
     }
 
     /**
@@ -1570,10 +1878,8 @@ export class Game {
         // 各ポケモンをフリップ
         noop(`🔥 About to flip ${allPokemonElements.length} pokemon cards`);
         for (const { element, card } of allPokemonElements) {
-            noop(`🔥 Flipping card: ${card.name_ja} (${card.name_en})`);
             await animationManager.flipCardFaceUp(element, getCardImagePath(card.name_en));
         }
-        noop(`🔥 All ${allPokemonElements.length} pokemon cards flipped`);
     }
 
     /**
