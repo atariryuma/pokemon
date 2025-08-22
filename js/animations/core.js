@@ -288,15 +288,15 @@ export class AnimationCore {
             }
             
             /* エフェクトアニメーション */
-            .anim-energy-glow-fire { animation: energyGlowFire ${ANIMATION_TIMING.normal}ms ease-in-out; }
-            .anim-energy-glow-water { animation: energyGlowWater ${ANIMATION_TIMING.normal}ms ease-in-out; }
-            .anim-energy-glow-grass { animation: energyGlowGrass ${ANIMATION_TIMING.normal}ms ease-in-out; }
-            .anim-energy-glow-lightning { animation: energyGlowLightning ${ANIMATION_TIMING.normal}ms ease-in-out; }
-            .anim-energy-glow-psychic { animation: energyGlowPsychic ${ANIMATION_TIMING.normal}ms ease-in-out; }
-            .anim-energy-glow-fighting { animation: energyGlowFighting ${ANIMATION_TIMING.normal}ms ease-in-out; }
-            .anim-energy-glow-darkness { animation: energyGlowDarkness ${ANIMATION_TIMING.normal}ms ease-in-out; }
-            .anim-energy-glow-metal { animation: energyGlowMetal ${ANIMATION_TIMING.normal}ms ease-in-out; }
-            .anim-energy-glow-colorless { animation: energyGlowColorless ${ANIMATION_TIMING.normal}ms ease-in-out; }
+            .anim-energy-glow-fire { animation: energyGlowFire ${ANIMATION_TIMING.slow}ms ease-in-out; }
+            .anim-energy-glow-water { animation: energyGlowWater ${ANIMATION_TIMING.slow}ms ease-in-out; }
+            .anim-energy-glow-grass { animation: energyGlowGrass ${ANIMATION_TIMING.slow}ms ease-in-out; }
+            .anim-energy-glow-lightning { animation: energyGlowLightning ${ANIMATION_TIMING.slow}ms ease-in-out; }
+            .anim-energy-glow-psychic { animation: energyGlowPsychic ${ANIMATION_TIMING.slow}ms ease-in-out; }
+            .anim-energy-glow-fighting { animation: energyGlowFighting ${ANIMATION_TIMING.slow}ms ease-in-out; }
+            .anim-energy-glow-darkness { animation: energyGlowDarkness ${ANIMATION_TIMING.slow}ms ease-in-out; }
+            .anim-energy-glow-metal { animation: energyGlowMetal ${ANIMATION_TIMING.slow}ms ease-in-out; }
+            .anim-energy-glow-colorless { animation: energyGlowColorless ${ANIMATION_TIMING.slow}ms ease-in-out; }
             
             .anim-energy-integrate {
                 animation: energyIntegrate ${ANIMATION_TIMING.normal}ms ease-in-out;
@@ -447,15 +447,132 @@ export class AnimationCore {
             }
             
             /* Effect Keyframes */
-            @keyframes energyGlowFire { 0%, 100% { box-shadow: 0 0 0 #ff6b35; } 50% { box-shadow: 0 0 20px #ff6b35; } }
-            @keyframes energyGlowWater { 0%, 100% { box-shadow: 0 0 0 #4fc3f7; } 50% { box-shadow: 0 0 20px #4fc3f7; } }
-            @keyframes energyGlowGrass { 0%, 100% { box-shadow: 0 0 0 #66bb6a; } 50% { box-shadow: 0 0 20px #66bb6a; } }
-            @keyframes energyGlowLightning { 0%, 100% { box-shadow: 0 0 0 #ffeb3b; } 50% { box-shadow: 0 0 20px #ffeb3b; } }
-            @keyframes energyGlowPsychic { 0%, 100% { box-shadow: 0 0 0 #ab47bc; } 50% { box-shadow: 0 0 20px #ab47bc; } }
-            @keyframes energyGlowFighting { 0%, 100% { box-shadow: 0 0 0 #f57c00; } 50% { box-shadow: 0 0 20px #f57c00; } }
-            @keyframes energyGlowDarkness { 0%, 100% { box-shadow: 0 0 0 #424242; } 50% { box-shadow: 0 0 20px #424242; } }
-            @keyframes energyGlowMetal { 0%, 100% { box-shadow: 0 0 0 #90a4ae; } 50% { box-shadow: 0 0 20px #90a4ae; } }
-            @keyframes energyGlowColorless { 0%, 100% { box-shadow: 0 0 0 #bdbdbd; } 50% { box-shadow: 0 0 20px #bdbdbd; } }
+            @keyframes energyGlowFire { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #ff4444, 0 0 40px #ff444440; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #ff4444, 0 0 80px #ff444480; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #ff4444, 0 0 120px #ff4444aa; 
+                    transform: scale(1.05); 
+                } 
+            }
+            @keyframes energyGlowWater { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #4285f4, 0 0 40px #4285f440; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #4285f4, 0 0 80px #4285f480; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #4285f4, 0 0 120px #4285f4aa; 
+                    transform: scale(1.05); 
+                } 
+            }
+            @keyframes energyGlowGrass { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #34a853, 0 0 40px #34a85340; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #34a853, 0 0 80px #34a85380; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #34a853, 0 0 120px #34a853aa; 
+                    transform: scale(1.05); 
+                } 
+            }
+            @keyframes energyGlowLightning { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #fbbc04, 0 0 40px #fbbc0440; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #fbbc04, 0 0 80px #fbbc0480; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #fbbc04, 0 0 120px #fbbc04aa; 
+                    transform: scale(1.05); 
+                } 
+            }
+            @keyframes energyGlowPsychic { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #9c27b0, 0 0 40px #9c27b040; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #9c27b0, 0 0 80px #9c27b080; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #9c27b0, 0 0 120px #9c27b0aa; 
+                    transform: scale(1.05); 
+                } 
+            }
+            @keyframes energyGlowFighting { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #ff6d00, 0 0 40px #ff6d0040; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #ff6d00, 0 0 80px #ff6d0080; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #ff6d00, 0 0 120px #ff6d00aa; 
+                    transform: scale(1.05); 
+                } 
+            }
+            @keyframes energyGlowDarkness { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #424242, 0 0 40px #42424260; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #424242, 0 0 80px #42424280; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #424242, 0 0 120px #424242aa; 
+                    transform: scale(1.05); 
+                } 
+            }
+            @keyframes energyGlowMetal { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #607d8b, 0 0 40px #607d8b40; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #607d8b, 0 0 80px #607d8b80; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #607d8b, 0 0 120px #607d8baa; 
+                    transform: scale(1.05); 
+                } 
+            }
+            @keyframes energyGlowColorless { 
+                0%, 100% { 
+                    box-shadow: 0 0 20px #9e9e9e, 0 0 40px #9e9e9e40; 
+                    transform: scale(1); 
+                } 
+                25%, 75% { 
+                    box-shadow: 0 0 40px #9e9e9e, 0 0 80px #9e9e9e80; 
+                    transform: scale(1.02); 
+                } 
+                50% { 
+                    box-shadow: 0 0 60px #9e9e9e, 0 0 120px #9e9e9eaa; 
+                    transform: scale(1.05); 
+                } 
+            }
             
             @keyframes energyIntegrate {
                 0% { opacity: 1; transform: scale(1); }
