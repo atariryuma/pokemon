@@ -7,13 +7,7 @@ import { errorHandler } from './error-handler.js';
 import { modalManager } from './modal-manager.js';
 
 // Z-index定数 (CSS変数と連携) - 最小限に削減
-const Z_INDEX = {
-    CARD: '25',               // カード通常（--z-card）
-    HAND: '50',               // 手札通常（--z-hand）
-    HAND_HOVER: '55',         // 手札ホバー（--z-hand-hover）
-    CARD_EFFECTS: '40',       // カード付与効果（--z-card-effects）
-    MODAL_TEMP: '100'         // 一時的モーダル表示（--z-modals）
-};
+import { LEGACY_Z_INDEX as Z_INDEX, ZIndexManager } from './z-index-constants.js';
 
 const noop = () => {};
 
@@ -222,7 +216,7 @@ export class View {
 
         const img = document.createElement('img');
         img.className = 'w-full h-full object-contain';
-        img.src = getCardImagePath(card.name_en);
+        img.src = getCardImagePath(card.name_en, card);
         img.alt = card.name_ja;
 
         container.appendChild(img);
@@ -513,7 +507,7 @@ export class View {
             if (deckArr.length > 0) {
                 const count = document.createElement('div');
                 count.className = 'absolute bottom-1 right-1 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center';
-                count.style.zIndex = Z_INDEX.CARD_EFFECTS; // カード付与効果レイヤー
+                ZIndexManager.apply(count, 'CARD_EFFECTS'); // カード付与効果レイヤー
                 count.textContent = deckArr.length;
                 deckSlot.appendChild(count);
                 noop(`  🏷️ Added deck count badge: ${deckArr.length} cards`);
@@ -571,7 +565,7 @@ export class View {
             // 基本的な表示設定のみ（Mac Dock効果は後で追加）
             handSlot.style.visibility = 'visible';
             handSlot.style.display = 'flex';
-            handSlot.style.zIndex = Z_INDEX.HAND;
+            ZIndexManager.setHandNormal(handSlot);
             handSlot.style.position = 'relative';
             handSlot.style.opacity = '1'; // Always visible by default
             
@@ -672,7 +666,7 @@ export class View {
                 el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
                 el.style.marginLeft = `${BASE_GAP}px`;
                 el.style.marginRight = `${BASE_GAP}px`;
-                el.style.zIndex = Z_INDEX.HAND;
+                ZIndexManager.setHandNormal(el);
             });
             
             // アニメーションフラグをクリア（必要に応じて）
@@ -704,8 +698,8 @@ export class View {
                     maxEl = el;
                 }
             });
-            cards.forEach(el => { el.style.zIndex = Z_INDEX.HAND; });
-            if (maxEl) maxEl.style.zIndex = Z_INDEX.HAND_HOVER;
+            cards.forEach(el => ZIndexManager.setHandNormal(el));
+            if (maxEl) ZIndexManager.setHandHover(maxEl);
         };
 
         const onMove = (e) => {
@@ -987,7 +981,7 @@ export class View {
         // --- 向き・所有者は data-* で管理 ---
         if (zone === 'deck') {
             // デッキカードは通常のカードレイヤーに配置
-            container.style.zIndex = Z_INDEX.CARD; // --z-card 相当
+            ZIndexManager.ensureAbovePlaymat(container); // --z-card 相当
         }
 
         container.dataset.cardId = card.id;
@@ -999,7 +993,7 @@ export class View {
         img.className = 'card-image w-full h-full object-contain rounded-lg';
         // CSSで .card-image { transform: translateZ(0); } を適用
         const shouldShowBack = isFaceDown || card.isPrizeCard;
-        img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
+        img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en, card);
         img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
         container.appendChild(img);
 
@@ -1046,7 +1040,7 @@ export class View {
         // 新モーダルシステムで中央に表示（左画像 / 右情報）
         const imageHtml = `
           <div class="flex-shrink-0 w-48 max-w-[40%]">
-            <img src="${getCardImagePath(card.name_en)}" 
+            <img src="${getCardImagePath(card.name_en, card)}" 
                  alt="${card.name_ja}" 
                  class="w-full h-auto max-h-64 object-contain rounded-md border border-gray-700"
                  onerror="this.src='assets/ui/card_back.webp'; this.onerror=null;" />
@@ -1576,7 +1570,24 @@ export class View {
 
         slotElement.style.cursor = 'pointer';
 
-        // シンプルなクリック処理
+        // CPU側は基本的に操作不可だが、表向きカードは情報表示のためにクリック可能
+        if (owner === 'cpu') {
+            // 表向きカード（配置済み）のみクリック可能
+            const cardInSlot = slotElement.querySelector('[data-card-id]');
+            const hasCard = cardInSlot && cardInSlot.dataset.cardId;
+            
+            if (!hasCard) {
+                // カードがないスロットは操作不可
+                slotElement.style.pointerEvents = 'none';
+                slotElement.style.cursor = 'default';
+                return;
+            }
+            
+            // 表向きカードの場合は情報表示用クリックを許可
+            slotElement.style.cursor = 'help';
+        }
+
+        // シンプルなクリック処理（プレイヤー側の操作 + CPU側の情報表示）
         slotElement.addEventListener('click', (e) => {
             e.stopPropagation();
             

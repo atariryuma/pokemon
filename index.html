@@ -49,6 +49,13 @@
             --z-board: 10;          /* ゲームボード基底 */
             --z-placeholder: 12;    /* プレースホルダー（空スロット） */
             --z-placeholder-hover: 15; /* プレースホルダーホバー */
+            --z-slots: 16;          /* スロット枠線 */
+            --z-hand-area: 18;      /* 手札エリア */
+            
+            /* === サイドカードスタック === */
+            --z-side-stack-1: 20;   /* サイドカード 1層目 */
+            --z-side-stack-2: 21;   /* サイドカード 2層目 */
+            --z-side-stack-3: 22;   /* サイドカード 3層目 */
             
             /* === レイヤー2: カード系 (20-45) === */
             --z-deck-effects: 22;   /* 山札・サイド影エフェクト（カード背面） */
@@ -708,7 +715,7 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             pointer-events: none;
-            z-index: -1;
+            z-index: var(--z-board-bg);
         }
         
         .card-image {
@@ -961,7 +968,7 @@
         
         /* Pokemon-style Floating Action HUD */
         .pokemon-action-hud {
-            transform-origin: bottom left;
+            transform-origin: bottom right; /* 右下基点に変更 */
             animation: fadeInScale 0.4s ease-out;
         }
         
@@ -1033,17 +1040,17 @@
         
         /* Show/hide animation for buttons */
         .pokemon-action-btn.show {
-            animation: slideInLeft 0.3s ease-out forwards;
+            animation: slideInRight 0.3s ease-out forwards; /* 右からに変更 */
         }
         
         .pokemon-action-btn.hide {
-            animation: slideOutLeft 0.2s ease-in forwards;
+            animation: slideOutRight 0.2s ease-in forwards; /* 右へに変更 */
         }
         
-        @keyframes slideInLeft {
+        @keyframes slideInRight { /* 新しいキーフレーム */
             from { 
                 opacity: 0; 
-                transform: translateX(-100px);
+                transform: translateX(100px);
             }
             to { 
                 opacity: 1; 
@@ -1051,14 +1058,14 @@
             }
         }
         
-        @keyframes slideOutLeft {
+        @keyframes slideOutRight { /* 新しいキーフレーム */
             from { 
                 opacity: 1; 
                 transform: translateX(0);
             }
             to { 
                 opacity: 0; 
-                transform: translateX(-100px);
+                transform: translateX(100px);
             }
         }
         
@@ -1337,7 +1344,24 @@
             z-index: var(--z-highlight);
         }
         
-        .card-highlighted::after {
+        /* 手札の拡大サイズに合わせたハイライト */
+        .hand-slot.card-highlighted::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            background: linear-gradient(45deg, #ffd700, #ffed4a, #ffd700);
+            border-radius: 12px;
+            z-index: -1; /* カードの背面 */
+            animation: pulse-glow 1.5s ease-in-out infinite alternate;
+            transform: scale(1.05) translateY(-8px); /* 手札の拡大に合わせる */
+            transform-origin: bottom center;
+        }
+        
+        /* 通常のカードハイライト（手札以外） */
+        .card-highlighted:not(.hand-slot)::after {
             content: '';
             position: absolute;
             top: -2px;
@@ -1346,7 +1370,7 @@
             bottom: -2px;
             background: linear-gradient(45deg, #ffd700, #ffed4a, #ffd700);
             border-radius: 8px;
-            z-index: -1; /* カード背面に配置してハイライトのみ表示 */
+            z-index: -1;
             animation: pulse-glow 1.5s ease-in-out infinite alternate;
         }
         
@@ -1359,6 +1383,45 @@
                 opacity: 1;
                 transform: scale(1.02);
             }
+        }
+
+        /* ハイライトアニメーション定義 */
+        .anim-highlight-show {
+            animation: highlight-show 0.3s ease-out forwards;
+        }
+
+        .anim-highlight-hide {
+            animation: highlight-hide 0.3s ease-out forwards;
+        }
+
+        @keyframes highlight-show {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+            }
+            100% {
+                transform: scale(1.05);
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            }
+        }
+
+        @keyframes highlight-hide {
+            0% {
+                transform: scale(1.05);
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+            }
+        }
+
+        /* highlightedクラスの基本スタイル */
+        .highlighted {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            z-index: var(--z-selected);
+            transition: all 0.3s ease;
         }
 
         /* ================== 新統一モーダルシステム ================== */
@@ -1486,7 +1549,7 @@
         .opponent-card-image {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             transition: transform 0.3s ease;
         }
 
@@ -2083,7 +2146,11 @@
 <div class="scroll-spacer" aria-hidden="true"></div>
 
 <!-- Floating Action HUD (Bottom-left) -->
-<div id="floating-action-hud" class="fixed bottom-6 left-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
+<div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
+    <button type="button" id="start-game-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">▶️</span>
+        <span class="pokemon-btn-text">ゲームスタート</span>
+    </button>
     <button type="button" id="confirm-setup-button-float" class="pokemon-action-btn hidden">
         <span class="pokemon-btn-icon">✅</span>
         <span class="pokemon-btn-text">ポケモン配置を確定</span>
@@ -2188,13 +2255,15 @@
                 const containerRect = gameBoard.getBoundingClientRect();
                 
                 // デバッグモードでのみログ出力
-                const DEBUG_MODE = false; // 本番環境では false に設定
+                const DEBUG_MODE = true; // 座標問題調査のため一時的に有効
                 
                 if (DEBUG_MODE) {
                     noop('🔍 背景プレイマット状態確認');
                     noop('📦 game-board container:', {
                         width: containerRect.width.toFixed(0),
-                        height: containerRect.height.toFixed(0)
+                        height: containerRect.height.toFixed(0),
+                        left: containerRect.left.toFixed(0),
+                        top: containerRect.top.toFixed(0)
                     });
                     noop();
                 }
@@ -2203,7 +2272,7 @@
                 const PLAYMAT_WIDTH = 679;
                 const PLAYMAT_HEIGHT = 679;
                 
-                // 超シンプル：スケール = 1, オフセット = 0
+                // 固定サイズのプレイマット：スケーリングなし
                 const scale = 1;
                 const offsetX = 0;
                 const offsetY = 0;
@@ -2219,18 +2288,29 @@
                         continue;
                     }
                     
-                    // 直接ピクセルマッピング（計算なし）
-                    const htmlX = coords.x;  // 直接
-                    const htmlY = coords.y;  // 直接
-                    const htmlWidth = coords.width;   // 直接
-                    const htmlHeight = coords.height; // 直接
+                    // 1:1ピクセルマッピング（スケーリングなし）
+                    let htmlX = coords.x;
+                    let htmlY = coords.y;
+                    const htmlWidth = coords.width;
+                    const htmlHeight = coords.height;
                     
                     // 変換結果の妥当性チェック
                     if (htmlWidth < 10 || htmlHeight < 10) {
                         console.warn(`⚠️ Suspiciously small size for ${key}: ${htmlWidth.toFixed(1)}x${htmlHeight.toFixed(1)}`);
                     }
-                    if (htmlX < 0 || htmlY < 0 || htmlX > containerRect.width || htmlY > containerRect.height) {
-                        console.warn(`⚠️ Coordinates out of bounds for ${key}: (${htmlX.toFixed(1)}, ${htmlY.toFixed(1)})`);
+                    // プレイマット固定サイズのため、クランプ処理をスキップ
+                    // 座標はJSONデータの値をそのまま使用
+                    const originalX = htmlX;
+                    const originalY = htmlY;
+                    // htmlX と htmlY はそのまま使用（クランプしない）
+                    
+                    // 1番下の段（bottom-bench、active-bottom）のデバッグ情報
+                    if (DEBUG_MODE && (key.includes('bottom-bench') || key.includes('active-bottom'))) {
+                        noop(`📍 ${key} coordinates:`, {
+                            playmat_coords: `(${originalX}, ${originalY})`,
+                            applied: `(${htmlX.toFixed(0)}, ${htmlY.toFixed(0)})`,
+                            size: `${htmlWidth.toFixed(0)}x${htmlHeight.toFixed(0)}`
+                        });
                     }
                     
                     transformedCoords.push({key, htmlX, htmlY, htmlWidth, htmlHeight});

@@ -6,6 +6,8 @@
  */
 
 import { animationManager } from './animation-manager.js';
+import { Z_INDEX, Z_CSS_VARS } from './z-index-constants.js';
+import { getCardImagePath } from './data-manager.js';
 
 const noop = () => {};
 
@@ -25,14 +27,14 @@ export const MODAL_TYPES = {
  * CSS変数と統合された定数値
  */
 export const MODAL_PRIORITY = {
-    BACKGROUND: 10,       // --z-board (ゲームボード)
-    CARDS: 65,            // --z-selected (カード・手札選択状態)
-    HUD: 80,              // --z-hud-base (HUD要素)
-    ACTION_HUD: 90,       // --z-floating-hud (廃止予定)
-    FLOATING_HUD: 90,     // --z-floating-hud (フローティングアクションHUD)
-    TOAST: 95,            // --z-toast (通知)
-    CENTRAL: 100,         // --z-modals (中央モーダル)
-    CRITICAL: 110         // --z-critical (致命的エラー)
+    BACKGROUND: Z_INDEX.BOARD,        // --z-board (ゲームボード)
+    CARDS: Z_INDEX.SELECTED,          // --z-selected (カード・手札選択状態)
+    HUD: Z_INDEX.HUD_BASE,            // --z-hud-base (HUD要素)
+    ACTION_HUD: Z_INDEX.FLOATING_HUD, // --z-floating-hud (廃止予定)
+    FLOATING_HUD: Z_INDEX.FLOATING_HUD, // --z-floating-hud (フローティングアクションHUD)
+    TOAST: Z_INDEX.TOAST,             // --z-toast (通知)
+    CENTRAL: Z_INDEX.MODALS,          // --z-modals (中央モーダル)
+    CRITICAL: Z_INDEX.CRITICAL        // --z-critical (致命的エラー)
 };
 
 /**
@@ -418,7 +420,7 @@ export class ModalManager {
             if (card) {
                 const img = document.createElement('img');
                 img.className = 'w-full h-full object-contain';
-                img.src = card.imagePath || `assets/cards/${card.name_en.replace(/\s+/g, '_').toLowerCase()}.webp`;
+                img.src = card.imagePath || getCardImagePath(card.name_en, card);
                 img.alt = card.name_ja;
                 
                 cardEl.appendChild(img);

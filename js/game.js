@@ -243,8 +243,13 @@ export class Game {
                         if (step.animation) {
                             const animPromise = step.animation();
                             this.animationPromises.add(animPromise);
-                            await animPromise;
-                            this.animationPromises.delete(animPromise);
+                            try {
+                                await animPromise;
+                            } catch (error) {
+                                console.warn('Animation promise rejected:', error);
+                            } finally {
+                                this.animationPromises.delete(animPromise);
+                            }
                         }
                         break;
                         
@@ -380,7 +385,7 @@ export class Game {
         const sequence = [
             {
                 type: 'animation', 
-                animation: () => this.animate.cardMove('player', fromActiveId, 'active->bench', { benchIndex: toBenchIndex })
+                animation: () => animationManager.createUnifiedCardAnimation('player', fromActiveId, 'active', 'bench', toBenchIndex)
             },
             {
                 type: 'pre-render',
@@ -404,7 +409,7 @@ export class Game {
             },
             {
                 type: 'animation',
-                animation: () => this.animate.cardMove('player', cardId, `hand->${zone}`, { benchIndex: targetIndex })
+                animation: () => animationManager.createUnifiedCardAnimation('player', cardId, 'hand', zone, targetIndex)
             },
             {
                 type: 'post-render'
@@ -712,8 +717,8 @@ export class Game {
                     this.view.updateStatusMessage(this.state.prompt.message);
                 } else if (card && card.card_type === 'Pokémon') {
                     // Only show warning for Pokemon cards that aren't BASIC
-                    this.view.showGameMessage('たねポケモンのみ選択できます。', 'warning');
-                    console.warn('⚠️ Invalid card selection:', card?.name_ja || 'Unknown card');
+                    this.view.showGameMessage(`${card.name_ja}は${card.stage}ポケモンです。たねポケモンのみ選択できます。`, 'warning');
+                    // Don't log as warning since this is expected behavior
                 }
                 // Silently ignore Energy and Trainer cards during setup
             } else if ((zone === 'active' || zone === 'bench') && this.selectedCardForSetup) {
@@ -768,14 +773,28 @@ export class Game {
                 // DOM更新を待つ
                 await new Promise(resolve => requestAnimationFrame(resolve));
 
-                // カード移動アニメーションを実行
+                // カード移動アニメーションを実行（CPU側と同じ統一アニメーション）
+                console.log('🎬 Starting setup animation for:', cardToAnimate.name_ja, `hand->${zone}`);
                 if (cardElement) {
-                    await animate.cardMove('player', cardToAnimate.id, `hand->${zone}`, {
-                        isSetupPhase: true,
-                        benchIndex: targetIndex,
-                        card: cardToAnimate,
-                        initialSourceRect: initialCardRect
-                    });
+                    try {
+                        await animationManager.createUnifiedCardAnimation(
+                            'player',
+                            cardToAnimate.id,
+                            'hand',
+                            zone,
+                            targetIndex,
+                            {
+                                isSetupPhase: true,
+                                card: cardToAnimate,
+                                initialSourceRect: initialCardRect
+                            }
+                        );
+                        console.log('✅ Setup animation completed');
+                    } catch (error) {
+                        console.error('❌ Setup animation failed:', error);
+                    }
+                } else {
+                    console.warn('⚠️ Card element not found for animation');
                 }
                 
                 // アニメーション完了後に確定HUDを再表示（確実に表示されるように）
@@ -1369,7 +1388,7 @@ export class Game {
                         <img src="${defenderImagePath}" 
                              alt="${defender.name_ja}" 
                              class="opponent-card-image" 
-                             onerror="this.src='assets/card-back.jpg'; this.onerror=null;" />
+                             onerror="this.src='assets/ui/card_back.webp'; this.onerror=null;" />
                         <div class="card-overlay">
                             <h4>${defender.name_ja}</h4>
                             <div class="card-hp">HP: ${Math.max(0, defender.hp - (defender.damage || 0))}/${defender.hp}</div>
@@ -1902,7 +1921,7 @@ export class Game {
      * カード画像パスを確実に取得
      */
     _getReliableCardImagePath(card) {
-        if (!card) return 'assets/card-back.jpg'; // デフォルト画像
+        if (!card) return 'assets/ui/card_back.webp'; // デフォルト画像
         
         // 複数のパスを試行する配列を作成
         const possiblePaths = [];
@@ -1912,29 +1931,38 @@ export class Game {
             possiblePaths.push(card.imagePath);
         }
         
-        // 2. name_en から複数パターン生成
+        // 2. カードタイプに基づいてサブディレクトリを決定
+        const getCardSubdir = (card) => {
+            if (card.card_type === 'Pokemon') return 'pokemon';
+            if (card.card_type === 'Energy') return 'energy';
+            return 'trainer'; // Trainer cards
+        };
+        
+        const subdir = getCardSubdir(card);
+        
+        // 3. name_en から複数パターン生成
         if (card.name_en) {
-            const cleanName = card.name_en.replace(/\s+/g, '_').toLowerCase();
-            possiblePaths.push(`assets/cards/${cleanName}.webp`);
-            possiblePaths.push(`assets/cards/${cleanName}.png`);
-            possiblePaths.push(`assets/cards/${cleanName}.jpg`);
+            const cleanName = card.name_en.replace(/\s+/g, '_');
+            possiblePaths.push(`assets/cards/${subdir}/${cleanName}.webp`);
+            possiblePaths.push(`assets/cards/${subdir}/${cleanName}.png`);
+            possiblePaths.push(`assets/cards/${subdir}/${cleanName}.jpg`);
         }
         
-        // 3. name_ja から生成
+        // 4. name_ja から生成
         if (card.name_ja) {
             const cleanName = card.name_ja.replace(/\s+/g, '_');
-            possiblePaths.push(`assets/cards/${cleanName}.webp`);
+            possiblePaths.push(`assets/cards/${subdir}/${cleanName}.webp`);
         }
         
-        // 4. ID から生成
+        // 5. ID から生成
         if (card.id) {
-            possiblePaths.push(`assets/cards/${card.id}.webp`);
-            possiblePaths.push(`assets/cards/${card.id}.png`);
-            possiblePaths.push(`assets/cards/${card.id}.jpg`);
+            possiblePaths.push(`assets/cards/${subdir}/${card.id}.webp`);
+            possiblePaths.push(`assets/cards/${subdir}/${card.id}.png`);
+            possiblePaths.push(`assets/cards/${subdir}/${card.id}.jpg`);
         }
         
         // 最初のパスを返す（onerrorで他のパスも試行される）
-        return possiblePaths[0] || 'assets/card-back.jpg';
+        return possiblePaths[0] || 'assets/ui/card_back.webp';
     }
 
     /**
@@ -2332,7 +2360,7 @@ export class Game {
         // 各ポケモンをフリップ
         noop(`🔥 About to flip ${allPokemonElements.length} pokemon cards`);
         for (const { element, card } of allPokemonElements) {
-            await animationManager.flipCardFaceUp(element, getCardImagePath(card.name_en));
+            await animationManager.flipCardFaceUp(element, getCardImagePath(card.name_en, card));
         }
     }
 
@@ -2566,7 +2594,7 @@ export class Game {
         // 裏面画像を作成
         const cardBack = document.createElement('div');
         cardBack.className = `w-full h-full card-back ${playerType === 'cpu' ? 'cpu-card' : 'player-card'}`;
-        cardBack.style.backgroundImage = 'url("assets/card-back.jpg")';
+        cardBack.style.backgroundImage = 'url("assets/ui/card_back.webp")';
         cardBack.style.backgroundSize = 'cover';
         cardBack.style.backgroundPosition = 'center';
         cardBack.style.borderRadius = '8px';

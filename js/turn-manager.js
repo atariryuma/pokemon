@@ -561,12 +561,19 @@ export class TurnManager {
         newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
         
         // 統一アニメーション実行
-        await animate.cardMove('cpu', selectedPokemon.id, 'hand->bench', {
-          isSetupPhase: false,
-          benchIndex: emptyBenchIndex,
-          card: selectedPokemon,
-          initialSourceRect
-        });
+        const animationManager = (await import('./animation-manager.js')).default;
+        await animationManager.createUnifiedCardAnimation(
+          'cpu',
+          selectedPokemon.id,
+          'hand',
+          'bench',
+          emptyBenchIndex,
+          {
+            isSetupPhase: false,
+            card: selectedPokemon,
+            initialSourceRect
+          }
+        );
         
         newState = addLogEntry(newState, {
           type: 'pokemon_played',
@@ -827,11 +834,19 @@ export class TurnManager {
       
       if (promotedPokemon) {
         // Create promotion animation with new API
-        await animate.card.move(playerId, promotedPokemon.id, 'bench->active', {
-          isNewActiveSelection: true,
-          sourceIndex: benchIndex,
-          card: promotedPokemon
-        });
+        const animationManager = (await import('./animation-manager.js')).default;
+        await animationManager.createUnifiedCardAnimation(
+          playerId,
+          promotedPokemon.id,
+          'bench',
+          'active',
+          0,
+          {
+            isNewActiveSelection: true,
+            sourceIndex: benchIndex,
+            card: promotedPokemon
+          }
+        );
       }
       
       // Clear knockout context and reset phase
@@ -877,11 +892,19 @@ export class TurnManager {
     // Add CPU selection animation with new API
     const cpuActive = newState.players.cpu.active;
     if (cpuActive) {
-      await animate.card.move('cpu', cpuActive.id, 'bench->active', {
-        isNewActiveSelection: true,
-        isCpuAutoSelect: true,
-        card: cpuActive
-      });
+      const animationManager = (await import('./animation-manager.js')).default;
+      await animationManager.createUnifiedCardAnimation(
+        'cpu',
+        cpuActive.id,
+        'bench',
+        'active',
+        0,
+        {
+          isNewActiveSelection: true,
+          isCpuAutoSelect: true,
+          card: cpuActive
+        }
+      );
     }
     
     // Set appropriate phase after CPU selection

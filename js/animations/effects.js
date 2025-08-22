@@ -173,6 +173,39 @@ export class EffectAnimations extends AnimationCore {
     }
 
     findZoneElement(playerId, zone) {
+        // CPUの場合、実際のDOM構造に合わせてセレクタを調整
+        if (playerId === 'cpu') {
+            switch (zone) {
+                case 'deck':
+                    return document.querySelector('.opponent-board .deck-container');
+                case 'hand':
+                    return document.querySelector('#cpu-hand');
+                case 'discard':
+                    return document.querySelector('.opponent-board .discard-container');
+                case 'active':
+                    return document.querySelector('.opponent-board .active-top');
+                case 'prize':
+                    return document.querySelector('.opponent-board .side-right');
+                default:
+                    return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
+            }
+        } else if (playerId === 'player') {
+            switch (zone) {
+                case 'deck':
+                    return document.querySelector('.player-self .deck-container');
+                case 'hand':
+                    return document.querySelector('#player-hand');
+                case 'discard':
+                    return document.querySelector('.player-self .discard-container');
+                case 'active':
+                    return document.querySelector('.player-self .active-bottom');
+                case 'prize':
+                    return document.querySelector('.player-self .side-left');
+                default:
+                    return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
+            }
+        }
+        
         return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
     }
 

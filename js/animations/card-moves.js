@@ -131,12 +131,229 @@ export class CardMoveAnimations extends AnimationCore {
         await Promise.all(promises);
     }
 
+    /**
+     * 手札配布アニメーション（高度版）
+     */
+    async dealHand(cards, playerId, options = {}) {
+        const { staggerDelay = 80 } = options;
+        
+        if (!Array.isArray(cards)) {
+            console.warn('dealHand: cards should be an array');
+            return;
+        }
+
+        // 手札エリアを取得
+        const handElement = this.findZoneElement(playerId, 'hand');
+        if (!handElement) {
+            console.warn(`Hand element not found for ${playerId}`);
+            return;
+        }
+
+        // 各カードを順番に配布
+        const promises = cards.map((card, index) => {
+            return new Promise(resolve => {
+                setTimeout(async () => {
+                    const cardElement = handElement.children[index];
+                    if (cardElement) {
+                        // カードを最初は非表示にして
+                        cardElement.style.opacity = '0';
+                        cardElement.style.transform = 'translateY(-30px) scale(0.8)';
+                        
+                        // フェードインアニメーション
+                        await this.delay(50);
+                        cardElement.style.transition = 'opacity 300ms ease, transform 300ms ease';
+                        cardElement.style.opacity = '1';
+                        cardElement.style.transform = 'translateY(0) scale(1)';
+                        
+                        // 配布効果音の代わりに軽い振動
+                        if (navigator.vibrate) {
+                            navigator.vibrate(50);
+                        }
+                    }
+                    resolve();
+                }, index * staggerDelay);
+            });
+        });
+
+        await Promise.all(promises);
+    }
+
+    /**
+     * サイド配布アニメーション（高度版）
+     */
+    async dealPrize(elements, playerId, options = {}) {
+        const { staggerDelay = 100 } = options;
+        
+        if (!Array.isArray(elements)) {
+            console.warn('dealPrize: elements should be an array');
+            return;
+        }
+
+        // サイドエリアを取得
+        const prizeElement = this.findZoneElement(playerId, 'prize');
+        if (!prizeElement) {
+            console.warn(`Prize element not found for ${playerId}`);
+            return;
+        }
+
+        // 各サイドカードを順番に配布
+        const promises = elements.map((element, index) => {
+            return new Promise(resolve => {
+                setTimeout(async () => {
+                    const cardElement = prizeElement.children[index];
+                    if (cardElement) {
+                        // 裏面からの配布アニメーション
+                        cardElement.style.opacity = '0';
+                        cardElement.style.transform = 'rotateY(90deg) scale(0.9)';
+                        
+                        await this.delay(50);
+                        cardElement.style.transition = 'opacity 250ms ease, transform 250ms ease';
+                        cardElement.style.opacity = '1';
+                        cardElement.style.transform = 'rotateY(0deg) scale(1)';
+                    }
+                    resolve();
+                }, index * staggerDelay);
+            });
+        });
+
+        await Promise.all(promises);
+    }
+
+    /**
+     * 高度なカードドローアニメーション（山札から手札へ）
+     */
+    async drawCardFromDeck(playerId, cardElement, options = {}) {
+        const { duration = 600 } = options;
+        
+        const deckElement = this.findZoneElement(playerId, 'deck');
+        const handElement = this.findZoneElement(playerId, 'hand');
+        
+        if (!deckElement || !handElement || !cardElement) {
+            console.warn('Missing elements for card draw animation');
+            return;
+        }
+
+        // デッキの位置を取得
+        const deckRect = deckElement.getBoundingClientRect();
+        const handRect = handElement.getBoundingClientRect();
+
+        // アニメーション用のクローンカードを作成
+        const animCard = cardElement.cloneNode(true);
+        animCard.style.cssText = `
+            position: fixed;
+            left: ${deckRect.left}px;
+            top: ${deckRect.top}px;
+            width: ${cardElement.offsetWidth}px;
+            height: ${cardElement.offsetHeight}px;
+            z-index: var(--z-critical);
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+            pointer-events: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: none;
+        `;
+
+        // 元のカードを一時的に隠す
+        cardElement.style.opacity = '0';
+
+        // DOMに追加
+        document.body.appendChild(animCard);
+
+        // 強制リフロー
+        animCard.offsetHeight;
+
+        // アニメーション実行
+        return new Promise(resolve => {
+            animCard.style.transition = `all ${duration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+            animCard.style.left = `${handRect.right - cardElement.offsetWidth}px`;
+            animCard.style.top = `${handRect.top}px`;
+            animCard.style.transform = 'scale(1.05) rotate(3deg)';
+
+            setTimeout(() => {
+                // 後処理
+                if (animCard.parentNode) {
+                    animCard.parentNode.removeChild(animCard);
+                }
+                
+                // 元のカードを表示
+                cardElement.style.opacity = '1';
+                cardElement.style.transform = 'scale(1.1)';
+                
+                // 配置完了効果
+                setTimeout(() => {
+                    cardElement.style.transition = 'transform 200ms ease';
+                    cardElement.style.transform = '';
+                    setTimeout(() => {
+                        cardElement.style.transition = '';
+                        resolve();
+                    }, 200);
+                }, 100);
+            }, duration);
+        });
+    }
+
+    /**
+     * カードフリップアニメーション
+     * @param {Element} element - カード要素
+     * @param {Object} options - オプション
+     */
+    async flip(element, options = {}) {
+        if (!element) return;
+
+        const { imageUrl } = options;
+        
+        // フリップアニメーション実行
+        await this.animate(element, 'anim-card-flip', ANIMATION_TIMING.normal);
+        
+        // 画像切り替え（指定された場合）
+        if (imageUrl) {
+            const img = element.querySelector('img');
+            if (img) {
+                img.src = imageUrl;
+            }
+        }
+    }
+
     // ヘルパー関数
     findCardElement(playerId, cardId, zone) {
         return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"] [data-card-id="${cardId}"]`);
     }
 
     findZoneElement(playerId, zone) {
+        // CPUの場合、実際のDOM構造に合わせてセレクタを調整
+        if (playerId === 'cpu') {
+            switch (zone) {
+                case 'deck':
+                    return document.querySelector('.opponent-board .deck-container');
+                case 'hand':
+                    return document.querySelector('#cpu-hand');
+                case 'discard':
+                    return document.querySelector('.opponent-board .discard-container');
+                case 'active':
+                    return document.querySelector('.opponent-board .active-top');
+                case 'prize':
+                    return document.querySelector('.opponent-board .side-right');
+                default:
+                    return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
+            }
+        } else if (playerId === 'player') {
+            switch (zone) {
+                case 'deck':
+                    return document.querySelector('.player-self .deck-container');
+                case 'hand':
+                    return document.querySelector('#player-hand');
+                case 'discard':
+                    return document.querySelector('.player-self .discard-container');
+                case 'active':
+                    return document.querySelector('.player-self .active-bottom');
+                case 'prize':
+                    return document.querySelector('.player-self .side-left');
+                default:
+                    return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
+            }
+        }
+        
         return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
     }
 

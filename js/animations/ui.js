@@ -185,6 +185,23 @@ export class UIAnimations extends AnimationCore {
         }
     }
 
+    /**
+     * ハイライト表示/非表示
+     * @param {Element} element - 対象要素
+     * @param {boolean} show - 表示/非表示
+     */
+    async highlight(element, show = true) {
+        if (!element) return;
+
+        if (show) {
+            element.classList.add('highlighted');
+            await this.animate(element, 'anim-highlight-show', ANIMATION_TIMING.fast);
+        } else {
+            await this.animate(element, 'anim-highlight-hide', ANIMATION_TIMING.fast);
+            element.classList.remove('highlighted');
+        }
+    }
+
     // ヘルパー関数
     createNotificationElement() {
         const notification = document.createElement('div');
@@ -197,7 +214,7 @@ export class UIAnimations extends AnimationCore {
             border-radius: 8px;
             color: white;
             font-weight: 600;
-            z-index: 10000;
+            z-index: var(--z-critical);
             display: none;
         `;
         document.body.appendChild(notification);
@@ -222,7 +239,7 @@ export class UIAnimations extends AnimationCore {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 10000;
+            z-index: var(--z-critical);
             display: none;
         `;
         document.body.appendChild(loading);

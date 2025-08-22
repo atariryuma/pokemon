@@ -4,7 +4,7 @@
  * 初期ポケモン選択、マリガン、サイドカード配置などを管理
  */
 
-import { animate, animationManager } from './animation-manager.js';
+import { animate, animationManager, unifiedAnimationManager } from './animation-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';

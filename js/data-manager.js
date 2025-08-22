@@ -41,9 +41,10 @@ export function getCardMasterList() {
 /**
  * カード画像パスを取得
  * @param {string} cardNameEn - カードの英語名
+ * @param {Object} card - カードオブジェクト（タイプ判定用）
  * @returns {string} 画像ファイルのパス
  */
-export function getCardImagePath(cardNameEn) {
+export function getCardImagePath(cardNameEn, card = null) {
     // 特別なカード名のマッピング
     const specialNames = {
         "Glasswing Butterfly Larva": "Glasswing_Butterfly_Larva1",
@@ -64,8 +65,23 @@ export function getCardImagePath(cardNameEn) {
         "Orange Spider": "Orange_Spider"
     };
 
+    // カードタイプによるフォルダ判定
+    let folder = 'pokemon'; // デフォルト
+    
+    if (card && card.card_type) {
+        if (card.card_type === 'Energy') {
+            folder = 'energy';
+        } else if (card.card_type === 'Trainer') {
+            folder = 'trainer';
+        } else if (card.card_type === 'Pokémon' || card.card_type === 'Pokemon') {
+            folder = 'pokemon';
+        }
+    } else if (cardNameEn.includes("Energy")) {
+        folder = 'energy';
+    }
+    
     // エネルギーカード
-    if (cardNameEn.includes("Energy")) {
+    if (folder === 'energy' || cardNameEn.includes("Energy")) {
         const energyType = cardNameEn.split(" ")[0];
         const energyImageMap = {
             "Colorless": "Energy_Colorless",
@@ -79,12 +95,12 @@ export function getCardImagePath(cardNameEn) {
             "Metal": "Energy_Colorless" // Metal uses Colorless as fallback
         };
         const imageName = energyImageMap[energyType] || "Energy_Colorless";
-        return `assets/cards/energy/${imageName}.webp`; // Changed path
+        return `assets/cards/energy/${imageName}.webp`;
     }
 
-    // ポケモンカード
+    // ポケモン・トレーナーカード
     const fileName = specialNames[cardNameEn] || cardNameEn.replace(/ /g, '_');
-    return `assets/cards/pokemon/${fileName}.webp`; // Changed path
+    return `assets/cards/${folder}/${fileName}.webp`;
 }
 
 /**
