@@ -729,6 +729,11 @@ export class View {
                 
                 slot.appendChild(cardEl);
                 noop(`  🃏 Prize card ${index + 1} added to slot`);
+
+                // プレイヤーのサイドカードのみクリック可能にする
+                if (playerType === 'player') {
+                    this._makeSlotClickable(slot, playerType, 'prize', index);
+                }
             }
         });
 
@@ -802,6 +807,7 @@ export class View {
 
         const img = document.createElement('img');
         img.className = 'card-image w-full h-full object-contain rounded-lg';
+        img.style.transform = 'translateZ(0)'; // 3D空間の基準面に配置
         const shouldShowBack = isFaceDown || card.isPrizeCard;
         img.src = shouldShowBack ? 'assets/ui/card_back.webp' : getCardImagePath(card.name_en);
         img.alt = shouldShowBack ? 'Card Back' : card.name_ja;
@@ -829,7 +835,8 @@ export class View {
             damageCounter.className = 'absolute top-1 right-1 bg-red-600 text-white text-lg font-bold rounded-full w-8 h-8 flex items-center justify-center';
             damageCounter.textContent = card.damage;
             damageCounter.style.pointerEvents = 'none';
-            damageCounter.style.zIndex = Z_INDEX.CARD_EFFECTS;
+            // Z-indexに頼らず、3D空間で手前に配置
+            damageCounter.style.transform = 'translateZ(1px)';
             container.appendChild(damageCounter);
         }
 
