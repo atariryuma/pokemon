@@ -12,6 +12,7 @@ import { getCardImagePath, loadCardsFromJSON, getCardMasterList } from './data-m
 import { addLogEntry } from './state.js';
 import { modalManager } from './modal-manager.js';
 import { memoryManager } from './memory-manager.js';
+import { actionHUDManager } from './action-hud-manager.js';
 
 const noop = () => {};
 
@@ -28,6 +29,7 @@ export class Game {
         this.turnManager = turnManager;
         this.unifiedAnimationManager = unifiedAnimationManager;
         this.animate = animate;
+        this.actionHUDManager = actionHUDManager;
         
         // Selected card for setup
         this.selectedCardForSetup = null;
@@ -81,6 +83,10 @@ export class Game {
             this.view.bindCardClick(this._handleCardClick.bind(this));
             this.view.bindDragAndDrop(this._handleDragDrop.bind(this));
             this.view.setConfirmSetupButtonHandler(this._handleConfirmSetup.bind(this)); // Bind confirm button
+
+            // Initialize ActionHUDManager and setup initial buttons
+            this.actionHUDManager.init();
+            this._setupInitialHUD();
 
             // Setup action button event handlers
             this._setupActionButtonHandlers();
@@ -492,67 +498,35 @@ export class Game {
     }
 
     /**
-     * フローティングアクションボタンのイベントハンドラーを設定
-     * DOM準備完了を確認してからバインドする
+     * 初期状態のHUDボタンを設定
+     */
+    _setupInitialHUD() {
+        // 初期状態のボタンを表示（手札を7枚引く、カードエディタ）
+        this.actionHUDManager.showPhaseButtons('initial', {
+            startGame: async () => {
+                console.log('🎴 Initial game start button clicked - dealing 7 cards');
+                try {
+                    await this.setupManager.handleStartDealCards();
+                    console.log('✅ handleStartDealCards completed');
+                } catch (error) {
+                    console.error('❌ Error in handleStartDealCards:', error);
+                }
+            },
+            cardEditor: () => {
+                window.open('card_viewer.html', '_blank');
+            }
+        });
+        
+        noop('✅ Initial HUD buttons configured');
+    }
+
+    /**
+     * 従来のイベントハンドラー設定（レガシーサポート用）
      */
     _setupActionButtonHandlers() {
-        noop('🔧 Setting up floating action button handlers');
-        
-        // DOMContentLoadedまたはDOM準備完了まで待機
-        const setupHandlers = () => {
-            const retreatButton = document.getElementById(BUTTON_IDS.RETREAT);
-            const attackButton = document.getElementById(BUTTON_IDS.ATTACK);
-            const endTurnButton = document.getElementById(BUTTON_IDS.END_TURN);
-
-            if (retreatButton) {
-                retreatButton.onclick = this._handleRetreat.bind(this);
-                noop('✅ Floating retreat button handler bound');
-            } else {
-                noop('⚠️ Floating retreat button not found');
-            }
-
-            if (attackButton) {
-                attackButton.onclick = this._handleAttack.bind(this);
-                noop('✅ Floating attack button handler bound');
-            } else {
-                noop('⚠️ Floating attack button not found');
-            }
-
-            if (endTurnButton) {
-                endTurnButton.onclick = this._handleEndTurn.bind(this);
-                noop('✅ Floating end turn button handler bound');
-            } else {
-                noop('⚠️ Floating end turn button not found');
-            }
-
-            // 初期ゲーム開始ボタン（手札を7枚引く）
-            const initialStartButton = document.getElementById('start-game-button-float');
-            if (initialStartButton) {
-                // 既存のハンドラーをクリア
-                initialStartButton.onclick = null;
-                
-                // 新しいハンドラーを設定
-                initialStartButton.addEventListener('click', async () => {
-                    console.log('🎴 Initial game start button clicked - dealing 7 cards');
-                    try {
-                        await this.setupManager.handleStartDealCards();
-                        console.log('✅ handleStartDealCards completed');
-                    } catch (error) {
-                        console.error('❌ Error in handleStartDealCards:', error);
-                    }
-                });
-                noop('✅ Initial game start button handler bound');
-            } else {
-                noop('⚠️ Initial game start button not found');
-            }
-        };
-
-        // DOM準備が完了している場合は即実行、そうでなければ待機
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', setupHandlers);
-        } else {
-            setupHandlers();
-        }
+        noop('🔧 Legacy action button handlers setup completed');
+        // ActionHUDManagerに移行したため、この関数は空にする
+        // 必要に応じて個別ハンドラーのバインドがある場合はここに記述
     }
 
     async _handleCardClick(dataset) {
@@ -695,6 +669,11 @@ export class Game {
         document.getElementById('cpu-hand')?.classList.add('is-preparing-animation');
 
         this.state = await this.setupManager.initializeGame(this.state);
+        
+        // 手札が配られたらセットアップフェーズのボタンを表示
+        this.actionHUDManager.showPhaseButtons('setup', {
+            confirmSetup: () => this._handleConfirmSetup()
+        });
         
         // 単一のレンダリングサイクルで処理（二重レンダリング防止）
         this._updateState(this.state);
@@ -1480,9 +1459,7 @@ export class Game {
      */
     async _handleEndTurn() {
         // すべてのフローティングアクションボタンを非表示
-        this._hideFloatingActionButton(BUTTON_IDS.RETREAT);
-        this._hideFloatingActionButton(BUTTON_IDS.ATTACK);
-        this._hideFloatingActionButton(BUTTON_IDS.END_TURN);
+        this.actionHUDManager.hideAllButtons();
         
         let newState = this.turnManager.endPlayerTurn(this.state);
         this._updateState(newState);
@@ -2162,22 +2139,13 @@ export class Game {
             className: 'px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-sm'
         });
         
-        // 左下フローティングHUDでアクションボタンを表示
+        // プレイヤーメインフェーズのボタンを表示
         if (actions.length > 0) {
-            // にげるボタン
-            const canRetreat = actions.some(action => action.text.includes('にげる'));
-            if (canRetreat) {
-                this._showFloatingActionButton(BUTTON_IDS.RETREAT, () => this._handleRetreat());
-            }
-            
-            // 攻撃ボタン
-            const canAttack = actions.some(action => action.text.includes('攻撃'));
-            if (canAttack) {
-                this._showFloatingActionButton(BUTTON_IDS.ATTACK, () => this._handleAttack());
-            }
-            
-            // ターン終了ボタン（常に表示）
-            this._showFloatingActionButton(BUTTON_IDS.END_TURN, () => this._handleEndTurn());
+            this.actionHUDManager.showPhaseButtons('playerMain', {
+                retreat: () => this._handleRetreat(),
+                attack: () => this._handleAttack(),
+                endTurn: () => this._handleEndTurn()
+            });
             
             noop('🎯 Player main actions displayed in floating HUD');
         }
@@ -2198,17 +2166,17 @@ export class Game {
     }
 
     /**
-     * フローティングアクションボタン表示（modal-manager統合）
+     * フローティングアクションボタン表示（ActionHUDManager統合）
      */
     _showFloatingActionButton(buttonId, callback) {
-        modalManager.showFloatingActionButton(buttonId, callback);
+        this.actionHUDManager.showButton(buttonId, callback);
     }
 
     /**
-     * フローティングアクションボタン非表示（modal-manager統合）
+     * フローティングアクションボタン非表示（ActionHUDManager統合）
      */
     _hideFloatingActionButton(buttonId) {
-        modalManager.hideFloatingActionButton(buttonId);
+        this.actionHUDManager.hideButton(buttonId);
     }
 
     /**
@@ -2282,23 +2250,13 @@ export class Game {
                 '準備完了！「ゲームスタート」を押してバトルを開始してください。'
             );
             
-            // 確定ボタンを非表示にする
-            this._hideFloatingActionButton('confirm-setup-button-float');
-            
-            // ゲームスタートボタンを表示
-            this._showFloatingActionButton('start-game-button-float', () => {
-                noop('🔥 GAME START BUTTON CLICKED - Starting actual game');
-                this._startActualGame();
-            });
-            
-            // ボタンテキストを更新
-            const startButton = document.getElementById('start-game-button-float');
-            if (startButton) {
-                const textElement = startButton.querySelector('.pokemon-btn-text');
-                if (textElement) {
-                    textElement.textContent = 'ゲームスタート';
+            // ゲームスタートフェーズのボタンを表示
+            this.actionHUDManager.showPhaseButtons('gameStart', {
+                startActualGame: () => {
+                    noop('🔥 GAME START BUTTON CLICKED - Starting actual game');
+                    this._startActualGame();
                 }
-            }
+            });
         }
     }
 
@@ -2313,8 +2271,8 @@ export class Game {
             cardRevealAnimationExecuted: this.cardRevealAnimationExecuted
         });
         
-        // ゲームスタートボタンを非表示にする
-        this._hideFloatingActionButton('start-game-button-float');
+        // すべてのHUDボタンを非表示にする
+        this.actionHUDManager.hideAllButtons();
         
         // 重複実行を防ぐため、既にゲーム開始済みなら早期return
         if (this.state.phase === GAME_PHASES.PLAYER_MAIN || this.state.phase === GAME_PHASES.PLAYER_TURN) {
@@ -2332,6 +2290,12 @@ export class Game {
         // 2. カードを表向きにする (State更新)
         let newState = await this.setupManager.startGameRevealCards(this.state);
         
+        // 手札データ保護チェック
+        if (!newState.players.player.hand || newState.players.player.hand.length === 0) {
+            console.warn('⚠️ Player hand is empty after startGameRevealCards, restoring from previous state');
+            newState.players.player.hand = this.state.players.player.hand || [];
+        }
+        
         // 3. ターン制約をリセット (ドロー以外のもの)
         newState.hasAttachedEnergyThisTurn = false;
         newState.canRetreat = true;
@@ -2341,7 +2305,9 @@ export class Game {
         newState.phase = GAME_PHASES.PLAYER_DRAW;
         newState.prompt.message = '山札をクリックしてカードを1枚ドローしてください。';
 
+        noop('🃏 Hand before _updateState:', newState.players.player.hand?.length || 0, 'cards');
         this._updateState(newState);
+        noop('🃏 Hand after _updateState:', this.state.players.player.hand?.length || 0, 'cards');
 
         this.state = addLogEntry(this.state, { message: 'バトル開始！' });
     }
