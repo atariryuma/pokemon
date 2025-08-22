@@ -1042,10 +1042,10 @@ export class View {
 
         // 新モーダルシステムで中央に表示（左画像 / 右情報）
         const imageHtml = `
-          <div class="flex-shrink-0 w-48 max-w-[40%]">
+          <div class="flex-shrink-0 w-72 max-w-[40%]">
             <img src="${getCardImagePath(card.name_en, card)}" 
                  alt="${card.name_ja}" 
-                 class="w-full h-auto max-h-64 object-contain rounded-md border border-gray-700"
+                 class="w-full h-auto max-h-96 object-contain rounded-md border border-gray-700"
                  onerror="this.src='assets/ui/card_back.webp'; this.onerror=null;" />
           </div>
         `;
