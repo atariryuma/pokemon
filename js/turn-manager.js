@@ -313,11 +313,16 @@ export class TurnManager {
     // 攻撃実行
     newState = Logic.performAttack(newState, attacker, attackIndex);
     
-    // 攻撃後の状態ログ
+    // 攻撃後の状態ログ（簡潔なゲームログ）
     const defenderAfter = newState.players[defender].active;
-    if (defenderAfter) {
-      noop(`💥 After attack - Defender: ${defenderAfter.name_ja} (HP: ${defenderAfter.hp - (defenderAfter.damage || 0)}/${defenderAfter.hp}, Damage: ${defenderAfter.damage || 0})`);
-    }
+    const atkMon = newState.players[attacker].active;
+    const usedAttack = atkMon?.attacks?.[attackIndex];
+    const dealt = defenderAfter && defenderPokemon ? (defenderAfter.damage - (defenderPokemon.damage || 0)) : 0;
+    newState = addLogEntry(newState, {
+      type: 'attack',
+      player: attacker,
+      message: `${atkMon?.name_ja || '不明'}の「${usedAttack?.name_ja || 'ワザ'}」で${dealt > 0 ? dealt : 0}ダメージ`
+    });
 
     // 攻撃アニメーション（タイプ別エフェクト付き）
     const attackerElement = document.querySelector(`${this.getPlayerSelector(attacker)} ${this.getActiveSelector(attacker)}`);
@@ -345,6 +350,14 @@ export class TurnManager {
     const isKnockout = defenderStateBeforeKO.active && defenderStateBeforeKO.active.damage >= defenderStateBeforeKO.active.hp;
     
     if (isKnockout) {
+      // ノックアウトのログ
+      if (defenderStateBeforeKO.active) {
+        newState = addLogEntry(newState, {
+          type: 'knockout',
+          player: defender,
+          message: `${defenderStateBeforeKO.active.name_ja}がきぜつ`
+        });
+      }
       // Play knockout animation with unified API
       await animate.knockout(defenderStateBeforeKO.active.id, {
         playerId: defender
@@ -564,9 +577,8 @@ export class TurnManager {
         
         newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
         
-        // 統一アニメーション実行
-        const animationManager = (await import('./animation-manager.js')).default;
-        await animationManager.createUnifiedCardAnimation(
+        // 統一アニメーション実行（既存のマネージャーを使用）
+        await unifiedAnimationManager.createUnifiedCardAnimation(
           'cpu',
           selectedPokemon.id,
           'hand',
@@ -609,12 +621,8 @@ export class TurnManager {
       newState = Logic.attachEnergy(newState, 'cpu', selectedEnergy.id, cpuState.active.id);
       
       if (newState !== state) {
-        // Use new unified energy animation for CPU
-        const energyType = this.extractEnergyType(selectedEnergy.energy_type || selectedEnergy.id);
-        await animate.attachEnergy(energyType, cpuState.active.id, { 
-          energyCardId: selectedEnergy.id,
-          playerId: 'cpu' 
-        });
+        // Use energy attach animation
+        await animate.energyAttach(selectedEnergy.id, cpuState.active.id, newState);
       }
     }
 
@@ -844,19 +852,18 @@ export class TurnManager {
       
       if (promotedPokemon) {
         // Create promotion animation with new API
-        const animationManager = (await import('./animation-manager.js')).default;
-        await animationManager.createUnifiedCardAnimation(
-          playerId,
-          promotedPokemon.id,
-          'bench',
-          'active',
-          0,
-          {
-            isNewActiveSelection: true,
-            sourceIndex: benchIndex,
-            card: promotedPokemon
-          }
-        );
+      await unifiedAnimationManager.createUnifiedCardAnimation(
+        playerId,
+        promotedPokemon.id,
+        'bench',
+        'active',
+        0,
+        {
+          isNewActiveSelection: true,
+          sourceIndex: benchIndex,
+          card: promotedPokemon
+        }
+      );
       }
       
       // Clear knockout context and reset phase
@@ -902,8 +909,7 @@ export class TurnManager {
     // Add CPU selection animation with new API
     const cpuActive = newState.players.cpu.active;
     if (cpuActive) {
-      const animationManager = (await import('./animation-manager.js')).default;
-      await animationManager.createUnifiedCardAnimation(
+      await unifiedAnimationManager.createUnifiedCardAnimation(
         'cpu',
         cpuActive.id,
         'bench',

@@ -4,27 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ポケモンカードバトルフィールド</title>
-    <!-- Development only: Tailwind CDN for prototyping -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind: load via CDN only in development (suppress CDN warning) -->
     <script>
-        // Suppress Tailwind CDN production warning for development environment
-        const originalWarn = console.warn;
-        console.warn = function(...args) {
-            const message = args.join(' ');
-            // Filter out Tailwind CDN production warnings during development
-            if (message.includes('cdn.tailwindcss.com should not be used in production')) {
-                console.info('🎨 Tailwind CSS loaded via CDN (development environment only)');
-                return;
+        (function() {
+            const host = (location.hostname || '').toLowerCase();
+            const isDevHost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(host) || host.endsWith('.local');
+            const isDev = location.protocol === 'file:' || isDevHost || /[?&]dev(=1)?\b/.test(location.search);
+
+            if (isDev) {
+                const __origWarn = console.warn;
+                console.warn = function(...args) {
+                    const msg = String(args?.[0] ?? '');
+                    if (msg.includes('cdn.tailwindcss.com should not be used in production')) {
+                        // Ignore Tailwind CDN production warning in development
+                        return;
+                    }
+                    return __origWarn.apply(console, args);
+                };
+
+                const s = document.createElement('script');
+                s.src = 'https://cdn.tailwindcss.com';
+                s.onload = () => {
+                    // Restore original warn after Tailwind initializes
+                    console.warn = __origWarn;
+                    console.info('✅ Tailwind CSS development environment ready');
+                };
+                document.head.appendChild(s);
+            } else {
+                // In production, Tailwind should be built via CLI/PostCSS.
+                console.info('ℹ️ Tailwind CDN not loaded (production). Use a built CSS file.');
             }
-            originalWarn.apply(console, args);
-        };
-        
-        // Log successful loading
-        setTimeout(() => {
-            if (typeof tailwind !== 'undefined') {
-                console.info('✅ Tailwind CSS development environment ready');
-            }
-        }, 100);
+        })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2454,3 +2464,59 @@
     <script src="js/main.js" type="module"></script>
 </body>
 </html>
+        /* ===== Result Modal Styles ===== */
+        .game-result-overlay {
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(2px);
+        }
+        .game-result-container {
+            position: relative;
+            width: min(680px, 92vw);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+        }
+        .game-result-container.victory-result { background: linear-gradient(160deg, rgba(32,32,48,0.96), rgba(24,24,32,0.96)); }
+        .game-result-container.defeat-result { background: linear-gradient(160deg, rgba(20,18,26,0.96), rgba(16,14,22,0.96)); }
+
+        .result-background-decoration {
+            position: absolute; inset: 0;
+            background: radial-gradient(1200px 400px at -10% -10%, rgba(255,215,0,0.12), transparent 60%),
+                        radial-gradient(1000px 500px at 110% 110%, rgba(66, 153, 225, 0.12), transparent 60%);
+            pointer-events: none;
+        }
+        .result-content { position: relative; padding: 28px 28px 22px; color: #fff; }
+        .result-banner { text-align: center; margin-bottom: 8px; }
+        .result-title { font-size: 42px; letter-spacing: 2px; font-weight: 800; }
+        .victory-result .result-title { color: #fde68a; text-shadow: 0 0 18px rgba(253, 230, 138, 0.5); }
+        .defeat-result .result-title { color: #93c5fd; text-shadow: 0 0 14px rgba(147, 197, 253, 0.35); }
+        .result-subtitle { font-size: 16px; opacity: 0.9; margin-top: 4px; }
+
+        .result-details { display: grid; gap: 16px; margin: 20px 0 8px; }
+        .result-reason { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; }
+        .reason-label { font-size: 12px; opacity: 0.8; margin-bottom: 4px; }
+        .reason-text { font-size: 14px; line-height: 1.6; }
+        .result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .stat-item { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px; text-align: center; }
+        .stat-label { font-size: 12px; opacity: 0.8; }
+        .stat-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+
+        .result-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+        .result-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; font-weight: 700; transition: transform .15s ease, filter .15s ease; }
+        .result-btn.primary-btn { background: #2563eb; color: #fff; }
+        .result-btn.primary-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .result-btn.secondary-btn { background: #374151; color: #fff; }
+        .result-btn.secondary-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
+        .btn-icon { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+
+        .result-modal-enter .game-result-container { animation: modalPopIn 220ms ease-out; }
+        .result-modal-exit .game-result-container { animation: modalFadeOut 180ms ease-in forwards; }
+        @keyframes modalPopIn { from { transform: translateY(10px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes modalFadeOut { to { transform: translateY(4px) scale(.98); opacity: 0; } }
+
+        .result-particles { position: absolute; inset: 0; pointer-events: none; }
+        .victory-particle::before { content: var(--particle-emoji, '✨'); position: absolute; animation: floatUp 3s ease-in infinite; }
+        @keyframes floatUp { from { transform: translateY(20px); opacity: .0; } 20% { opacity: .8; } to { transform: translateY(-60px); opacity: 0; } }
+        .defeat-particle { position: absolute; top: -10px; width: 8px; height: 14px; background: linear-gradient(#60a5fa, transparent); border-radius: 4px; animation: rainDown 4s linear infinite; }
+        @keyframes rainDown { from { transform: translateY(-10px); opacity: .0; } 10% { opacity: .7; } to { transform: translateY(120%); opacity: 0; } }
+    </style>

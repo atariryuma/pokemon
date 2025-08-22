@@ -788,9 +788,9 @@ export class Game {
      */
     _setupInitialHUD() {
         // 初期状態のボタンを表示（手札を7枚引く、カードエディタ）
-        this.actionHUDManager.showPhaseButtons('initial', {
-            startGame: async () => {
-                console.log('🎴 Initial game start button clicked - dealing 7 cards');
+            this.actionHUDManager.showPhaseButtons('initial', {
+                startGame: async () => {
+                    noop('Start button pressed - dealing initial hands');
                 try {
                     await this.setupManager.handleStartDealCards();
                     console.log('✅ handleStartDealCards completed');
@@ -1060,7 +1060,7 @@ export class Game {
                 await new Promise(resolve => requestAnimationFrame(resolve));
 
                 // カード移動アニメーションを実行（CPU側と同じ統一アニメーション）
-                console.log('🎬 Starting setup animation for:', cardToAnimate.name_ja, `hand->${zone}`);
+                noop('[Setup] Starting setup animation');
                 if (cardElement) {
                     try {
                         await animationManager.createUnifiedCardAnimation(
@@ -1075,7 +1075,7 @@ export class Game {
                                 initialSourceRect: initialCardRect
                             }
                         );
-                        console.log('✅ Setup animation completed');
+                        noop('[Setup] Animation completed');
                     } catch (error) {
                         console.error('❌ Setup animation failed:', error);
                     }
@@ -1382,17 +1382,9 @@ export class Game {
             case GAME_PHASES.GAME_START_READY:
                 this.view.hideInitialPokemonSelectionUI();
                 this.view.showGameMessage(this.state.prompt.message);
-                this.view.showActionButtons(ACTION_BUTTON_GROUPS.INITIAL_POKEMON);
-                // ボタンテキストを変更 (フローティング版を使用)
-                const gameStartButton = document.getElementById('confirm-setup-button-float');
-                if (gameStartButton) {
-                    const textElement = gameStartButton.querySelector('.pokemon-btn-text');
-                    if (textElement) {
-                        textElement.textContent = 'ゲームスタート';
-                    }
-                    gameStartButton.disabled = false;
-                    gameStartButton.classList.remove('opacity-50', 'cursor-not-allowed', 'hidden');
-                }
+                // 重複ボタン防止: 旧「確認」ボタン(✅)は非表示にして、
+                // ゲームスタート(🎮)は _checkBothPrizeAnimationsComplete() で表示管理する
+                this._hideFloatingActionButton('confirm-setup-button-float');
                 break;
 
             case GAME_PHASES.PLAYER_DRAW:
@@ -2478,12 +2470,8 @@ export class Game {
         }
 
         // 初期ポケモン配置確定の場合
-        // 強制的にボタンの無効化状態をチェック (フローティング版を使用)
-        const confirmButton = document.getElementById('confirm-setup-button-float');
-        if (confirmButton && confirmButton.disabled) {
-            this.state = addLogEntry(this.state, { message: 'バトル場にたねポケモンを配置してください。' });
-            return;
-        }
+        // Note: ActionHUDManager がクリック中はボタンを一時的に disabled にしますが、
+        // ここではその状態を理由に早期リターンしないようにします（正規のクリックを阻害しない）
         
         const active = this.state?.players?.player?.active;
         if (!active || active.card_type !== 'Pokémon' || active.stage !== 'BASIC') {
@@ -2800,13 +2788,15 @@ export class Game {
      * CPU側サイドカード配置アニメーション
      */
     async _animateCPUPrizeCardSetup() {
+        noop('🤖 _animateCPUPrizeCardSetup: Method called');
+        
         // 重複実行防止
         if (this.prizeAnimationStatus.cpu) {
-            noop('🔄 CPU prize card animation already executed, skipping');
+            noop('🔄 _animateCPUPrizeCardSetup: CPU prize card animation already executed, skipping');
             return;
         }
         
-        noop('🎯 Starting CPU prize card animation');
+        noop('🎯 _animateCPUPrizeCardSetup: Starting CPU prize card animation');
         
         // アニメーション用に裏面カードを事前作成
         await this._createPrizeBackCardsForAnimation('cpu');
@@ -2869,6 +2859,8 @@ export class Game {
         noop('🔍 Checking prize animations completion:', { player, cpu });
         
         if (player && cpu) {
+            // 両側のサイド配布アニメーションが完了
+            this.prizeAnimationCompleted = true; // 互換用フラグも立てる（viewの旧判定回避）
             noop('🎉 Both prize animations completed! Showing game start button');
             
             // 両方完了時のメッセージ表示

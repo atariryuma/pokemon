@@ -383,8 +383,21 @@ export class View {
     
     _clearBoardArea(boardElement) {
         if (!boardElement) return;
+        const isCpuBoard = boardElement.classList.contains('opponent-board');
+        const isPlayerBoard = boardElement.classList.contains('player-self');
+        const status = window.game?.prizeAnimationStatus;
+
         const slots = boardElement.querySelectorAll('.card-slot');
-        slots.forEach(slot => slot.innerHTML = '');
+        slots.forEach(slot => {
+            // サイド配布アニメーション中のスロットはクリアしない（プレースホルダを保持）
+            const inCpuPrize = isCpuBoard && !!slot.closest('.side-right');
+            const inPlayerPrize = isPlayerBoard && !!slot.closest('.side-left');
+            if ((inCpuPrize && status && status.cpu === false) ||
+                (inPlayerPrize && status && status.player === false)) {
+                return; // skip clearing prize slots during animation
+            }
+            slot.innerHTML = '';
+        });
     }
     
     _updateHandPosition() {
@@ -489,8 +502,8 @@ export class View {
             discardSlot.appendChild(this._createCardElement(topCard, playerType, 'discard', 0));
         }
 
-        // Prizes - サイド配布アニメーション完了後のみ表示
-        if (this._shouldRenderPrizes()) {
+        // Prizes - 側ごとのアニメ進捗に応じて表示
+        if (this._shouldRenderPrizes(playerType)) {
             this._renderPrizeArea(boardElement, prize, playerType);
         }
 
@@ -878,12 +891,13 @@ export class View {
     /**
      * サイドカードをレンダリングすべきかどうかを判定
      */
-    _shouldRenderPrizes() {
-        // ゲームインスタンスからアニメーション状態を取得
-        if (window.game && window.game.prizeAnimationCompleted === false) {
-            return false; // アニメーション中は表示しない
-        }
-        return true; // それ以外は表示
+    _shouldRenderPrizes(playerType) {
+        // 新方式: 側ごとのアニメ完了フラグで制御
+        const status = window.game?.prizeAnimationStatus;
+        if (!status) return true;
+        if (playerType === 'player') return !!status.player;
+        if (playerType === 'cpu') return !!status.cpu;
+        return true;
     }
 
     _renderPrizeArea(boardElement, prize, playerType) {

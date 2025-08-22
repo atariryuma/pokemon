@@ -221,7 +221,7 @@ export class EffectAnimations extends AnimationCore {
             psychic: 'assets/cards/energy/Energy_Psychic.webp',
             fighting: 'assets/cards/energy/Energy_Fighting.webp',
             darkness: 'assets/cards/energy/Energy_Darkness.webp',
-            metal: 'assets/cards/energy/Energy_Colorless.webp',
+            metal: 'assets/cards/energy/Energy_Metal.webp',
             colorless: 'assets/cards/energy/Energy_Colorless.webp'
         };
         
@@ -254,16 +254,40 @@ export class EffectAnimations extends AnimationCore {
         
         pokemonElement.appendChild(slideCard);
         
-        // 700ms後にスライドカードを削除
+        // 追従するパルスリングを付与（短時間）
+        const pulse = document.createElement('div');
+        pulse.style.cssText = `
+            position: absolute;
+            left: 50%; top: 50%;
+            width: 10px; height: 10px;
+            transform: translate(-50%, -50%) scale(0.2);
+            border: 2px solid ${color};
+            border-radius: 50%;
+            opacity: 0.8;
+            box-shadow: 0 0 10px ${color};
+            transition: transform 500ms ease, opacity 500ms ease;
+            pointer-events: none;
+        `;
+        pokemonElement.appendChild(pulse);
+
+        // 700ms後にスライドカードを削除し、パルスを拡散→消去
         return new Promise(resolve => {
             this.scheduleCleanup(() => {
                 slideCard.remove();
-                if (originalPosition) {
-                    pokemonElement.style.position = originalPosition;
-                } else {
-                    pokemonElement.style.position = '';
-                }
-                resolve();
+                // パルス拡散
+                requestAnimationFrame(() => {
+                    pulse.style.transform = 'translate(-50%, -50%) scale(2.0)';
+                    pulse.style.opacity = '0';
+                    setTimeout(() => {
+                        pulse.remove();
+                        if (originalPosition) {
+                            pokemonElement.style.position = originalPosition;
+                        } else {
+                            pokemonElement.style.position = '';
+                        }
+                        resolve();
+                    }, 520);
+                });
             }, 700);
         });
     }

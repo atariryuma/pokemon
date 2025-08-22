@@ -25,8 +25,8 @@ export class ActionHUDManager {
         // 初期化フラグ
         this.isInitialized = false;
         
-        // デバッグログ設定
-        this.debugEnabled = true;
+        // デバッグログ設定（本番ではfalse推奨）
+        this.debugEnabled = false;
     }
 
     /**

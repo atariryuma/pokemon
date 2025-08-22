@@ -31,6 +31,62 @@ class AnimationManager {
     }
 
     /**
+     * エネルギータイプをIDと状態から推定
+     * @param {string} energyId
+     * @param {object} gameState
+     * @returns {string} energy type in lowercase ('fire','water',...)
+     */
+    extractEnergyType(energyId, gameState) {
+        const normalize = (t) => (t || '').toString().toLowerCase();
+
+        const tryFromArray = (arr) => (Array.isArray(arr) ? arr.find(c => c && c.id === energyId) : null);
+        const tryFromPlayer = (p) => {
+            if (!p) return null;
+            return (
+                tryFromArray(p.hand) ||
+                tryFromArray(p.discard) ||
+                tryFromArray(p.deck) ||
+                (p.active && Array.isArray(p.active.attached_energy) ? p.active.attached_energy.find(e => e && e.id === energyId) : null) ||
+                (Array.isArray(p.bench) ? p.bench.flatMap(b => (b && b.attached_energy) ? b.attached_energy : []).find(e => e && e.id === energyId) : null)
+            );
+        };
+
+        let card = null;
+        if (gameState && gameState.players) {
+            card = tryFromPlayer(gameState.players.player) || tryFromPlayer(gameState.players.cpu);
+        }
+
+        // 優先: カードオブジェクトの energy_type / type
+        const fromProp = normalize(card?.energy_type || card?.type);
+        const mapName = {
+            lightning: 'lightning',
+            electric: 'lightning',
+            water: 'water',
+            fire: 'fire',
+            grass: 'grass',
+            leaf: 'grass',
+            psychic: 'psychic',
+            fighting: 'fighting',
+            darkness: 'darkness',
+            dark: 'darkness',
+            metal: 'metal',
+            steel: 'metal',
+            colorless: 'colorless'
+        };
+
+        if (fromProp && mapName[fromProp]) return mapName[fromProp];
+
+        // 次: 英語名から推定（name_en がある場合）
+        const name = normalize(card?.name_en || card?.name_ja);
+        for (const key of Object.keys(mapName)) {
+            if (name && name.includes(key)) return mapName[key];
+        }
+
+        // 最後のフォールバック
+        return 'colorless';
+    }
+
+    /**
      * アニメーション有効/無効切り替え
      * @param {boolean} enabled - 有効フラグ
      */
@@ -352,6 +408,10 @@ export const animationManager = {
     
     // メッセージアニメーション
     animateMessage: (element) => animate.ui.notification(element?.textContent || 'メッセージ', 'info'),
+    animateError: (element, severity = 'warning') => {
+        const type = severity === 'error' ? 'error' : (severity === 'warning' ? 'warning' : 'info');
+        return animate.ui.notification(element?.textContent || 'エラー', type);
+    },
     
     // 統一カードアニメーション
     createUnifiedCardAnimation: (playerId, cardId, from, to, index, options) => {
@@ -437,14 +497,35 @@ export const unifiedAnimationManager = {
     },
 
     // 移動元要素の取得
-    getSourceElement(playerId, sourceZone) {
+    getSourceElement(playerId, sourceZone, cardId) {
+        const playerSelector = this.getPlayerSelector(playerId);
+        const selectByCard = (scopeSelector) => {
+            if (!cardId) return null;
+            return document.querySelector(`${playerSelector} ${scopeSelector} [data-card-id="${cardId}"]`)
+                || document.querySelector(`${playerSelector} ${scopeSelector} .relative[data-card-id="${cardId}"]`);
+        };
+
         switch (sourceZone) {
-            case 'hand':
-                return document.querySelector(this.getHandSelector(playerId));
+            case 'hand': {
+                // 具体的なカード要素を優先し、無ければ手札コンテナ
+                const fromHand = selectByCard('#player-hand, #cpu-hand');
+                return fromHand || document.querySelector(this.getHandSelector(playerId));
+            }
+            case 'bench': {
+                const benchClassPrefix = playerId === 'player' ? 'bottom-bench-' : 'top-bench-';
+                const fromBench = cardId
+                    ? document.querySelector(`${playerSelector} [class*="${benchClassPrefix}"] [data-card-id="${cardId}"]`)
+                    : null;
+                return fromBench || document.querySelector(`${playerSelector} [class*="${benchClassPrefix}"]`);
+            }
+            case 'active': {
+                const fromActive = selectByCard(this.getActiveSelector(playerId));
+                return fromActive || document.querySelector(`${playerSelector} ${this.getActiveSelector(playerId)}`);
+            }
             case 'deck':
-                return document.querySelector(`${this.getPlayerSelector(playerId)} .deck-container`);
+                return document.querySelector(`${playerSelector} .deck-container`);
             default:
-                console.warn(`Unknown source zone: ${sourceZone}`);
+                // 未対応のゾーンは静かにnullを返す（ノイズ削減）
                 return null;
         }
     },
