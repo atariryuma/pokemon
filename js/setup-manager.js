@@ -4,7 +4,7 @@
  * 初期ポケモン選択、マリガン、サイドカード配置などを管理
  */
 
-import { animationManager, unifiedAnimationManager } from './unified-animations.js';
+import { animate, animationManager } from './animation-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
@@ -19,6 +19,71 @@ export class SetupManager {
   constructor() {
     this.mulliganCount = 0;
     this.maxMulligans = 3; // 最大マリガン回数
+    
+    // セットアップ段階の統一管理
+    this.setupPhases = ['shuffle', 'initial-deal', 'prize-deal', 'mulligan', 'initial-selection'];
+    this.currentSetupPhase = null;
+  }
+  
+  /**
+   * 統一セットアップフロー
+   */
+  async _executeSetupPhase(phaseType, state, options = {}) {
+    this.currentSetupPhase = phaseType;
+    
+    const phaseHandlers = {
+      'shuffle': this._handleShufflePhase.bind(this),
+      'initial-deal': this._handleInitialDealPhase.bind(this),
+      'prize-deal': this._handlePrizeDealPhase.bind(this),
+      'mulligan': this._handleMulliganPhase.bind(this),
+      'initial-selection': this._handleInitialSelectionPhase.bind(this)
+    };
+    
+    const handler = phaseHandlers[phaseType];
+    if (!handler) {
+      console.warn(`Unknown setup phase: ${phaseType}`);
+      return state;
+    }
+    
+    try {
+      const result = await handler(state, options);
+      return result;
+    } catch (error) {
+      console.error(`Setup phase ${phaseType} error:`, error);
+      return state;
+    } finally {
+      this.currentSetupPhase = null;
+    }
+  }
+  
+  async _handleShufflePhase(state, options) {
+    await this.animateDeckShuffle();
+    return state;
+  }
+  
+  async _handleInitialDealPhase(state, options) {
+    return await this.drawInitialHands(state);
+  }
+  
+  async _handlePrizeDealPhase(state, options) {
+    return await this.dealPrizeCards(state);
+  }
+  
+  async _handleMulliganPhase(state, options) {
+    return await this.handleMulligans(state);
+  }
+  
+  async _handleInitialSelectionPhase(state, options) {
+    let newState = cloneGameState(state);
+    newState.phase = GAME_PHASES.INITIAL_POKEMON_SELECTION;
+    newState.prompt.message = 'まず手札のたねポケモンをクリックして選択し、次にバトル場またはベンチをクリックして配置してください。';
+    
+    newState = addLogEntry(newState, {
+      type: 'setup_complete', 
+      message: 'ゲームセットアップが完了しました'
+    });
+    
+    return newState;
   }
 
   /**
@@ -29,26 +94,11 @@ export class SetupManager {
   async initializeGame(state) {
     let newState = cloneGameState(state);
 
-    // 1. デッキシャッフルアニメーション
-    await this.animateDeckShuffle();
+    // 統一セットアップフローで順次実行
+    for (const phase of this.setupPhases) {
+      newState = await this._executeSetupPhase(phase, newState);
+    }
 
-    // 2. 初期手札をドロー（7枚）
-    newState = await this.drawInitialHands(newState);
-
-    // 3. サイドカード配布（6枚）
-    newState = await this.dealPrizeCards(newState);
-
-    // 4. マリガンチェックと処理
-    newState = await this.handleMulligans(newState);
-
-    // 5. 初期ポケモン選択フェーズに移行
-    newState.phase = GAME_PHASES.INITIAL_POKEMON_SELECTION;
-    newState.prompt.message = 'まず手札のたねポケモンをクリックして選択し、次にバトル場またはベンチをクリックして配置してください。';
-
-    newState = addLogEntry(newState, {
-      type: 'setup_complete',
-      message: 'ゲームセットアップが完了しました'
-    });
     return newState;
   }
 
@@ -176,14 +226,14 @@ export class SetupManager {
     if (playerHand) {
       const playerCards = Array.from(playerHand.querySelectorAll('.relative'));
       if (playerCards.length > 0) {
-        await unifiedAnimationManager.animateHandDeal(playerCards, 'player');
+        await animate.handDeal(playerCards, 'player');
       }
     }
 
     if (cpuHand) {
       const cpuCards = Array.from(cpuHand.querySelectorAll('.relative'));
       if (cpuCards.length > 0) {
-        await unifiedAnimationManager.animateHandDeal(cpuCards, 'cpu');
+        await animate.handDeal(cpuCards, 'cpu');
       }
     }
   }
@@ -443,8 +493,7 @@ export class SetupManager {
           newState.players.cpu.active.setupFaceDown = true;
           
           // 統一アニメーション実行
-          await unifiedAnimationManager.createUnifiedCardAnimation(
-            'cpu', activeCandidate.id, 'hand', 'active', 0, 
+          await animate.cardMove('cpu', activeCandidate.id, 'hand->active', 
             { isSetupPhase: true, card: activeCandidate }
           );
           await new Promise(resolve => setTimeout(resolve, 800));
@@ -465,9 +514,8 @@ export class SetupManager {
             newState.players.cpu.bench[benchCount].setupFaceDown = true;
             
             // 統一アニメーション実行
-            await unifiedAnimationManager.createUnifiedCardAnimation(
-              'cpu', pokemon.id, 'hand', 'bench', benchCount, 
-              { isSetupPhase: true, card: pokemon }
+            await animate.cardMove('cpu', pokemon.id, 'hand->bench', 
+              { isSetupPhase: true, benchIndex: benchCount, card: pokemon }
             );
             benchCount++;
             
@@ -491,9 +539,8 @@ export class SetupManager {
           newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
           
           // 統一アニメーション実行
-          await unifiedAnimationManager.createUnifiedCardAnimation(
-            'cpu', selectedPokemon.id, 'hand', 'bench', emptyBenchIndex, 
-            { isSetupPhase: false, card: selectedPokemon }
+          await animate.cardMove('cpu', selectedPokemon.id, 'hand->bench', 
+            { isSetupPhase: false, benchIndex: emptyBenchIndex, card: selectedPokemon }
           );
           
           newState = addLogEntry(newState, {

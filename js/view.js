@@ -1,6 +1,6 @@
 import { getCardImagePath } from './data-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
-import { animationManager } from './unified-animations.js';
+import { animationManager } from './animation-manager.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { BUTTON_IDS, CONTAINER_IDS, CSS_CLASSES } from './ui-constants.js';
 import { errorHandler } from './error-handler.js';
@@ -25,6 +25,20 @@ export class View {
         // Board containers
         this.playerBoard = rootEl.querySelector('.player-board:not(.opponent-board)');
         this.opponentBoard = rootEl.querySelector('.opponent-board');
+        
+        // 差分レンダリング用キャッシュ
+        this.lastRenderedState = null;
+        this.domCache = new Map();
+        this.renderRegions = {
+            playerHand: { dirty: true },
+            cpuHand: { dirty: true },
+            playerActive: { dirty: true },
+            cpuActive: { dirty: true },
+            playerBench: { dirty: true },
+            cpuBench: { dirty: true },
+            stadium: { dirty: true },
+            ui: { dirty: true }
+        };
         
         
 
@@ -243,24 +257,188 @@ export class View {
     }
 
     render(state) {
-        this._clearBoard();
-        this._renderBoard(this.playerBoard, state.players.player, 'player');
-        this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu');
-        this._renderHand(this.playerHand, state.players.player.hand, 'player');
-        this._renderHand(this.cpuHand, state.players.cpu.hand, 'cpu');
-        this._renderStadium(state);
-        this._updatePrizeStatus(state);
+        // 差分レンダリング：変更があった領域のみを更新
+        this._detectChanges(state);
+        
+        // 変更のあった領域のみクリア・レンダリング
+        if (this.renderRegions.playerHand.dirty || this.renderRegions.cpuHand.dirty || 
+            this.renderRegions.playerActive.dirty || this.renderRegions.cpuActive.dirty ||
+            this.renderRegions.playerBench.dirty || this.renderRegions.cpuBench.dirty) {
+            
+            this._performRegionalRender(state);
+        }
+        
+        if (this.renderRegions.stadium.dirty) {
+            this._renderStadium(state);
+            this.renderRegions.stadium.dirty = false;
+        }
+        
+        if (this.renderRegions.ui.dirty) {
+            this._updatePrizeStatus(state);
+            this._updateUIElements();
+            this.renderRegions.ui.dirty = false;
+        }
 
-        this.playerHand.style.bottom = '10px';
-
-        // Ensure previous dynamic height (if any) is cleared, rely on fixed CSS height
-        const hand = document.getElementById('player-hand');
-        if (hand) hand.style.height = '';
-        // Then adjust vertical position: default TCG style = slight gap below board
-        this._positionHandAgainstBoard(this._getDesiredHandGap());
-
-        // Debug Z-order once per render (sample)
+        this.lastRenderedState = this._cloneStateForCache(state);
+    }
+    
+    _detectChanges(state) {
+        if (!this.lastRenderedState) {
+            this._markAllRegionsDirty();
+            return;
+        }
+        
+        const prev = this.lastRenderedState;
+        
+        // 手札の変更チェック
+        this.renderRegions.playerHand.dirty = this._hasHandChanged(prev.players.player.hand, state.players.player.hand);
+        this.renderRegions.cpuHand.dirty = this._hasHandChanged(prev.players.cpu.hand, state.players.cpu.hand);
+        
+        // アクティブポケモンの変更チェック
+        this.renderRegions.playerActive.dirty = this._hasActiveChanged(prev.players.player.active, state.players.player.active);
+        this.renderRegions.cpuActive.dirty = this._hasActiveChanged(prev.players.cpu.active, state.players.cpu.active);
+        
+        // ベンチの変更チェック
+        this.renderRegions.playerBench.dirty = this._hasBenchChanged(prev.players.player.bench, state.players.player.bench);
+        this.renderRegions.cpuBench.dirty = this._hasBenchChanged(prev.players.cpu.bench, state.players.cpu.bench);
+        
+        // スタジアムの変更チェック
+        this.renderRegions.stadium.dirty = this._hasStadiumChanged(prev.stadium, state.stadium);
+        
+        // UIの変更チェック
+        this.renderRegions.ui.dirty = (prev.phase !== state.phase || prev.turn !== state.turn || prev.turnPlayer !== state.turnPlayer);
+    }
+    
+    _hasHandChanged(prevHand, newHand) {
+        if (!prevHand && !newHand) return false;
+        if (!prevHand || !newHand) return true;
+        if (prevHand.length !== newHand.length) return true;
+        
+        return prevHand.some((card, i) => card?.id !== newHand[i]?.id);
+    }
+    
+    _hasActiveChanged(prevActive, newActive) {
+        if (!prevActive && !newActive) return false;
+        if (!prevActive || !newActive) return true;
+        return prevActive.id !== newActive.id || 
+               prevActive.damage !== newActive.damage ||
+               JSON.stringify(prevActive.special_conditions) !== JSON.stringify(newActive.special_conditions);
+    }
+    
+    _hasBenchChanged(prevBench, newBench) {
+        if (!prevBench && !newBench) return false;
+        if (!prevBench || !newBench) return true;
+        if (prevBench.length !== newBench.length) return true;
+        
+        return prevBench.some((pokemon, i) => {
+            const prev = pokemon;
+            const curr = newBench[i];
+            if (!prev && !curr) return false;
+            if (!prev || !curr) return true;
+            return prev.id !== curr.id || prev.damage !== curr.damage;
+        });
+    }
+    
+    _hasStadiumChanged(prevStadium, newStadium) {
+        if (!prevStadium && !newStadium) return false;
+        if (!prevStadium || !newStadium) return true;
+        return prevStadium.id !== newStadium.id;
+    }
+    
+    _markAllRegionsDirty() {
+        Object.keys(this.renderRegions).forEach(region => {
+            this.renderRegions[region].dirty = true;
+        });
+    }
+    
+    _performRegionalRender(state) {
+        // 部分的なクリアとレンダリング
+        if (this.renderRegions.playerHand.dirty) {
+            this._clearHandArea(this.playerHand);
+            this._renderHand(this.playerHand, state.players.player.hand, 'player');
+            this.renderRegions.playerHand.dirty = false;
+        }
+        
+        if (this.renderRegions.cpuHand.dirty) {
+            this._clearHandArea(this.cpuHand);
+            this._renderHand(this.cpuHand, state.players.cpu.hand, 'cpu');
+            this.renderRegions.cpuHand.dirty = false;
+        }
+        
+        if (this.renderRegions.playerActive.dirty || this.renderRegions.playerBench.dirty) {
+            this._clearBoardArea(this.playerBoard);
+            this._renderBoard(this.playerBoard, state.players.player, 'player');
+            this.renderRegions.playerActive.dirty = false;
+            this.renderRegions.playerBench.dirty = false;
+        }
+        
+        if (this.renderRegions.cpuActive.dirty || this.renderRegions.cpuBench.dirty) {
+            this._clearBoardArea(this.opponentBoard);
+            this._renderBoard(this.opponentBoard, state.players.cpu, 'cpu');
+            this.renderRegions.cpuActive.dirty = false;
+            this.renderRegions.cpuBench.dirty = false;
+        }
+        
+        // 手札位置調整（プレイヤーのみ）
+        this._updateHandPosition();
+    }
+    
+    _clearHandArea(handElement) {
+        if (handElement) handElement.innerHTML = '';
+    }
+    
+    _clearBoardArea(boardElement) {
+        if (!boardElement) return;
+        const slots = boardElement.querySelectorAll('.card-slot');
+        slots.forEach(slot => slot.innerHTML = '');
+    }
+    
+    _updateHandPosition() {
+        if (this.playerHand) {
+            this.playerHand.style.bottom = '10px';
+            const hand = document.getElementById('player-hand');
+            if (hand) hand.style.height = '';
+            this._positionHandAgainstBoard(this._getDesiredHandGap());
+        }
+    }
+    
+    _updateUIElements() {
         this._debugZOrder();
+    }
+    
+    _cloneStateForCache(state) {
+        return {
+            phase: state.phase,
+            turn: state.turn,
+            turnPlayer: state.turnPlayer,
+            stadium: state.stadium ? { id: state.stadium.id } : null,
+            players: {
+                player: {
+                    hand: (state.players.player.hand || []).map(c => c ? { id: c.id } : null),
+                    active: state.players.player.active ? { 
+                        id: state.players.player.active.id, 
+                        damage: state.players.player.active.damage || 0,
+                        special_conditions: [...(state.players.player.active.special_conditions || [])]
+                    } : null,
+                    bench: (state.players.player.bench || []).map(p => p ? { 
+                        id: p.id, 
+                        damage: p.damage || 0 
+                    } : null)
+                },
+                cpu: {
+                    hand: (state.players.cpu.hand || []).map(c => c ? { id: c.id } : null),
+                    active: state.players.cpu.active ? { 
+                        id: state.players.cpu.active.id, 
+                        damage: state.players.cpu.active.damage || 0,
+                        special_conditions: [...(state.players.cpu.active.special_conditions || [])]
+                    } : null,
+                    bench: (state.players.cpu.bench || []).map(p => p ? { 
+                        id: p.id, 
+                        damage: p.damage || 0 
+                    } : null)
+                }
+            }
+        };
     }
 
     _clearBoard() {

@@ -1,5 +1,6 @@
 import { Game } from './game.js';
 import { errorHandler } from './error-handler.js';
+import { animate } from './animation-manager.js';
 
 const noop = () => {};
 
@@ -17,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const game = new Game(root, window.playmatSlotsData);
         // Make game instance globally accessible for energy animations
         window.game = game;
+        
+        // Configure animation settings for performance
+        animate.setQuality(window.matchMedia('(max-width: 768px)').matches ? 'medium' : 'high');
+        
+        // Make animation manager globally accessible for debugging
+        window.animate = animate;
         noop('Game instance created.');
         game.init();
         noop('game.init() called.');

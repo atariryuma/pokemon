@@ -4,7 +4,7 @@
  * プレイヤーとCPUのターン進行、制約管理、自動処理を統括
  */
 
-import { animationManager, unifiedAnimationManager } from './unified-animations.js';
+import { animate, animationManager, unifiedAnimationManager } from './animation-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
@@ -22,6 +22,32 @@ export class TurnManager {
       min: 500,
       max: 1500
     };
+    
+    // 非同期処理管理
+    this.pendingOperations = new Set();
+    this.phaseTransitions = [];
+  }
+  
+  /**
+   * 非同期処理の同期化
+   */
+  async _waitForPendingOperations() {
+    if (this.pendingOperations.size > 0) {
+      await Promise.all(Array.from(this.pendingOperations));
+      this.pendingOperations.clear();
+    }
+  }
+  
+  async _trackAsyncOperation(operation) {
+    const promise = Promise.resolve(operation);
+    this.pendingOperations.add(promise);
+    
+    try {
+      const result = await promise;
+      return result;
+    } finally {
+      this.pendingOperations.delete(promise);
+    }
   }
 
   /**
@@ -31,6 +57,10 @@ export class TurnManager {
    */
   async startPlayerTurn(state) {
     noop('🎯 Starting player turn...');
+    
+    // 保留中の操作が完了するまで待機
+    await this._waitForPendingOperations();
+    
     let newState = cloneGameState(state);
 
     // ターン数増加（最初のターンは既に1なので、2ターン目から増加）
@@ -46,7 +76,9 @@ export class TurnManager {
     newState.turnPlayer = 'player';
 
     // 特殊状態処理（毒、火傷など）
-    newState = this.processSpecialConditions(newState, 'player');
+    newState = await this._trackAsyncOperation(
+      this.processSpecialConditions(newState, 'player')
+    );
 
     // ドローフェーズに移行
     newState.phase = GAME_PHASES.PLAYER_DRAW;
@@ -234,18 +266,37 @@ export class TurnManager {
   async executeAttack(state) {
     noop('⚔️ Executing attack...');
     let newState = cloneGameState(state);
+    
+    // 変数をtryブロックの外で定義
+    let attacker, attackIndex;
 
     try {
       if (!newState.pendingAction || newState.pendingAction.type !== 'attack') {
         return newState;
       }
 
-      const { attackIndex, attacker } = newState.pendingAction;
+      ({ attackIndex, attacker } = newState.pendingAction);
       const defender = attacker === 'player' ? 'cpu' : 'player';
       
       // DOM要素の安全な取得
-      const defenderOrientation = CardOrientationManager.getCardOrientation(defender, 'active');
-      const defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defender === 'player' ? '.active-bottom' : '.active-top'}`);
+      let defenderElement;
+      try {
+        if (CardOrientationManager && CardOrientationManager.getCardOrientation) {
+          const defenderOrientation = CardOrientationManager.getCardOrientation(defender, 'active');
+          defenderElement = document.querySelector(`${defenderOrientation.playerSelector} ${defender === 'player' ? '.active-bottom' : '.active-top'}`);
+        } else {
+          // フォールバック: 直接セレクタで取得
+          const playerSelector = defender === 'player' ? '.player-self' : '.opponent-board';
+          const slotSelector = defender === 'player' ? '.active-bottom' : '.active-top';
+          defenderElement = document.querySelector(`${playerSelector} ${slotSelector}`);
+        }
+      } catch (orientationError) {
+        console.warn('カード向き取得エラー:', orientationError);
+        // フォールバック処理
+        const playerSelector = defender === 'player' ? '.player-self' : '.opponent-board';
+        const slotSelector = defender === 'player' ? '.active-bottom' : '.active-top';
+        defenderElement = document.querySelector(`${playerSelector} ${slotSelector}`);
+      }
       
       if (!defenderElement) {
         console.warn('防御側の要素が見つかりません。アニメーションなしで攻撃を実行します。');
@@ -274,50 +325,32 @@ export class TurnManager {
     const attack = attackerAfter.attacks[attackIndex];
     const primaryType = attackerAfter.types && attackerAfter.types[0] ? attackerAfter.types[0] : 'Colorless';
     
-    // タイプ別攻撃エフェクト
-    await unifiedAnimationManager.animateTypeBasedAttack(attackerElement, defenderElement, primaryType);
-    
-    // 基本攻撃アニメーション
-    await this.animateAttack(attacker, newState);
-
-    // ダメージアニメーションとシェイク
+    // 戦闘アニメーションシーケンス（新API使用）
     const finalDamage = defenderAfter ? (defenderAfter.damage - (defenderPokemon?.damage || 0)) : 0;
-    if (defenderElement) {
-        await animationManager.animateDamage(defenderElement);
-        // 画面シェイクエフェクト（ダメージ量に応じて）
-        await unifiedAnimationManager.animateScreenShake(finalDamage);
+    const targetId = defenderAfter ? defenderAfter.id : null;
+    
+    if (targetId) {
+      await animate.attackSequence(primaryType.toLowerCase(), finalDamage, targetId, {
+        attackerId: attacker.id,
+        attackIndex
+      });
     }
 
     // きぜつチェックとアニメーション
     const defenderStateBeforeKO = newState.players[defender];
-    if (defenderElement && defenderStateBeforeKO.active && defenderStateBeforeKO.active.damage >= defenderStateBeforeKO.active.hp) {
-      await animationManager.createUnifiedKnockoutAnimation(defender, defenderStateBeforeKO.active.id);
-    }
-    newState = Logic.checkForKnockout(newState, defender);
-
-    // Check for prize cards after KO (if any)
-    const attackingPlayerState = newState.players[attacker];
-    if (attackingPlayerState.prizesToTake > 0) {
-        newState.phase = GAME_PHASES.PRIZE_SELECTION;
-        newState.playerToAct = attacker; // The player who needs to take prizes
-        newState.prompt.message = `${attacker === 'player' ? 'あなた' : '相手'}はサイドカードを選んで取ってください。`;
-        newState.pendingAction = null; // Clear any pending actions
-        return newState; // Stop further processing in this function, wait for prize selection
-    }
-
-    // きぜつによる新アクティブ選択が必要な場合
-    if (newState.phase === GAME_PHASES.AWAITING_NEW_ACTIVE) {
-      noop('🔄 Knockout occurred, waiting for new active pokemon selection');
-      newState.pendingAction = null;
-
-      // CPUが選ぶ番なら、ここでCPUの選択ロジックを呼び出す
-      if (newState.playerToAct === 'cpu') {
-        noop('🤖 CPU is selecting a new active pokemon...');
-        newState = await this.cpuPromoteToActive(newState);
-      }
+    const isKnockout = defenderStateBeforeKO.active && defenderStateBeforeKO.active.damage >= defenderStateBeforeKO.active.hp;
+    
+    if (isKnockout) {
+      // Play knockout animation with new API
+      await animate.combat.knockout(defenderStateBeforeKO.active.id, {
+        playerId: defender
+      });
       
-      // プレイヤーが選ぶ番なら、そのままstateを返してUIの更新を待つ
-      // CPUが選んだ場合も、ここでnewStateが更新されているので、そのまま次の処理へ進む
+      // Process knockout logic (sets up prize selection phase)
+      newState = Logic.checkForKnockout(newState, defender);
+      
+      // Clear pending action and return - prize selection phase will handle next steps
+      newState.pendingAction = null;
       return newState;
     }
 
@@ -347,15 +380,22 @@ export class TurnManager {
       return newState;
     } catch (error) {
       console.error('攻撃実行中にエラーが発生しました:', error);
-      // エラー時も基本的な攻撃処理は実行
-      newState = Logic.performAttack(newState, attacker, attackIndex);
-      newState.pendingAction = null;
       
-      // 攻撃後のターン終了処理
-      if (attacker === 'player') {
-        newState = this.endPlayerTurn(newState);
+      // attacker変数が定義されている場合のみ処理実行
+      if (attacker && attackIndex !== undefined) {
+        // エラー時も基本的な攻撃処理は実行
+        newState = Logic.performAttack(newState, attacker, attackIndex);
+        newState.pendingAction = null;
+        
+        // 攻撃後のターン終了処理
+        if (attacker === 'player') {
+          newState = this.endPlayerTurn(newState);
+        } else {
+          newState = await this.endCpuTurn(newState);
+        }
       } else {
-        newState = await this.endCpuTurn(newState);
+        console.warn('攻撃者情報が不完全なため、エラー時の攻撃処理をスキップします');
+        newState.pendingAction = null;
       }
       
       return newState;
@@ -516,15 +556,17 @@ export class TurnManager {
         
         // キャプチャソース位置（状態更新前）
         const sourceElement = document.querySelector(`[data-card-id="${selectedPokemon.id}"]`);
-        const initialSourceRect = sourceElement ? unifiedAnimationManager.getElementRect(sourceElement) : null;
+        const initialSourceRect = sourceElement ? sourceElement.getBoundingClientRect() : null;
         
         newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
         
         // 統一アニメーション実行
-        await unifiedAnimationManager.createUnifiedCardAnimation(
-          'cpu', selectedPokemon.id, 'hand', 'bench', emptyBenchIndex, 
-          { isSetupPhase: false, card: selectedPokemon, initialSourceRect }
-        );
+        await animate.cardMove('cpu', selectedPokemon.id, 'hand->bench', {
+          isSetupPhase: false,
+          benchIndex: emptyBenchIndex,
+          card: selectedPokemon,
+          initialSourceRect
+        });
         
         newState = addLogEntry(newState, {
           type: 'pokemon_played',
@@ -556,12 +598,12 @@ export class TurnManager {
       newState = Logic.attachEnergy(newState, 'cpu', selectedEnergy.id, cpuState.active.id);
       
       if (newState !== state) {
-        // Use lightweight energy effect for CPU
-        await unifiedAnimationManager.createLightweightEnergyEffect(
-          selectedEnergy.id, 
-          cpuState.active.id, 
-          newState
-        );
+        // Use new unified energy animation for CPU
+        const energyType = this.extractEnergyType(selectedEnergy.energy_type || selectedEnergy.id);
+        await animate.attachEnergy(energyType, cpuState.active.id, { 
+          energyCardId: selectedEnergy.id,
+          playerId: 'cpu' 
+        });
       }
     }
 
@@ -771,6 +813,102 @@ export class TurnManager {
     return [...this.turnActions];
   }
 
+
+  /**
+   * Handle new active pokemon selection after knockout
+   */
+  async handleNewActiveSelection(state, benchIndex) {
+    let newState = Logic.promoteToActive(state, state.playerToAct, benchIndex);
+    
+    if (newState !== state) {
+      // Add promotion animation for both player and CPU
+      const playerId = state.playerToAct;
+      const promotedPokemon = newState.players[playerId].active;
+      
+      if (promotedPokemon) {
+        // Create promotion animation with new API
+        await animate.card.move(playerId, promotedPokemon.id, 'bench->active', {
+          isNewActiveSelection: true,
+          sourceIndex: benchIndex,
+          card: promotedPokemon
+        });
+      }
+      
+      // Clear knockout context and reset phase
+      newState.knockoutContext = null;
+      newState.playerToAct = null;
+      
+      // Check for winner
+      newState = Logic.checkForWinner(newState);
+      
+      if (newState.phase !== GAME_PHASES.GAME_OVER) {
+        // Return to appropriate turn phase
+        if (newState.turnPlayer === 'player') {
+          newState.phase = GAME_PHASES.PLAYER_MAIN;
+          newState.prompt.message = 'あなたのターンです。行動を選んでください。';
+        } else {
+          newState.phase = GAME_PHASES.CPU_MAIN;
+          newState.prompt.message = '相手のターンです...';
+        }
+      }
+      
+      newState = addLogEntry(newState, {
+        type: 'pokemon_promoted',
+        player: playerId,
+        message: `${playerId === 'player' ? 'あなた' : '相手'}は${promotedPokemon.name_ja}をバトル場に出しました。`
+      });
+    }
+    
+    return newState;
+  }
+
+  /**
+   * Handle CPU auto-selection after knockout
+   */
+  async handleCpuAutoNewActive(state) {
+    if (!state.needsCpuAutoSelect) {
+      return state;
+    }
+    
+    await this.simulateCpuThinking(800);
+    
+    let newState = Logic.cpuAutoSelectNewActive(state);
+    
+    // Add CPU selection animation with new API
+    const cpuActive = newState.players.cpu.active;
+    if (cpuActive) {
+      await animate.card.move('cpu', cpuActive.id, 'bench->active', {
+        isNewActiveSelection: true,
+        isCpuAutoSelect: true,
+        card: cpuActive
+      });
+    }
+    
+    // Set appropriate phase after CPU selection
+    if (newState.phase !== GAME_PHASES.GAME_OVER) {
+      if (newState.turnPlayer === 'cpu') {
+        newState.phase = GAME_PHASES.CPU_MAIN;
+        newState.prompt.message = '相手のターンです...';
+      } else {
+        newState.phase = GAME_PHASES.PLAYER_MAIN;
+        newState.prompt.message = 'あなたのターンです。行動を選んでください。';
+      }
+    }
+    
+    return newState;
+  }
+
+  /**
+   * エネルギータイプを抽出
+   */
+  extractEnergyType(energyTypeOrId) {
+    if (!energyTypeOrId) return 'colorless';
+    
+    const energyTypes = ['fire', 'water', 'grass', 'lightning', 'psychic', 'fighting', 'darkness', 'metal'];
+    const lowerInput = energyTypeOrId.toLowerCase();
+    
+    return energyTypes.find(type => lowerInput.includes(type)) || 'colorless';
+  }
 
   /**
    * ターンマネージャーリセット

@@ -1,7 +1,7 @@
 import { createInitialState } from './state.js';
 import { View } from './view.js';
 import * as Logic from './logic.js';
-import { animationManager, unifiedAnimationManager } from './unified-animations.js';
+import { animate, animationManager, unifiedAnimationManager } from './animation-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { BUTTON_IDS, ACTION_BUTTON_GROUPS } from './ui-constants.js';
@@ -27,6 +27,7 @@ export class Game {
         this.setupManager = setupManager;
         this.turnManager = turnManager;
         this.unifiedAnimationManager = unifiedAnimationManager;
+        this.animate = animate;
         
         // Selected card for setup
         this.selectedCardForSetup = null;
@@ -36,6 +37,16 @@ export class Game {
         this.prizeCardAnimationExecuted = false;
         this.prizeAnimationCompleted = false; // サイドアニメーション完了フラグ
         this.cardRevealAnimationExecuted = false;
+        
+        // レンダリング最適化用
+        this.renderQueue = [];
+        this.isRenderScheduled = false;
+        this.lastRenderState = null;
+        
+        // アニメーション同期システム
+        this.animationQueue = [];
+        this.isAnimating = false;
+        this.animationPromises = new Set();
     } // End of constructor
 
     _delay(ms) {
@@ -83,6 +94,9 @@ export class Game {
             
             // Make game instance globally accessible for modal callbacks
             window.gameInstance = this;
+            
+            // システムメンテナンス開始
+            this._scheduleSystemMaintenance();
         } catch (error) {
             await errorHandler.handleError(error, ERROR_TYPES.SETUP_FAILED);
         }
@@ -102,6 +116,79 @@ export class Game {
         // }, 500);
     }
 
+    
+    /**
+     * バッチレンダリングシステム - 複数の状態更新を1回のレンダリングにまとめる
+     */
+    _scheduleRender() {
+        if (this.isRenderScheduled) return;
+        
+        this.isRenderScheduled = true;
+        requestAnimationFrame(() => {
+            this._performBatchRender();
+            this.isRenderScheduled = false;
+        });
+    }
+    
+    _performBatchRender() {
+        if (!this.state) return;
+        
+        // 差分チェック：前回のレンダリング状態と比較
+        if (this._hasStateChanged(this.lastRenderState, this.state)) {
+            this.view.render(this.state);
+            this._updateUI();
+            this.lastRenderState = this._cloneStateForComparison(this.state);
+        }
+    }
+    
+    _hasStateChanged(oldState, newState) {
+        if (!oldState || !newState) return true;
+        
+        // 主要な描画に影響する状態のみをチェック
+        const checkFields = [
+            'phase', 'turn', 'turnPlayer', 'players.player.hand.length',
+            'players.player.active?.id', 'players.player.bench.length',
+            'players.cpu.hand.length', 'players.cpu.active?.id', 'players.cpu.bench.length'
+        ];
+        
+        return checkFields.some(field => {
+            const oldValue = this._getNestedProperty(oldState, field);
+            const newValue = this._getNestedProperty(newState, field);
+            return oldValue !== newValue;
+        });
+    }
+    
+    _getNestedProperty(obj, path) {
+        return path.split('.').reduce((current, prop) => {
+            if (prop.includes('?')) {
+                const [key] = prop.split('?');
+                return current?.[key];
+            }
+            return current?.[prop];
+        }, obj);
+    }
+    
+    _cloneStateForComparison(state) {
+        // 軽量な状態複製（描画比較用）
+        return {
+            phase: state.phase,
+            turn: state.turn,
+            turnPlayer: state.turnPlayer,
+            players: {
+                player: {
+                    hand: { length: state.players.player.hand.length },
+                    active: state.players.player.active ? { id: state.players.player.active.id } : null,
+                    bench: { length: state.players.player.bench.length }
+                },
+                cpu: {
+                    hand: { length: state.players.cpu.hand.length },
+                    active: state.players.cpu.active ? { id: state.players.cpu.active.id } : null,
+                    bench: { length: state.players.cpu.bench.length }
+                }
+            }
+        };
+    }
+
     async _updateState(newState) {
         const previousPhase = this.state?.phase;
         this.state = newState;
@@ -110,17 +197,294 @@ export class Game {
         const oldPhase = this.phaseManager.currentPhase;
         this.phaseManager.currentPhase = newState.phase;
         
-        // フェーズ遷移アニメーションを実行
+        // フェーズ遷移アニメーション（必要な場合のみ）
         if (oldPhase !== newState.phase) {
-            await this.unifiedAnimationManager.animatePhaseTransition(oldPhase, newState.phase);
+            await this.animate.changePhase(oldPhase, newState.phase);
         }
         
-        // Always render the board first
-        this.view.render(this.state);
-
-        // Then control UI elements based on phase
-        this._updateUI();
+        // Handle CPU prize selection
+        if (this.state.phase === GAME_PHASES.PRIZE_SELECTION && this.state.playerToAct === 'cpu') {
+            this.state = await this._handleCpuPrizeSelection();
+        }
+        
+        // Handle CPU auto-selection after knockout
+        if (this.state.needsCpuAutoSelect) {
+            this.state = await this.turnManager.handleCpuAutoNewActive(this.state);
+        }
+        
+        // バッチレンダリングをスケジュール（即座に実行せず、まとめて処理）
+        this._scheduleRender();
     } // End of _updateState
+    
+    /**
+     * 統一されたアニメーション実行システム
+     * 状態更新→アニメーション→最終レンダリングの順序を保証
+     */
+    async _executeAnimationSequence(sequence) {
+        if (this.isAnimating) {
+            // 既存のアニメーションが完了するまで待機
+            await Promise.all(Array.from(this.animationPromises));
+        }
+        
+        this.isAnimating = true;
+        
+        try {
+            for (const step of sequence) {
+                switch (step.type) {
+                    case 'pre-render':
+                        // 状態更新（アニメーション前）
+                        if (step.stateUpdate) {
+                            this.state = step.stateUpdate(this.state);
+                        }
+                        break;
+                        
+                    case 'animation':
+                        // アニメーション実行
+                        if (step.animation) {
+                            const animPromise = step.animation();
+                            this.animationPromises.add(animPromise);
+                            await animPromise;
+                            this.animationPromises.delete(animPromise);
+                        }
+                        break;
+                        
+                    case 'post-render':
+                        // 最終レンダリング
+                        this._scheduleRender();
+                        if (step.callback) {
+                            step.callback();
+                        }
+                        break;
+                        
+                    case 'delay':
+                        // 必要に応じた待機
+                        if (step.duration) {
+                            await this._delay(step.duration);
+                        }
+                        break;
+                }
+            }
+        } catch (error) {
+            console.error('Animation sequence error:', error);
+            this._handleAnimationError(error);
+        } finally {
+            this.isAnimating = false;
+        }
+    }
+    
+    /**
+     * 便利メソッド：状態更新とアニメーションを統合
+     */
+    async _updateStateWithAnimation(newState, animationFn, options = {}) {
+        const sequence = [
+            { 
+                type: 'pre-render', 
+                stateUpdate: () => newState 
+            },
+            { 
+                type: 'animation', 
+                animation: animationFn 
+            },
+            { 
+                type: 'post-render',
+                callback: options.onComplete 
+            }
+        ];
+        
+        await this._executeAnimationSequence(sequence);
+    }
+    
+    /**
+     * バトルステップ統一処理
+     */
+    async _processBattleStep(stepType, data) {
+        const stepHandlers = {
+            'damage': this._handleDamageStep.bind(this),
+            'knockout': this._handleKnockoutStep.bind(this),
+            'energy-attach': this._handleEnergyAttachStep.bind(this),
+            'retreat': this._handleRetreatStep.bind(this),
+            'card-play': this._handleCardPlayStep.bind(this)
+        };
+        
+        const handler = stepHandlers[stepType];
+        if (!handler) {
+            console.warn(`Unknown battle step type: ${stepType}`);
+            return this.state;
+        }
+        
+        return await handler(data);
+    }
+    
+    async _handleDamageStep(data) {
+        const { damage, targetId, attackerType } = data;
+        const sequence = [
+            {
+                type: 'pre-render',
+                stateUpdate: (state) => Logic.applyDamage(state, targetId, damage)
+            },
+            {
+                type: 'animation',
+                animation: () => this.animate.attackSequence(attackerType, damage, targetId)
+            },
+            {
+                type: 'post-render'
+            }
+        ];
+        
+        await this._executeAnimationSequence(sequence);
+        return this.state;
+    }
+    
+    async _handleKnockoutStep(data) {
+        const { pokemonId } = data;
+        const sequence = [
+            {
+                type: 'animation',
+                animation: () => this.animate.knockout(pokemonId)
+            },
+            {
+                type: 'pre-render',
+                stateUpdate: (state) => Logic.handleKnockout(state, pokemonId)
+            },
+            {
+                type: 'post-render'
+            }
+        ];
+        
+        await this._executeAnimationSequence(sequence);
+        return this.state;
+    }
+    
+    async _handleEnergyAttachStep(data) {
+        const { energyId, pokemonId } = data;
+        const sequence = [
+            {
+                type: 'pre-render',
+                stateUpdate: (state) => Logic.attachEnergy(state, 'player', energyId, pokemonId)
+            },
+            {
+                type: 'animation',
+                animation: () => this.animate.energyAttach(energyId, pokemonId, this.state)
+            },
+            {
+                type: 'post-render'
+            }
+        ];
+        
+        await this._executeAnimationSequence(sequence);
+        return this.state;
+    }
+    
+    async _handleRetreatStep(data) {
+        const { fromActiveId, toBenchIndex } = data;
+        const sequence = [
+            {
+                type: 'animation', 
+                animation: () => this.animate.cardMove('player', fromActiveId, 'active->bench', { benchIndex: toBenchIndex })
+            },
+            {
+                type: 'pre-render',
+                stateUpdate: (state) => Logic.retreat(state, 'player', fromActiveId, toBenchIndex)
+            },
+            {
+                type: 'post-render'
+            }
+        ];
+        
+        await this._executeAnimationSequence(sequence);
+        return this.state;
+    }
+    
+    async _handleCardPlayStep(data) {
+        const { cardId, zone, targetIndex } = data;
+        const sequence = [
+            {
+                type: 'pre-render',
+                stateUpdate: (state) => this._updateCardPlayState(state, cardId, zone, targetIndex)
+            },
+            {
+                type: 'animation',
+                animation: () => this.animate.cardMove('player', cardId, `hand->${zone}`, { benchIndex: targetIndex })
+            },
+            {
+                type: 'post-render'
+            }
+        ];
+        
+        await this._executeAnimationSequence(sequence);
+        return this.state;
+    }
+    
+    _handleAnimationError(error) {
+        console.error('Animation error:', error);
+        // エラー時のロールバック機能
+        if (this.lastRenderState) {
+            this.state = { ...this.lastRenderState };
+            this._scheduleRender();
+        }
+        
+        // エラー通知
+        this.view?.showErrorMessage?.('アニメーションエラーが発生しました', 'error');
+    }
+    
+    /**
+     * 未使用変数とメモリクリーンアップ
+     */
+    _performMemoryCleanup() {
+        // DOM キャッシュのクリーンアップ
+        if (this.view?.domCache) {
+            const cacheSize = this.view.domCache.size;
+            if (cacheSize > 100) { // 上限を設定
+                const entries = Array.from(this.view.domCache.entries());
+                // 古いエントリーを削除（LRU方式）
+                const toDelete = entries.slice(0, cacheSize - 50);
+                toDelete.forEach(([key]) => this.view.domCache.delete(key));
+            }
+        }
+        
+        // レンダリングキューのクリーンアップ
+        if (this.renderQueue.length > 20) {
+            this.renderQueue = this.renderQueue.slice(-10); // 最新10件のみ保持
+        }
+        
+        // アニメーションプロミスの確認
+        if (this.animationPromises.size > 0) {
+            console.warn(`${this.animationPromises.size} animation promises still pending`);
+        }
+    }
+    
+    /**
+     * パフォーマンス監視
+     */
+    _monitorPerformance() {
+        if (performance.memory) {
+            const memory = performance.memory;
+            const memoryUsage = {
+                used: Math.round(memory.usedJSHeapSize / 1024 / 1024),
+                total: Math.round(memory.totalJSHeapSize / 1024 / 1024),
+                limit: Math.round(memory.jsHeapSizeLimit / 1024 / 1024)
+            };
+            
+            if (memoryUsage.used > memoryUsage.limit * 0.8) {
+                console.warn('High memory usage detected:', memoryUsage);
+                this._performMemoryCleanup();
+            }
+        }
+    }
+    
+    /**
+     * 定期的なシステムメンテナンス
+     */
+    _scheduleSystemMaintenance() {
+        if (this._maintenanceInterval) {
+            clearInterval(this._maintenanceInterval);
+        }
+        
+        this._maintenanceInterval = setInterval(() => {
+            this._performMemoryCleanup();
+            this._monitorPerformance();
+        }, 30000); // 30秒ごと
+    }
 
     /**
      * フローティングアクションボタンのイベントハンドラーを設定
@@ -406,18 +770,12 @@ export class Game {
 
                 // カード移動アニメーションを実行
                 if (cardElement) {
-                    await unifiedAnimationManager.createUnifiedCardAnimation(
-                        'player', // プレイヤー側
-                        cardToAnimate.id, // 事前に取得したIDを使用
-                        'hand', // 移動元は手札
-                        zone, // 移動先は 'active' または 'bench'
-                        targetIndex, // ベンチの場合のインデックス
-                        {
-                            isSetupPhase: true,
-                            card: cardToAnimate,
-                            initialSourceRect: initialCardRect // ★ 追加: 初期位置を渡す
-                        }
-                    );
+                    await animate.cardMove('player', cardToAnimate.id, `hand->${zone}`, {
+                        isSetupPhase: true,
+                        benchIndex: targetIndex,
+                        card: cardToAnimate,
+                        initialSourceRect: initialCardRect
+                    });
                 }
                 
                 // アニメーション完了後に確定HUDを再表示（確実に表示されるように）
@@ -489,55 +847,91 @@ export class Game {
      * 新しいアクティブポケモン選択
      */
     async _handleNewActiveSelection(benchIndex) {
-        let newState = Logic.promoteToActive(this.state, 'player', benchIndex);
+        // Use the new unified turnManager method
+        let newState = await this.turnManager.handleNewActiveSelection(this.state, benchIndex);
         
-        // アニメーション
-        await this._animatePokemonPromotion('player', benchIndex);
-        
-        // 新アクティブ選択完了後の勝敗判定
-        newState = Logic.checkForWinner(newState);
-        if (newState.phase === GAME_PHASES.GAME_OVER) {
-            this._updateState(newState);
-            return;
+        this._updateState(newState);
+    }
+
+    /**
+     * CPU自動サイド選択処理
+     */
+    async _handleCpuPrizeSelection() {
+        const cpuState = this.state.players.cpu;
+        const availablePrizes = cpuState.prize
+            .map((prize, index) => ({ prize, index }))
+            .filter(({ prize }) => prize !== null);
+            
+        if (availablePrizes.length === 0 || cpuState.prizesToTake === 0) {
+            return this.state;
         }
         
-        // 次のフェーズに移行
-        if (this.state.turnPlayer === 'player') {
-            newState.phase = GAME_PHASES.PLAYER_MAIN;
-            newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
-        } else if (newState.playerToAct === 'cpu') { // CPUが新しいポケモンを選ぶ番の場合
-            newState.phase = GAME_PHASES.CPU_TURN;
-            newState.prompt.message = '相手が新しいバトルポケモンを選んでいます...';
-            await this._updateState(newState);
-            await this._executeCpuTurn(); // CPUのターンを再開
-            return; // ここで処理を終了
-        } else {
-            // それ以外のケース（例：CPUがKOされ、プレイヤーが新しいポケモンを選んだ後）
-            newState.phase = GAME_PHASES.CPU_TURN; // CPUのターンに戻す
-            newState.prompt.message = '相手のターンです...';
+        // CPU思考時間をシミュレート
+        await this.turnManager.simulateCpuThinking(600);
+        
+        let newState = this.state;
+        let prizesToTake = cpuState.prizesToTake;
+        
+        // 必要な枚数分ランダムに選択
+        for (let i = 0; i < prizesToTake && availablePrizes.length > 0; i++) {
+            const randomIndex = Math.floor(Math.random() * availablePrizes.length);
+            const selectedPrize = availablePrizes.splice(randomIndex, 1)[0];
+            
+            newState = Logic.takePrizeCard(newState, 'cpu', selectedPrize.index);
+            await this._animatePrizeTake('cpu', selectedPrize.index);
         }
         
-        await this._updateState(newState);
+        // Prize selection completed, check if new active selection is needed
+        if (newState.players.cpu.prizesToTake === 0) {
+            if (newState.knockoutContext) {
+                newState = Logic.processNewActiveAfterKnockout(newState);
+                
+                // If CPU needs to auto-select, handle it immediately  
+                if (newState.needsCpuAutoSelect) {
+                    newState = await this.turnManager.handleCpuAutoNewActive(newState);
+                    
+                    // Set appropriate phase after CPU auto-selection
+                    if (newState.phase !== GAME_PHASES.GAME_OVER) {
+                        if (newState.turnPlayer === 'cpu') {
+                            newState.phase = GAME_PHASES.CPU_MAIN;
+                        } else {
+                            newState.phase = GAME_PHASES.PLAYER_MAIN;
+                        }
+                    }
+                }
+            } else {
+                // No knockout context, return to normal turn flow
+                if (newState.turnPlayer === 'cpu') {
+                    newState.phase = GAME_PHASES.CPU_MAIN;
+                } else {
+                    newState.phase = GAME_PHASES.PLAYER_MAIN;
+                }
+            }
+        }
+        
+        return newState;
     }
 
     /**
      * サイドカード選択処理
      */
     async _handlePrizeSelection(prizeIndex) {
-        console.log(`🎯 Prize selection attempt: index ${prizeIndex}, prizesToTake: ${this.state.players.player.prizesToTake}`);
+        console.log(`🎯 Prize selection attempt: index ${prizeIndex}, prizesToTake: ${this.state.players[this.state.playerToAct].prizesToTake}`);
+        
+        const playerId = this.state.playerToAct;
         
         // Validate the selection
-        if (this.state.players.player.prizesToTake === 0) {
+        if (this.state.players[playerId].prizesToTake === 0) {
             console.warn('⚠️ No prizes available to take');
             return;
         }
         
-        if (!this.state.players.player.prize[prizeIndex]) {
+        if (!this.state.players[playerId].prize[prizeIndex]) {
             console.warn('⚠️ No prize card at index:', prizeIndex);
             return;
         }
         
-        let newState = Logic.takePrizeCard(this.state, 'player', prizeIndex);
+        let newState = Logic.takePrizeCard(this.state, playerId, prizeIndex);
         
         // Check if state actually changed
         if (newState === this.state) {
@@ -546,18 +940,38 @@ export class Game {
         }
         
         // アニメーション
-        await this._animatePrizeTake('player', prizeIndex);
+        await this._animatePrizeTake(playerId, prizeIndex);
         
         // サイド取得後の処理
-        if (newState.players.player.prizesToTake === 0) {
-            if (newState.turnPlayer === 'player') {
-                newState.phase = GAME_PHASES.PLAYER_MAIN;
+        if (newState.players[playerId].prizesToTake === 0) {
+            // Prize selection completed, check if new active selection is needed
+            if (newState.knockoutContext) {
+                newState = Logic.processNewActiveAfterKnockout(newState);
+                
+                // If CPU needs to auto-select, handle it immediately
+                if (newState.needsCpuAutoSelect) {
+                    newState = await this.turnManager.handleCpuAutoNewActive(newState);
+                    
+                    // Set appropriate phase after CPU auto-selection
+                    if (newState.phase !== GAME_PHASES.GAME_OVER) {
+                        if (newState.turnPlayer === 'cpu') {
+                            newState.phase = GAME_PHASES.CPU_MAIN;
+                        } else {
+                            newState.phase = GAME_PHASES.PLAYER_MAIN;
+                        }
+                    }
+                }
             } else {
-                newState.phase = GAME_PHASES.CPU_TURN;
+                // No knockout context, return to normal turn flow
+                if (newState.turnPlayer === 'player') {
+                    newState.phase = GAME_PHASES.PLAYER_MAIN;
+                } else {
+                    newState.phase = GAME_PHASES.CPU_TURN;
+                }
             }
         }
         
-        console.log('✅ Prize card taken successfully, remaining:', newState.players.player.prizesToTake);
+        console.log('✅ Prize card taken successfully, remaining:', newState.players[playerId].prizesToTake);
         this._updateState(newState);
     }
 
@@ -816,24 +1230,24 @@ export class Game {
     }
 
     /**
-     * エネルギー付与処理
+     * エネルギー付与処理（新統合システム使用）
      */
     async _attachEnergy(energyId, pokemonId) {
-        let newState = this.turnManager.handlePlayerMainPhase(this.state, 'attach_energy', {
+        const initialState = this.state;
+        
+        // 統合バトルステップで処理
+        this.state = await this._processBattleStep('energy-attach', {
             energyId,
             pokemonId
         });
         
-        if (newState !== this.state) {
-            // 軽量エネルギー付与エフェクト
-            await unifiedAnimationManager.createLightweightEnergyEffect(energyId, pokemonId, newState);
-            
-            newState.pendingAction = null;
-            newState.prompt.message = 'あなたのターンです。アクションを選択してください。';
+        // 状態が変更された場合の後処理
+        if (this.state !== initialState) {
+            this.state.pendingAction = null;
+            this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
         }
         
         this._clearAllHighlights();
-        this._updateState(newState);
     }
 
     /**
@@ -856,12 +1270,7 @@ export class Game {
         if (newState !== this.state) {
             // Animate discarded energy cards
             if (discardedEnergy && discardedEnergy.length > 0 && activePokemonElement && discardPileElement) {
-                await unifiedAnimationManager.animateDiscardedEnergy(
-                    'player',
-                    discardedEnergy,
-                    activePokemonElement,
-                    discardPileElement
-                );
+                await animate.energyDiscard(discardedEnergy, activePokemonElement, discardPileElement);
             }
             
             newState.pendingAction = null;
@@ -2025,7 +2434,7 @@ export class Game {
             // 各カード要素の詳細を確認
             
             if (playerCards.length > 0) {
-                promises.push(unifiedAnimationManager.animateHandDeal(playerCards, 'player'));
+                promises.push(animate.handDeal(playerCards, 'player'));
             }
         }
 
@@ -2035,7 +2444,7 @@ export class Game {
             // 各カード要素の詳細を確認
             
             if (cpuCards.length > 0) {
-                promises.push(unifiedAnimationManager.animateHandDeal(cpuCards, 'cpu'));
+                promises.push(animate.handDeal(cpuCards, 'cpu'));
             }
         }
 
@@ -2091,13 +2500,13 @@ export class Game {
         const allPrizePromises = [];
         
         if (playerPrizeElements.length > 0) {
-            allPrizePromises.push(unifiedAnimationManager.animatePrizeDeal(playerPrizeElements, 'player'));
+            allPrizePromises.push(animate.prizeDeal(playerPrizeElements, 'player'));
         } else {
             console.warn('⚠️ No player prize elements found for animation');
         }
 
         if (cpuPrizeElements.length > 0) {
-            allPrizePromises.push(unifiedAnimationManager.animatePrizeDeal(cpuPrizeElements, 'cpu'));
+            allPrizePromises.push(animate.prizeDeal(cpuPrizeElements, 'cpu'));
         } else {
             console.warn('⚠️ No CPU prize elements found for animation');
         }

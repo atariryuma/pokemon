@@ -1518,56 +1518,286 @@
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
         }
 
-        /* Lightweight Energy Attachment Effects */
-        .energy-effect {
-            transition: box-shadow 200ms ease-out, transform 200ms ease-out;
-            z-index: var(--z-card-effects) !important;
-            position: relative;
+        /* 🎨 新統一アニメーションシステム - CSS変数 */
+        :root {
+            --anim-fast: 200ms;
+            --anim-normal: 400ms;
+            --anim-slow: 800ms;
+            --anim-combat: 600ms;
+            --anim-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+            --anim-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            --anim-ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --anim-enabled: 1;
+            --anim-particles: 1;
+            --shake-intensity: 1;
         }
 
-        .energy-effect-fire {
-            box-shadow: 0 0 25px #ff6b35, 0 0 50px rgba(255, 107, 53, 0.4);
-            transform: scale(1.02);
+        /* 🎯 カード移動アニメーション */
+        @keyframes cardToActive {
+            0% { transform: scale(1) translate(0, 0); opacity: 1; }
+            50% { transform: scale(1.1) translate(0, -20px); opacity: 0.8; }
+            100% { transform: scale(1) translate(0, 0); opacity: 1; }
         }
 
-        .energy-effect-water {
-            box-shadow: 0 0 25px #4fc3f7, 0 0 50px rgba(79, 195, 247, 0.4);
-            transform: scale(1.02);
+        @keyframes cardToBench {
+            0% { transform: scale(1) translateY(0); }
+            50% { transform: scale(0.9) translateY(-10px); }
+            100% { transform: scale(1) translateY(0); }
         }
 
-        .energy-effect-grass {
-            box-shadow: 0 0 25px #66bb6a, 0 0 50px rgba(102, 187, 106, 0.4);
-            transform: scale(1.02);
+        @keyframes cardKnockout {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; }
+            30% { transform: scale(1.1) rotate(5deg); opacity: 0.8; }
+            100% { transform: scale(0.8) rotate(15deg); opacity: 0; }
         }
 
-        .energy-effect-lightning {
-            box-shadow: 0 0 25px #ffeb3b, 0 0 50px rgba(255, 235, 59, 0.4);
-            transform: scale(1.02);
+        @keyframes cardPromote {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-30px) scale(1.05); }
+            100% { transform: translateY(0) scale(1); }
         }
 
-        .energy-effect-psychic {
-            box-shadow: 0 0 25px #ab47bc, 0 0 50px rgba(171, 71, 188, 0.4);
-            transform: scale(1.02);
+        @keyframes cardMove {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(0.95); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
-        .energy-effect-fighting {
-            box-shadow: 0 0 25px #f57c00, 0 0 50px rgba(245, 124, 0, 0.4);
-            transform: scale(1.02);
+        @keyframes cardDraw {
+            0% { transform: scale(1.2) rotate(5deg); opacity: 0; }
+            50% { transform: scale(1.1) rotate(2deg); opacity: 0.7; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
-        .energy-effect-darkness {
-            box-shadow: 0 0 25px #424242, 0 0 50px rgba(66, 66, 66, 0.4);
-            transform: scale(1.02);
+        @keyframes deckLift {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0); }
         }
 
-        .energy-effect-metal {
-            box-shadow: 0 0 25px #90a4ae, 0 0 50px rgba(144, 164, 174, 0.4);
-            transform: scale(1.02);
+        /* ⚔️ 戦闘アニメーション */
+        @keyframes attackForward {
+            0% { transform: translateX(0) scale(1); }
+            40% { transform: translateX(30px) scale(1.1); }
+            100% { transform: translateX(0) scale(1); }
         }
 
-        .energy-effect-colorless {
-            box-shadow: 0 0 25px #bdbdbd, 0 0 50px rgba(189, 189, 189, 0.4);
-            transform: scale(1.02);
+        @keyframes damageShake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-3px, -2px); }
+            40% { transform: translate(3px, 2px); }
+            60% { transform: translate(-2px, 1px); }
+            80% { transform: translate(2px, -1px); }
+        }
+
+        @keyframes screenShake {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(calc(-2px * var(--shake-intensity)), 0); }
+            20% { transform: translate(calc(2px * var(--shake-intensity)), 0); }
+            30% { transform: translate(calc(-1px * var(--shake-intensity)), 0); }
+        }
+
+        @keyframes screenFlash {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.5) contrast(1.2); }
+            100% { filter: brightness(1); }
+        }
+
+        @keyframes hpFlash {
+            0%, 100% { background-color: initial; }
+            50% { background-color: #ef4444; }
+        }
+
+        /* 🌟 エフェクトアニメーション */
+        @keyframes energyShrink {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.7); opacity: 0.5; }
+        }
+
+        @keyframes energyIntegrate {
+            0% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.02); filter: brightness(1.3) saturate(1.2); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+
+        @keyframes evolutionGlow {
+            0%, 100% { box-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+            50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.8); }
+        }
+
+        @keyframes evolutionEmerge {
+            0% { opacity: 0; transform: scale(0.8) rotate(-5deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+
+        @keyframes healGlow {
+            0%, 100% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+            50% { box-shadow: 0 0 25px rgba(34, 197, 94, 0.7); }
+        }
+
+        @keyframes prizeGlow {
+            0%, 100% { box-shadow: 0 0 0 rgba(252, 211, 77, 0); }
+            50% { box-shadow: 0 0 30px rgba(252, 211, 77, 0.8); }
+        }
+
+        @keyframes prizeTake {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.1) rotate(5deg); }
+            100% { transform: scale(0.9) rotate(0deg); opacity: 0; }
+        }
+
+        /* 🎭 UIアニメーション */
+        @keyframes gameStart {
+            0% { filter: brightness(1) saturate(1); }
+            50% { filter: brightness(1.3) saturate(1.3); }
+            100% { filter: brightness(1) saturate(1); }
+        }
+
+        @keyframes attackReady {
+            0%, 100% { box-shadow: 0 0 0 rgba(255, 100, 100, 0); }
+            50% { box-shadow: 0 0 20px rgba(255, 100, 100, 0.8); }
+        }
+
+        @keyframes turnEnd {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0.7; transform: scale(0.95); }
+        }
+
+        @keyframes turnStart {
+            0% { opacity: 0.7; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes notificationShow {
+            0% { opacity: 0; transform: translateY(-20px) scale(0.9); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes notificationHide {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-20px) scale(0.9); }
+        }
+
+        @keyframes modalShow {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes modalHide {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.95); }
+        }
+
+        @keyframes loadingShow {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes loadingHide {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* 🔥 タイプ別エフェクト */
+        @keyframes typeFire {
+            0%, 100% { box-shadow: 0 0 0 rgba(255, 107, 53, 0); filter: hue-rotate(0deg); }
+            50% { box-shadow: 0 0 30px rgba(255, 107, 53, 0.8); filter: hue-rotate(10deg); }
+        }
+
+        @keyframes typeWater {
+            0%, 100% { box-shadow: 0 0 0 rgba(79, 195, 247, 0); filter: hue-rotate(0deg); }
+            50% { box-shadow: 0 0 30px rgba(79, 195, 247, 0.8); filter: hue-rotate(-10deg); }
+        }
+
+        @keyframes typeGrass {
+            0%, 100% { box-shadow: 0 0 0 rgba(102, 187, 106, 0); filter: hue-rotate(0deg); }
+            50% { box-shadow: 0 0 30px rgba(102, 187, 106, 0.8); filter: hue-rotate(15deg); }
+        }
+
+        @keyframes typeLightning {
+            0%, 100% { box-shadow: 0 0 0 rgba(255, 235, 59, 0); filter: brightness(1); }
+            50% { box-shadow: 0 0 35px rgba(255, 235, 59, 0.9); filter: brightness(1.2); }
+        }
+
+        /* 🎯 新統一アニメーションクラス */
+        .anim-card-to-active { animation: cardToActive var(--anim-normal) var(--anim-ease-default); }
+        .anim-card-to-bench { animation: cardToBench var(--anim-normal) var(--anim-ease-default); }
+        .anim-card-knockout { animation: cardKnockout var(--anim-slow) var(--anim-ease-default) forwards; }
+        .anim-card-promote { animation: cardPromote var(--anim-normal) var(--anim-ease-bounce); }
+        .anim-card-move { animation: cardMove var(--anim-normal) var(--anim-ease-default); }
+        .anim-card-draw { animation: cardDraw var(--anim-normal) var(--anim-ease-default); }
+        .anim-deck-lift { animation: deckLift var(--anim-fast) var(--anim-ease-default); }
+
+        .anim-attack-forward { animation: attackForward var(--anim-combat) var(--anim-ease-default); }
+        .anim-damage-shake { animation: damageShake var(--anim-combat) var(--anim-ease-default); }
+        .anim-screen-shake { animation: screenShake var(--anim-combat) var(--anim-ease-default); }
+        .anim-screen-flash { animation: screenFlash var(--anim-fast) var(--anim-ease-default); }
+        .anim-hp-flash { animation: hpFlash var(--anim-combat) var(--anim-ease-default); }
+
+        .anim-energy-shrink { animation: energyShrink var(--anim-fast) var(--anim-ease-default); }
+        .anim-energy-integrate { animation: energyIntegrate var(--anim-normal) var(--anim-ease-default); }
+        .anim-evolution-glow { animation: evolutionGlow var(--anim-slow) var(--anim-ease-default); }
+        .anim-evolution-emerge { animation: evolutionEmerge var(--anim-slow) var(--anim-ease-default); }
+        .anim-heal-glow { animation: healGlow var(--anim-normal) var(--anim-ease-default); }
+        .anim-prize-glow { animation: prizeGlow var(--anim-normal) var(--anim-ease-default); }
+        .anim-prize-take { animation: prizeTake var(--anim-normal) var(--anim-ease-default); }
+
+        .anim-game-start { animation: gameStart var(--anim-slow) var(--anim-ease-default); }
+        .anim-attack-ready { animation: attackReady 2s var(--anim-ease-default) infinite; }
+        .anim-turn-end { animation: turnEnd var(--anim-normal) var(--anim-ease-default); }
+        .anim-turn-start { animation: turnStart var(--anim-normal) var(--anim-ease-default); }
+        .anim-notification-show { animation: notificationShow var(--anim-normal) var(--anim-ease-bounce); }
+        .anim-notification-hide { animation: notificationHide var(--anim-normal) var(--anim-ease-default); }
+        .anim-modal-show { animation: modalShow var(--anim-normal) var(--anim-ease-bounce); }
+        .anim-modal-hide { animation: modalHide var(--anim-normal) var(--anim-ease-default); }
+        .anim-loading-show { animation: loadingShow var(--anim-fast) var(--anim-ease-default); }
+        .anim-loading-hide { animation: loadingHide var(--anim-fast) var(--anim-ease-default); }
+
+        .anim-type-fire { animation: typeFire var(--anim-combat) var(--anim-ease-default); }
+        .anim-type-water { animation: typeWater var(--anim-combat) var(--anim-ease-default); }
+        .anim-type-grass { animation: typeGrass var(--anim-combat) var(--anim-ease-default); }
+        .anim-type-lightning { animation: typeLightning var(--anim-combat) var(--anim-ease-default); }
+
+        /* エネルギーグロー効果（タイプ別） */
+        .anim-energy-glow-fire { 
+            animation: typeFire var(--anim-normal) var(--anim-ease-default);
+            z-index: var(--z-card-effects);
+        }
+        .anim-energy-glow-water { 
+            animation: typeWater var(--anim-normal) var(--anim-ease-default);
+            z-index: var(--z-card-effects);
+        }
+        .anim-energy-glow-grass { 
+            animation: typeGrass var(--anim-normal) var(--anim-ease-default);
+            z-index: var(--z-card-effects);
+        }
+        .anim-energy-glow-lightning { 
+            animation: typeLightning var(--anim-normal) var(--anim-ease-default);
+            z-index: var(--z-card-effects);
+        }
+
+        /* 通知スタイリング */
+        .anim-notification-success { background: linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(21, 128, 61, 0.9)); }
+        .anim-notification-error { background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(185, 28, 28, 0.9)); }
+        .anim-notification-warning { background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9)); }
+        .anim-notification-info { background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(29, 78, 216, 0.9)); }
+
+        /* パフォーマンス最適化 - 低品質モード */
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --anim-enabled: 0;
+                --anim-fast: 0ms;
+                --anim-normal: 0ms;
+                --anim-slow: 0ms;
+                --anim-combat: 0ms;
+            }
+            
+            * {
+                animation-duration: 0ms !important;
+                animation-delay: 0ms !important;
+                transition-duration: 0ms !important;
+                transition-delay: 0ms !important;
+            }
         }
 
         /* モーダルアニメーション */

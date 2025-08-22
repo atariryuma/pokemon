@@ -434,77 +434,27 @@ export function checkForKnockout(state, defendingPlayerId) {
     // It's a KO!
     let newState = addLogEntry(state, { message: `${defender.name_ja}がきぜつした！` });
     const attackingPlayerId = defendingPlayerId === 'player' ? 'cpu' : 'player';
-    const attackerState = newState.players[attackingPlayerId]; // Use newState for attackerState
+    const attackerState = newState.players[attackingPlayerId];
 
     // Move KO'd pokemon and its cards to discard
     const newDiscard = [...defenderState.discard, defender, ...(defender.attached_energy || [])];
 
-    // ベンチにポケモンがいるかチェック
+    // Check if defending player has bench pokemon
     const hasBenchPokemon = defenderState.bench.some(p => p !== null);
 
-    // プレイヤー種別による処理分離
-    if (defendingPlayerId === 'player') {
-        // プレイヤー気絶: 手動ベンチ選択
-        newState = {
-            ...newState,
-            phase: hasBenchPokemon ? GAME_PHASES.AWAITING_NEW_ACTIVE : newState.phase,
-            playerToAct: hasBenchPokemon ? defendingPlayerId : null,
-            prompt: {
-                message: hasBenchPokemon 
-                    ? `あなたのバトルポケモンがきぜつした。ベンチから新しいポケモンを選んでください。`
-                    : newState.prompt?.message,
-            },
-        };
-    } else {
-        // CPU気絶: 自動ベンチ選択
-        if (hasBenchPokemon) {
-            // 最初の有効なベンチポケモンを自動選択
-            const newActiveIndex = defenderState.bench.findIndex(p => p !== null);
-            const newActive = defenderState.bench[newActiveIndex];
-            const newBench = [...defenderState.bench];
-            newBench[newActiveIndex] = null;
-            
-            newState = {
-                ...newState,
-                players: {
-                    ...newState.players,
-                    [defendingPlayerId]: {
-                        ...defenderState,
-                        active: newActive,
-                        bench: newBench,
-                        discard: newDiscard,
-                    }
-                }
-            };
-            newState = addLogEntry(newState, { message: `相手は${newActive.name_ja}をバトル場に出した。` });
-        } else {
-            newState = {
-                ...newState,
-                prompt: {
-                    message: newState.prompt?.message,
-                },
-            };
-        }
-    }
-
-    // プライズ処理（共通）
+    // Prize calculation
     const prizeCount = defender.rule_box === 'ex' || defender.rule_box === 'V' || defender.rule_box === 'VMAX' ? 2 : 1;
+
+    // Remove KO'd pokemon from active spot and add to discard
     newState = {
         ...newState,
         players: {
             ...newState.players,
-            [defendingPlayerId]: defendingPlayerId === 'player' && hasBenchPokemon 
-                ? newState.players[defendingPlayerId] // プレイヤーの場合は既に処理済み
-                : {
-                    ...defenderState,
-                    active: defendingPlayerId === 'cpu' && hasBenchPokemon 
-                        ? newState.players[defendingPlayerId].active // CPU自動選択済み
-                        : null,
-                    bench: defendingPlayerId === 'cpu' && hasBenchPokemon 
-                        ? newState.players[defendingPlayerId].bench // CPU自動選択済み
-                        : defenderState.bench,
-                    discard: newDiscard,
-                },
+            [defendingPlayerId]: {
+                ...defenderState,
+                active: null, // Clear active spot
+                discard: newDiscard,
+            },
             [attackingPlayerId]: {
                 ...attackerState,
                 prizeRemaining: attackerState.prizeRemaining - prizeCount,
@@ -512,7 +462,25 @@ export function checkForKnockout(state, defendingPlayerId) {
             },
         },
     };
-    newState = addLogEntry(newState, { message: `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドを${prizeCount}枚とった！` });
+
+    // Set up prize selection phase first
+    newState.phase = GAME_PHASES.PRIZE_SELECTION;
+    newState.playerToAct = attackingPlayerId;
+    newState.prompt = {
+        message: `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドカードを${prizeCount}枚選んでください。`
+    };
+
+    // Store knockout context for later processing
+    newState.knockoutContext = {
+        defendingPlayerId,
+        hasBenchPokemon,
+        prizeCount
+    };
+
+    newState = addLogEntry(newState, { 
+        message: `${attackingPlayerId === 'player' ? 'あなた' : '相手'}はサイドを${prizeCount}枚とることができます！` 
+    });
+    
     return newState;
 }
 
@@ -581,6 +549,89 @@ export function checkForWinner(state) {
     }
 
     // No winner yet, no log needed for simplicity
+    return newState;
+}
+
+/**
+ * Processes new active pokemon selection after knockout and prize selection.
+ * @param {object} state - The current game state.
+ * @returns {object} The new state after processing new active selection.
+ */
+export function processNewActiveAfterKnockout(state) {
+    if (!state.knockoutContext) {
+        return state;
+    }
+
+    const { defendingPlayerId, hasBenchPokemon } = state.knockoutContext;
+    let newState = { ...state };
+
+    if (!hasBenchPokemon) {
+        // No bench pokemon, game might be over
+        newState = checkForWinner(newState);
+        newState.knockoutContext = null;
+        return newState;
+    }
+
+    // Set up new active selection phase
+    newState.phase = GAME_PHASES.AWAITING_NEW_ACTIVE;
+    newState.playerToAct = defendingPlayerId;
+    newState.prompt = {
+        message: defendingPlayerId === 'player' 
+            ? 'あなたのバトルポケモンがきぜつしました。ベンチから新しいポケモンを選んでください。'
+            : 'CPUが新しいバトルポケモンを選んでいます...'
+    };
+
+    // Store the knockout context for CPU auto-selection if needed
+    if (defendingPlayerId === 'cpu') {
+        // Mark that CPU needs to auto-select
+        newState.needsCpuAutoSelect = true;
+    }
+
+    return newState;
+}
+
+/**
+ * Auto-selects a new active pokemon for CPU after knockout.
+ * @param {object} state - The current game state.
+ * @returns {object} The new state with CPU's new active pokemon selected.
+ */
+export function cpuAutoSelectNewActive(state) {
+    const cpuState = state.players.cpu;
+    const availableBench = cpuState.bench.filter(p => p !== null);
+    
+    if (availableBench.length === 0) {
+        // No pokemon available, game over
+        return checkForWinner(state);
+    }
+
+    // Select the first available bench pokemon
+    const newActiveIndex = cpuState.bench.findIndex(p => p !== null);
+    const newActive = cpuState.bench[newActiveIndex];
+    const newBench = [...cpuState.bench];
+    newBench[newActiveIndex] = null;
+
+    let newState = {
+        ...state,
+        players: {
+            ...state.players,
+            cpu: {
+                ...cpuState,
+                active: newActive,
+                bench: newBench,
+            }
+        },
+        knockoutContext: null,
+        needsCpuAutoSelect: false,
+        playerToAct: null
+    };
+
+    newState = addLogEntry(newState, { 
+        message: `相手は${newActive.name_ja}をバトル場に出しました。` 
+    });
+
+    // Check for winner after new active selection
+    newState = checkForWinner(newState);
+    
     return newState;
 }
 

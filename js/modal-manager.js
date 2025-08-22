@@ -5,7 +5,7 @@
  * 4つのモーダルタイプを管理：中央モーダル、通知トースト、アクションHUD、状況パネル
  */
 
-import { animationManager } from './unified-animations.js';
+import { animationManager } from './animation-manager.js';
 
 const noop = () => {};
 
