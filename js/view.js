@@ -1,7 +1,6 @@
 import { getCardImagePath } from './data-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
-import { animationManager, animate } from './animation-manager.js';
-import { animations as unifiedAnimations } from './unified-animations.js';
+import { animationManager } from './animation-manager.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { BUTTON_IDS, CONTAINER_IDS, CSS_CLASSES } from './ui-constants.js';
 import { errorHandler } from './error-handler.js';
@@ -247,8 +246,6 @@ export class View {
     _handleHandClickDelegation(e) {
         const cardElement = e.target.closest('[data-card-id]');
         if (cardElement && this.cardClickHandler) {
-            e.stopPropagation(); // イベントバブリングを停止して他要素への干渉を防ぐ
-            e.preventDefault();  // デフォルト動作を防止
             this.cardClickHandler(cardElement.dataset);
         }
     }
@@ -1580,11 +1577,9 @@ export class View {
             const hasCard = cardInSlot && cardInSlot.dataset.cardId;
             
             if (!hasCard) {
-                // プレースホルダーもクリック可能にして、適切なレイヤーに表示
-                slotElement.style.pointerEvents = 'auto';
-                slotElement.style.cursor = 'pointer';
-                // z-indexを明示的に設定（手札より下、プレイマットより上）
-                slotElement.style.zIndex = 'var(--z-placeholder)';
+                // カードがないスロットは操作不可
+                slotElement.style.pointerEvents = 'none';
+                slotElement.style.cursor = 'default';
                 return;
             }
             
@@ -1594,8 +1589,7 @@ export class View {
 
         // シンプルなクリック処理（プレイヤー側の操作 + CPU側の情報表示）
         slotElement.addEventListener('click', (e) => {
-            e.stopPropagation(); // イベントバブリングを停止
-            e.preventDefault();   // デフォルト動作を防止
+            e.stopPropagation();
             
             const cardInSlot = slotElement.querySelector('[data-card-id]');
             const cardId = cardInSlot ? cardInSlot.dataset.cardId : null;
@@ -1607,10 +1601,7 @@ export class View {
                 cardId: cardId
             };
             
-            // 手札カードクリックとの競合を避けるため、特定の条件でのみ処理
-            if (owner === 'cpu' || zone !== 'Hand') {
-                this.cardClickHandler(dataset);
-            }
+            this.cardClickHandler(dataset);
         });
 
         // ドロップ処理（プレイヤー側のスロットのみ）

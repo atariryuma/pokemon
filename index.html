@@ -47,15 +47,15 @@
             /* === レイヤー1: プレイマット系 (5-15) === */
             --z-board-bg: 5;        /* 背景画像 */
             --z-board: 10;          /* ゲームボード基底 */
-            --z-placeholder: 8;     /* プレースホルダー（空スロット、手札より下） */
-            --z-placeholder-hover: 12; /* プレースホルダーホバー */
+            --z-placeholder: 12;    /* プレースホルダー（空スロット） */
+            --z-placeholder-hover: 15; /* プレースホルダーホバー */
             --z-slots: 16;          /* スロット枠線 */
             --z-hand-area: 18;      /* 手札エリア */
             
             /* === サイドカードスタック === */
-            --z-side-stack-1: 14;   /* サイドカード 1層目（手札より下） */
-            --z-side-stack-2: 15;   /* サイドカード 2層目 */
-            --z-side-stack-3: 16;   /* サイドカード 3層目 */
+            --z-side-stack-1: 20;   /* サイドカード 1層目 */
+            --z-side-stack-2: 21;   /* サイドカード 2層目 */
+            --z-side-stack-3: 22;   /* サイドカード 3層目 */
             
             /* === レイヤー2: カード系 (20-45) === */
             --z-deck-effects: 22;   /* 山札・サイド影エフェクト（カード背面） */
@@ -220,10 +220,10 @@
         /* 手札エリア */
         #player-hand {
             z-index: var(--z-hand-area);
-            pointer-events: none;  /* エリア全体は透過、個別カードのみ有効 */
+            pointer-events: none;
             position: fixed;
-            left: 150px;  /* 左マージンを追加してCPU側サイドカードとの重複を回避 */
-            right: 150px; /* 右マージンも対称に調整 */
+            left: 0;
+            right: 0;
             bottom: 10px;
             height: 60px;
         }
@@ -552,67 +552,6 @@
             }
         }
 
-        /* === 状態異常アニメーション === */
-        @keyframes poisoned {
-            0%, 100% { filter: hue-rotate(0deg) brightness(1); }
-            50% { filter: hue-rotate(120deg) brightness(0.8); }
-        }
-
-        @keyframes burned {
-            0%, 100% { filter: hue-rotate(0deg) brightness(1); box-shadow: 0 0 0 rgba(255, 69, 0, 0); }
-            50% { filter: hue-rotate(15deg) brightness(1.2); box-shadow: 0 0 15px rgba(255, 69, 0, 0.8); }
-        }
-
-        @keyframes paralyzed {
-            0% { transform: translateX(0); }
-            10% { transform: translateX(-2px); }
-            20% { transform: translateX(2px); }
-            30% { transform: translateX(-1px); }
-            40% { transform: translateX(1px); }
-            50% { transform: translateX(-0.5px); }
-            60% { transform: translateX(0.5px); }
-            100% { transform: translateX(0); }
-        }
-
-        @keyframes asleep {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(0.95); }
-        }
-
-        @keyframes confused {
-            0% { transform: rotate(0deg); }
-            25% { transform: rotate(2deg); }
-            50% { transform: rotate(0deg); }
-            75% { transform: rotate(-2deg); }
-            100% { transform: rotate(0deg); }
-        }
-
-        /* === エネルギータイプ別エフェクト === */
-        @keyframes fireEnergy {
-            0%, 100% { box-shadow: 0 0 0 rgba(255, 69, 0, 0); }
-            50% { box-shadow: 0 0 20px rgba(255, 69, 0, 0.8); }
-        }
-
-        @keyframes waterEnergy {
-            0%, 100% { box-shadow: 0 0 0 rgba(30, 144, 255, 0); }
-            50% { box-shadow: 0 0 20px rgba(30, 144, 255, 0.8); }
-        }
-
-        @keyframes grassEnergy {
-            0%, 100% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
-            50% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.8); }
-        }
-
-        @keyframes lightningEnergy {
-            0%, 100% { box-shadow: 0 0 0 rgba(255, 255, 0, 0); }
-            50% { box-shadow: 0 0 20px rgba(255, 255, 0, 0.9); }
-        }
-
-        @keyframes psychicEnergy {
-            0%, 100% { box-shadow: 0 0 0 rgba(147, 51, 234, 0); }
-            50% { box-shadow: 0 0 20px rgba(147, 51, 234, 0.8); }
-        }
-
         @keyframes fadeIn {
             0% { opacity: 0; }
             100% { opacity: 1; }
@@ -718,48 +657,6 @@
             z-index: var(--z-animations);
         }
 
-        /* === 状態異常アニメーションクラス === */
-        .status-poisoned {
-            animation: poisoned 2s infinite;
-        }
-
-        .status-burned {
-            animation: burned 1.5s infinite;
-        }
-
-        .status-paralyzed {
-            animation: paralyzed 0.5s infinite;
-        }
-
-        .status-asleep {
-            animation: asleep 3s infinite;
-        }
-
-        .status-confused {
-            animation: confused 1s infinite;
-        }
-
-        /* === エネルギータイプ別エフェクトクラス === */
-        .energy-effect-fire {
-            animation: fireEnergy 1s infinite;
-        }
-
-        .energy-effect-water {
-            animation: waterEnergy 1s infinite;
-        }
-
-        .energy-effect-grass {
-            animation: grassEnergy 1s infinite;
-        }
-
-        .energy-effect-lightning {
-            animation: lightningEnergy 0.8s infinite;
-        }
-
-        .energy-effect-psychic {
-            animation: psychicEnergy 1.2s infinite;
-        }
-
         .animate-fade-in {
             animation: fadeIn 0.3s ease-out;
         }
@@ -847,17 +744,6 @@
             pointer-events: auto;  /* CPU側プレースホルダーのクリック確保 */
             position: relative;
             z-index: var(--z-placeholder);
-            transition: all 0.3s ease; /* ホバーエフェクト用のトランジション */
-        }
-        
-        /* プレースホルダーのホバーエフェクト */
-        .card-placeholder:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.5);
-            color: rgba(255, 255, 255, 0.6);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            z-index: var(--z-placeholder-hover);
         }
 
         .player-board {
@@ -1016,9 +902,9 @@
             will-change: auto;
         }
         
-        /* プレイヤー手札を最上位レイヤーに確実に配置 */
+        /* プレイヤー手札のシンプルなスタイル */
         #player-hand {
-            z-index: var(--z-hand-hover);  /* 55: CPU手札(18)より確実に上 */
+            z-index: var(--z-hand);
             pointer-events: auto;
             transform: none;
             will-change: auto;
@@ -1051,9 +937,9 @@
             z-index: var(--z-highlight);
         }
 
-        /* CPU手札をプレイヤー手札より下のレイヤーに配置 */
+        /* CPU手札も前面に（操作透過） */
         #cpu-hand {
-            z-index: var(--z-hand-area);  /* 18: プレイヤー手札(50)より下 */
+            z-index: var(--z-hand);
             pointer-events: none;
             transform: none;
             will-change: auto;
@@ -2109,7 +1995,7 @@
 <body class="min-h-screen flex items-center justify-center text-white p-4">
 
     <!-- CPU Hand -->
-    <div id="cpu-hand" class="fixed top-0 left-0 w-full flex justify-center items-center p-2 gap-x-1" style="z-index: var(--z-hand-area); height: 100px; max-height: 100px;">
+    <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 flex justify-center items-center p-2 gap-x-1" style="z-index: var(--z-hand);">
         <!-- CPUの手札はここに動的に追加されます -->
     </div>
 
@@ -2284,7 +2170,7 @@
 </div>
 
 <!-- Player Hand -->
-<div id="player-hand" class="fixed flex justify-center items-end p-2 gap-x-1" style="left: 150px; right: 150px; bottom: 10px; z-index: var(--z-hand-hover); overflow: visible; pointer-events: none;">
+<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: 10px; z-index: var(--z-hand); overflow: visible; pointer-events: none;">
     <!-- プレイヤーの手札はここに動的に追加されます -->
 </div>
 

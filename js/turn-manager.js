@@ -330,7 +330,10 @@ export class TurnManager {
     const targetId = defenderAfter ? defenderAfter.id : null;
     
     if (targetId) {
-      await animate.combat.createUnifiedAttackAnimation(attacker, defender);
+      await animate.attackSequence(primaryType.toLowerCase(), finalDamage, targetId, {
+        attackerId: attacker.id,
+        attackIndex
+      });
     }
 
     // きぜつチェックとアニメーション
@@ -339,7 +342,9 @@ export class TurnManager {
     
     if (isKnockout) {
       // Play knockout animation with new API
-      await animate.combat.createUnifiedKnockoutAnimation(defender, defenderStateBeforeKO.active.id);
+      await animate.combat.knockout(defenderStateBeforeKO.active.id, {
+        playerId: defender
+      });
       
       // Process knockout logic (sets up prize selection phase)
       newState = Logic.checkForKnockout(newState, defender);
@@ -779,7 +784,7 @@ export class TurnManager {
    */
   async animateAttack(attackerId, state) {
     const defenderId = attackerId === 'player' ? 'cpu' : 'player';
-    await animate.combat.createUnifiedAttackAnimation(attackerId, defenderId);
+    await animationManager.createUnifiedAttackAnimation(attackerId, defenderId);
   }
 
 

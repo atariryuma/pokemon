@@ -27,8 +27,7 @@
       "Bash(npm start:*)",
       "WebFetch(domain:speckyboy.com)",
       "WebFetch(domain:codepen.io)",
-      "WebFetch(domain:pokecardlab.com)",
-      "Bash(del \"C:\\Users\\Public\\Documents\\pokemon\\js\\unified-animations.js\")"
+      "WebFetch(domain:pokecardlab.com)"
     ],
     "deny": [],
     "ask": [],
