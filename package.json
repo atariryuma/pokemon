@@ -1,20 +1,9 @@
 {
-  "dependencies": {
-    "@openai/codex": "^0.22.0",
-    "openai": "^5.12.2"
-  },
   "name": "pokemon",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "private": true,
+  "version": "0.1.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module"
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
 }
