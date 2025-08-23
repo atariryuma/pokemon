@@ -94,33 +94,6 @@
             --z-toast: 430;         /* トースト通知 */
             --z-modals: 500;        /* 中央モーダル */
             --z-critical: 600;      /* 致命的エラー */
-            --board-scale: min(1, calc(100vh / 679), calc((100vw - 320px) / 679));
-        }
-
-        #app-layout {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        #play-area {
-            flex: 1;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        #ui-area {
-            position: relative;
-            width: 320px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow: hidden;
         }
 
         /* 🎬 ゲームフローアニメーション */
@@ -207,11 +180,12 @@
 
         #game-board {
             transform-style: preserve-3d;
-            transform: rotateX(35deg) scale(var(--board-scale));
+            transform: rotateX(35deg);
             position: relative;
-            width: 679px;           /* 基本サイズ */
-            height: 679px;          /* 基本サイズ */
-            margin: 0;              /* コンテナで中央配置 */
+            width: 679px !important;           /* 完全固定サイズ */
+            height: 679px !important;          /* 完全固定サイズ */
+            margin: 0 auto;         /* 中央配置 */
+            left: -30px;            /* 全体をやや左に寄せる */
             z-index: var(--z-board);
         }
 
@@ -259,10 +233,10 @@
         #player-hand {
             z-index: var(--z-hand-area);
             pointer-events: none;
-            position: absolute;
+            position: fixed;
             left: 0;
             right: 0;
-            bottom: 0;
+            bottom: 10px;
             height: 60px;
         }
         
@@ -802,9 +776,17 @@
             color: #fff;
             padding: 1rem;
             font-size: 0.875rem;
-            width: 100%;
-            max-height: 80vh;
+            width: 320px !important; /* 固定幅 */
+            min-height: 500px !important; /* 最小高さを拡張してスクロールを防止 */
+            max-height: 80vh !important; /* 画面の80%を超えないように */
+            /* 右側中央寄りに配置 */
+            position: fixed !important;
+            top: 50% !important;
+            right: 20px !important;
+            transform: translateY(-50%) !important; /* 垂直方向中央揃え */
             z-index: var(--z-panels);
+            will-change: auto !important;
+            perspective: none !important;
         }
 
         .status-panel-content {
@@ -2210,15 +2192,14 @@
 
     </style>
 </head>
-<body class="w-screen h-screen overflow-hidden text-white">
-    <div id="app-layout" class="w-full h-full flex overflow-hidden">
-        <div id="play-area" class="flex-1 relative flex items-center justify-center overflow-hidden">
-            <!-- CPU Hand -->
-            <div id="cpu-hand" class="absolute top-0 left-0 w-full h-32 flex justify-center items-center p-2 gap-x-1" style="z-index: var(--z-hand);">
-                <!-- CPUの手札はここに動的に追加されます -->
-            </div>
+<body class="min-h-screen flex items-center justify-center text-white p-4">
 
-            <div id="game-board">
+    <!-- CPU Hand -->
+    <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 flex justify-center items-center p-2 gap-x-1" style="z-index: var(--z-hand);">
+        <!-- CPUの手札はここに動的に追加されます -->
+    </div>
+
+    <div id="game-board">
         <img class="board-bg" src="assets/playmat/playmat.jpg" alt="Playmat" onerror="this.style.display='none'"/>
         
         <!-- 相手プレイヤーのフィールド -->
@@ -2293,14 +2274,8 @@
             </div>
             <div class="card-slot bottom-right-trash" data-zone="Trash"></div>
         </div>
-
-        <!-- Player Hand -->
-        <div id="player-hand" class="absolute left-0 bottom-0 w-full flex justify-center items-end p-2 gap-x-1" style="z-index: var(--z-hand); overflow: visible; pointer-events: none;">
-            <!-- プレイヤーの手札はここに動的に追加されます -->
-        </div>
     </div>
 
-    <div id="ui-area" class="relative w-80 h-full flex flex-col items-center overflow-hidden">
 
     <!-- Game Status Panel (右上固定) -->
     <div id="game-status-panel" class="">
@@ -2366,39 +2341,43 @@
 
         </div>
     </div>
-
-        <!-- Floating Action HUD -->
-        <div id="floating-action-hud" class="absolute bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
-            <button type="button" id="start-game-button-float" class="pokemon-action-btn">
-                <span class="pokemon-btn-icon">🎴</span>
-                <span class="pokemon-btn-text">手札を7枚引く</span>
-            </button>
-            <button type="button" id="card-editor-button-float" class="pokemon-action-btn">
-                <span class="pokemon-btn-icon">🎴</span>
-                <span class="pokemon-btn-text">カードエディタ</span>
-            </button>
-            <button type="button" id="confirm-setup-button-float" class="pokemon-action-btn hidden">
-                <span class="pokemon-btn-icon">✅</span>
-                <span class="pokemon-btn-text">ポケモン配置を確定</span>
-            </button>
-            <button type="button" id="retreat-button-float" class="pokemon-action-btn hidden">
-                <span class="pokemon-btn-icon">🏃</span>
-                <span class="pokemon-btn-text">にげる</span>
-            </button>
-            <button type="button" id="attack-button-float" class="pokemon-action-btn hidden">
-                <span class="pokemon-btn-icon">⚔️</span>
-                <span class="pokemon-btn-text">攻撃</span>
-            </button>
-            <button type="button" id="end-turn-button-float" class="pokemon-action-btn hidden">
-                <span class="pokemon-btn-icon">🔄</span>
-                <span class="pokemon-btn-text">ターン終了</span>
-            </button>
-        </div>
-
-        <!-- Card Info Panel -->
-        <div id="card-info-panel" class="hidden fixed" style="z-index: var(--z-panels);"></div>
-    </div>
+<!-- Floating Action HUD (Bottom-left) -->
+<div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
+    <button type="button" id="start-game-button-float" class="pokemon-action-btn">
+        <span class="pokemon-btn-icon">🎴</span>
+        <span class="pokemon-btn-text">手札を7枚引く</span>
+    </button>
+    <button type="button" id="card-editor-button-float" class="pokemon-action-btn">
+        <span class="pokemon-btn-icon">🎴</span>
+        <span class="pokemon-btn-text">カードエディタ</span>
+    </button>
+    <button type="button" id="confirm-setup-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">✅</span>
+        <span class="pokemon-btn-text">ポケモン配置を確定</span>
+    </button>
+    <button type="button" id="retreat-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">🏃</span>
+        <span class="pokemon-btn-text">にげる</span>
+    </button>
+    <button type="button" id="attack-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">⚔️</span>
+        <span class="pokemon-btn-text">攻撃</span>
+    </button>
+    <button type="button" id="end-turn-button-float" class="pokemon-action-btn hidden">
+        <span class="pokemon-btn-icon">🔄</span>
+        <span class="pokemon-btn-text">ターン終了</span>
+    </button>
 </div>
+
+<!-- Player Hand -->
+<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: 10px; z-index: var(--z-hand); overflow: visible; pointer-events: none;">
+    <!-- プレイヤーの手札はここに動的に追加されます -->
+</div>
+
+<!-- Card Info Panel -->
+<div id="card-info-panel" class="hidden fixed" style="z-index: var(--z-panels);"></div>
+
+
 
     <script>
         const noop = () => {};
