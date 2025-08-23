@@ -30,6 +30,7 @@ export const WARNING_MESSAGES = {
     CONSIDER_STRATEGY: '戦略を見直すことをおすすめします',
     ALREADY_DRAWN_CARD: 'このターンはすでにカードを引いています',
     ALREADY_RETREATED: 'このターンはすでににげました',
+    OPPONENT_POKEMON_FAINTED: '相手のポケモンがきぜつしています',
     
     // その他
     DECK_LOW: '山札の残りが少なくなっています',

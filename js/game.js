@@ -1234,7 +1234,12 @@ export class Game {
                 }
             }
         }
-        
+        if (newState.turnPlayer === 'cpu' && newState.phase !== GAME_PHASES.GAME_OVER) {
+            // プレイヤーと同様にサイド取得後はターンを終了し、次のプレイヤーターンへ移行
+            const postState = await this.turnManager.endCpuTurn(newState);
+            return postState;
+        }
+
         return newState;
     }
 
@@ -1785,16 +1790,27 @@ export class Game {
      */
     async _executeAttack(attackIndex) {
         try {
+            if (!this.state.players.cpu.active) {
+                const blockedState = addLogEntry(this.state, {
+                    type: 'attack_blocked',
+                    player: 'player',
+                    message: '攻撃できません：相手のポケモンがきぜつしています'
+                });
+                await this._updateState(blockedState, 'attackBlocked');
+                this.view.showWarning('OPPONENT_POKEMON_FAINTED');
+                return;
+            }
+
             // 攻撃宣言
             let newState = this.turnManager.handlePlayerMainPhase(this.state, 'declare_attack', {
                 attackIndex
             });
-            
-            this._updateState(newState);
-            
+
+            await this._updateState(newState);
+
             // 攻撃実行
             newState = await this.turnManager.executeAttack(newState);
-            this._updateState(newState); // state更新を復旧
+            await this._updateState(newState); // state更新を復旧
 
             if (newState.turnPlayer === 'cpu') {
                 memoryManager.setTimeout(async () => {
@@ -1807,7 +1823,7 @@ export class Game {
             this.view.showCustomToast('攻撃実行中にエラーが発生しました。ゲームを続行します。', 'error');
             // エラー時はターンを終了して回復を試みる
             let newState = this.turnManager.endPlayerTurn(this.state);
-            this._updateState(newState);
+            await this._updateState(newState);
         }
     }
 
