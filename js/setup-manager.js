@@ -434,7 +434,10 @@ export class SetupManager {
     }
 
     // ここで初めて手札からカードを削除
-    playerState.hand = handCopy.filter(c => c.id !== cardId);
+    // 同じカードが複数枚ある場合でも1枚だけを取り除くため、
+    // インデックスを基に手札を更新する
+    handCopy.splice(cardIndex, 1);
+    playerState.hand = handCopy;
 
     // 配置処理（セットアップ中は裏向き）
     const cardWithSetupFlag = { ...card, setupFaceDown: true };
