@@ -135,7 +135,8 @@ export function getCardImagePath(cardNameEn, card = null) {
         "Glasswing Butterfly Larva": "Glasswing_Butterfly_Larva",
         "Cat exv": "Cat_exv",
         "Grey Dagger Moth Larva": "Grey_Dagger_Moth_Larva",
-        "Short-horned Grasshopper": "Shorthorned_Grasshopper",
+        // Hyphenated name requires explicit mapping to match renamed asset
+        "Short-horned Grasshopper": "Short-horned_Grasshopper",
         "Tateha Butterfly": "Tateha_Butterfly",
         "Caterpillar exz": "Caterpillar_exz",
         "Taiwan Clouded Yellow": "Taiwan_Clouded_Yellow",
