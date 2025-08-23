@@ -504,9 +504,7 @@ export const unifiedAnimationManager = {
             }
             case 'bench': {
                 const benchClassPrefix = playerId === 'player' ? 'bottom-bench-' : 'top-bench-';
-                const fromBench = cardId
-                    ? document.querySelector(`${playerSelector} [class*="${benchClassPrefix}"] [data-card-id="${cardId}"]`)
-                    : null;
+                const fromBench = selectByCard(`[class*="${benchClassPrefix}"]`);
                 return fromBench || document.querySelector(`${playerSelector} [class*="${benchClassPrefix}"]`);
             }
             case 'active': {
