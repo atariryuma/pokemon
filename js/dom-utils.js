@@ -71,24 +71,22 @@ export function findZoneElement(playerId, zone) {
  */
 export function findCardElement(playerId, cardId, zone = null) {
     const normalizedId = normalizePlayerId(playerId);
-    
-    // 複数のセレクタパターンを試行
-    const selectors = [
-        `[data-card-id="${cardId}"]`,
-        `[data-owner="${normalizedId}"] [data-card-id="${cardId}"]`,
-    ];
-    
+
+    // 所有者に基づいてカードを検索
+    const selectors = [];
     if (zone) {
-        selectors.unshift(`[data-owner="${normalizedId}"][data-zone="${zone}"] [data-card-id="${cardId}"]`);
+        selectors.push(`[data-owner="${normalizedId}"][data-zone="${zone}"] [data-card-id="${cardId}"]`);
     }
-    
+    selectors.push(`[data-owner="${normalizedId}"] [data-card-id="${cardId}"]`);
+    selectors.push(`[data-card-id="${cardId}"]`); // 最後のフォールバック
+
     for (const selector of selectors) {
         const element = document.querySelector(selector);
         if (element) {
             return element;
         }
     }
-    
+
     console.warn(`Card element not found: ${cardId} for ${normalizedId}${zone ? ` in ${zone}` : ''}`);
     return null;
 }
@@ -101,20 +99,25 @@ export function findCardElement(playerId, cardId, zone = null) {
  */
 export function findBenchSlot(playerId, index) {
     const normalizedId = normalizePlayerId(playerId);
-    
+
+    const benchClass = normalizedId === 'player'
+        ? `.bottom-bench-${index + 1}`
+        : `.top-bench-${index + 1}`;
+
     const selectors = [
         `[data-owner="${normalizedId}"][data-zone="bench"][data-index="${index}"]`,
         `#${normalizedId}-bench .bench-slot:nth-child(${index + 1})`,
-        `[data-owner="${normalizedId}"][data-zone="bench"] .slot:nth-child(${index + 1})`
+        `[data-owner="${normalizedId}"][data-zone="bench"] .slot:nth-child(${index + 1})`,
+        benchClass
     ];
-    
+
     for (const selector of selectors) {
         const element = document.querySelector(selector);
         if (element) {
             return element;
         }
     }
-    
+
     console.warn(`Bench slot not found: index ${index} for ${normalizedId}`);
     return null;
 }
