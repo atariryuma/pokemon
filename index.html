@@ -776,9 +776,9 @@
             color: #fff;
             padding: 1rem;
             font-size: 0.875rem;
-            width: 320px !important; /* 固定幅 */
-            min-height: 500px !important; /* 最小高さを拡張してスクロールを防止 */
-            max-height: 80vh !important; /* 画面の80%を超えないように */
+            width: min(320px, calc(100vw - 40px)) !important; /* 画面幅に応じて調整 */
+            min-height: min(500px, calc(100vh - 40px)) !important; /* 画面高さに応じて調整 */
+            max-height: calc(100vh - 40px) !important; /* 画面全体から適切な余白を確保 */
             /* 右側中央寄りに配置 */
             position: fixed !important;
             top: 50% !important;
@@ -969,6 +969,7 @@
         .pokemon-action-hud {
             transform-origin: bottom right; /* 右下基点に変更 */
             animation: fadeInScale 0.4s ease-out;
+            max-width: calc(100vw - 3rem); /* 画面幅に応じて調整 */
         }
         
         @keyframes fadeInScale {
@@ -984,6 +985,7 @@
         
         .pokemon-action-btn {
             display: flex;
+            width: 100%; /* HUD幅に合わせてボタン幅を調整 */
             align-items: center;
             gap: 12px;
             padding: 14px 20px;
