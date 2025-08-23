@@ -59,7 +59,8 @@ def best_match(current_base, candidates):
         'Haiirohitori_Larva': 'Grey_Dagger_Moth_Larva',
         'Kurohime_Ganbo': 'Kurohime_Crane_Fly',
         'Tateha': 'Tateha_Butterfly',
-        'Shouyou_Batta': 'Shorthorned_Grasshopper',
+        # Ensure hyphenated filename for Short-horned Grasshopper
+        'Shouyou_Batta': 'Short-horned_Grasshopper',
         'Tonosama_Batta': 'Tonosama_Grasshopper',
     }
     if current_base in overrides:
