@@ -2269,8 +2269,13 @@ export class Game {
         // 2. カードタイプに基づいてサブディレクトリを決定
         const getCardSubdir = (card) => {
             if (card.card_type === 'Pokemon' || card.card_type === 'Pokémon') return 'pokemon';
-            if (card.card_type === 'Energy') return 'energy';
-            return 'trainer'; // Trainer cards and others
+            // Handle all energy type aliases
+            if (card.card_type === 'Energy' || card.card_type === 'Basic Energy' || card.card_type === 'Special Energy') {
+                return 'energy';
+            }
+            if (card.card_type === 'Trainer') return 'trainer';
+            // Default to pokemon for unknown types to avoid 404s
+            return 'pokemon';
         };
         
         const subdir = getCardSubdir(card);
