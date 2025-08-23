@@ -1455,8 +1455,9 @@
             z-index: var(--z-toast);
             pointer-events: none;
             position: fixed;
-            top: 1rem;
-            right: 1rem;
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%);
             max-width: calc(100vw - 2rem);
             max-height: calc(100vh - 2rem);
             overflow-y: auto;
@@ -1900,22 +1901,22 @@
 
         @keyframes toastAlertDrop {
             from {
-                transform: translateX(-50%) translateY(-20px);
+                transform: translateY(-20px);
                 opacity: 0;
             }
             to {
-                transform: translateX(-50%) translateY(0);
+                transform: translateY(0);
                 opacity: 1;
             }
         }
 
         @keyframes toastAlertFade {
             from {
-                transform: translateX(-50%) translateY(0);
+                transform: translateY(0);
                 opacity: 1;
             }
             to {
-                transform: translateX(-50%) translateY(-10px);
+                transform: translateY(-10px);
                 opacity: 0;
             }
         }

@@ -316,7 +316,8 @@ export class Game {
         
         // 基本的なエラーメッセージをユーザーに表示
         if (this.view) {
-            this.view.showGameMessage('エラーが発生しましたが、ゲームを続行します。');
+            // 予期せぬエラーからの回復時もエラートーストで通知
+            this.view.showCustomToast('エラーが発生しましたが、ゲームを続行します。', 'error');
         }
         
         // 状態の検証と修復を試行
@@ -1010,8 +1011,11 @@ export class Game {
                     this.state.prompt.message = `「${card.name_ja}」をバトル場かベンチに配置してください。`;
                     this.view.updateStatusMessage(this.state.prompt.message);
                 } else if (card && card.card_type === 'Pokémon') {
-                    // Only show warning for Pokemon cards that aren't BASIC
-                    this.view.showGameMessage(`${card.name_ja}は${card.stage}ポケモンです。たねポケモンのみ選択できます。`, 'warning');
+                    // 非たねポケモンが選択された場合はトーストで警告
+                    this.view.showCustomToast(
+                        `${card.name_ja}は${card.stage}ポケモンです。たねポケモンのみ選択できます。`,
+                        'warning'
+                    );
                     // Don't log as warning since this is expected behavior
                 }
                 // Silently ignore Energy and Trainer cards during setup
@@ -1366,7 +1370,8 @@ export class Game {
             const newState = Logic.placeCardOnBench(this.state, 'player', masterId, emptyIndex);
             this._updateState(newState);
         } else {
-            this.view.showGameMessage('ベンチが満員です。');
+            // ベンチが埋まっている場合は警告トーストを表示
+            this.view.showWarning('BENCH_FULL');
         }
     } // End of _placeOnBench
 
@@ -1660,7 +1665,8 @@ export class Game {
             .filter(attack => Logic.hasEnoughEnergy(attacker, attack));
             
         if (usableAttacks.length === 0) {
-            this.view.showGameMessage('使えるワザがありません。');
+            // 使用可能なワザがない場合は警告トーストを表示
+            this.view.showCustomToast('使えるワザがありません。', 'warning');
             return;
         }
         
@@ -1675,7 +1681,8 @@ export class Game {
         const defender = this.state.players.cpu.active;
         
         if (!attacker || !defender) {
-            this.view.showGameMessage('バトルできるポケモンがいません。');
+            // バトルに参加できるポケモンがいない場合はエラートースト
+            this.view.showCustomToast('バトルできるポケモンがいません。', 'error');
             return;
         }
 
@@ -1795,7 +1802,8 @@ export class Game {
             }
         } catch (error) {
             console.error('攻撃実行中にエラーが発生しました:', error);
-            this.view.showGameMessage('攻撃実行中にエラーが発生しました。ゲームを続行します。');
+            // 攻撃処理中にエラーが発生した場合はエラートーストを表示
+            this.view.showCustomToast('攻撃実行中にエラーが発生しました。ゲームを続行します。', 'error');
             // エラー時はターンを終了して回復を試みる
             let newState = this.turnManager.endPlayerTurn(this.state);
             this._updateState(newState);
