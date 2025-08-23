@@ -5,6 +5,8 @@ import { GAME_PHASES } from './phase-manager.js';
 import { BUTTON_IDS, CONTAINER_IDS, CSS_CLASSES } from './ui-constants.js';
 import { errorHandler } from './error-handler.js';
 import { modalManager } from './modal-manager.js';
+import { battleNarrator } from './battle-narrator.js';
+import { ToastMessenger } from './toast-messages.js';
 
 // Z-index定数 (CSS変数と連携) - 最小限に削減
 import { LEGACY_Z_INDEX as Z_INDEX, ZIndexManager } from './z-index-constants.js';
@@ -81,6 +83,12 @@ export class View {
         this.setupProgress = document.getElementById('setup-progress');
         
         // Message system
+        this.toastMessenger = new ToastMessenger(modalManager);
+
+        // Initialize battle narrator
+        setTimeout(() => {
+            battleNarrator.init();
+        }, 500);
 
         // Initialize Mac Dock–style magnification for player's hand (delayed)
         // HoverManagerと統合してz-index管理を最適化
@@ -1673,6 +1681,134 @@ export class View {
         if (this.cpuHand) this.cpuHand.innerHTML = '';
         
         noop('✅ Board cleared');
+    }
+
+    // ==========================================
+    // バトル実況・通知システム
+    // ==========================================
+
+    /**
+     * バトル実況メッセージを追加
+     * @param {string} action - アクションタイプ
+     * @param {Object} details - 詳細情報
+     * @param {string} player - 'player' または 'cpu'
+     */
+    addBattleNarration(action, details = {}, player = 'player') {
+        if (player === 'player') {
+            battleNarrator.narratePlayerAction(action, details);
+        } else if (player === 'cpu') {
+            battleNarrator.narrateCpuAction(action, details);
+        } else {
+            battleNarrator.narrateSystemMessage(action, details);
+        }
+    }
+
+    /**
+     * バトル結果を実況
+     * @param {string} result - 結果タイプ
+     * @param {Object} details - 詳細情報
+     */
+    addBattleResult(result, details = {}) {
+        battleNarrator.narrateBattleResult(result, details);
+    }
+
+    /**
+     * ターン開始の実況
+     * @param {string} player - 'player' または 'cpu'
+     */
+    narrateTurnStart(player) {
+        battleNarrator.narrateTurnStart(player);
+    }
+
+    /**
+     * フェーズ変更の実況
+     * @param {string} phase - フェーズ名
+     */
+    narratePhaseChange(phase) {
+        battleNarrator.narratePhaseChange(phase);
+    }
+
+    /**
+     * 警告トーストを表示
+     * @param {string} messageKey - WARNING_MESSAGESのキー
+     * @param {Object} options - 追加オプション
+     */
+    showWarning(messageKey, options = {}) {
+        this.toastMessenger.showWarning(messageKey, options);
+    }
+
+    /**
+     * エラートーストを表示
+     * @param {string} messageKey - ERROR_MESSAGESのキー
+     * @param {Object} options - 追加オプション
+     */
+    showError(messageKey, options = {}) {
+        this.toastMessenger.showError(messageKey, options);
+    }
+
+    /**
+     * カスタムトーストを表示
+     * @param {string} message - カスタムメッセージ
+     * @param {string} type - 'warning' または 'error'
+     * @param {Object} options - 追加オプション
+     */
+    showCustomToast(message, type = 'warning', options = {}) {
+        this.toastMessenger.showCustom(message, type, options);
+    }
+
+    // ポケモンカードゲーム専用ヘルパーメソッド
+
+    /**
+     * エネルギー付与の実況
+     */
+    narrateEnergyAttach(pokemonName, energyType, player = 'player') {
+        this.addBattleNarration('attach_energy', { 
+            pokemon: pokemonName, 
+            energyType: energyType 
+        }, player);
+    }
+
+    /**
+     * 攻撃の実況
+     */
+    narrateAttack(pokemonName, attackName, damage, player = 'player') {
+        this.addBattleNarration('attack', { 
+            pokemon: pokemonName, 
+            attackName: attackName, 
+            damage: damage 
+        }, player);
+    }
+
+    /**
+     * 進化の実況
+     */
+    narrateEvolution(fromPokemon, toPokemon, player = 'player') {
+        this.addBattleNarration('evolve', { 
+            from: fromPokemon, 
+            to: toPokemon 
+        }, player);
+    }
+
+    /**
+     * ポケモンきぜつの実況
+     */
+    narrateKO(pokemonName) {
+        this.addBattleResult('ko', { pokemon: pokemonName });
+        this.addBattleNarration('ko_pokemon', { pokemon: pokemonName }, 'system');
+    }
+
+    /**
+     * ゲーム開始時の実況初期化
+     */
+    initializeBattleNarration() {
+        battleNarrator.narrateGameStart();
+    }
+
+    /**
+     * ゲーム終了時の実況
+     */
+    narrateGameEnd(winner) {
+        battleNarrator.narrateGameEnd(winner);
     }
     
 }

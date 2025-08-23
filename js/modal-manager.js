@@ -106,14 +106,16 @@ export class ModalManager {
         container.id = 'toast-container';
         container.className = 'space-y-2 pointer-events-none';
         
-        // 完全フローティング固定スタイル
+        // 手札中央上部に配置（注意喚起・警告用）
         container.style.position = 'fixed';
-        container.style.top = '520px'; // ステータスパネル（480px + 40px余白）の下
-        container.style.right = '20px';
+        container.style.bottom = '180px'; // 手札エリア（bottom: 10px + 約170px高さ）の上
+        container.style.left = '50%'; // 水平中央
+        container.style.transform = 'translateX(-50%)'; // 中央揃え
         container.style.zIndex = MODAL_PRIORITY.TOAST; // 95 - 中央モーダル(100)より背面
-        container.style.transform = 'none';
         container.style.willChange = 'auto';
         container.style.perspective = 'none';
+        container.style.maxWidth = '400px'; // 最大幅制限
+        container.style.width = 'fit-content';
         
         document.body.appendChild(container);
         return container;

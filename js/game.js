@@ -13,6 +13,7 @@ import { addLogEntry } from './state.js';
 import { modalManager } from './modal-manager.js';
 import { memoryManager } from './memory-manager.js';
 import { actionHUDManager } from './action-hud-manager.js';
+import { battleNarrator } from './battle-narrator.js';
 
 const noop = () => {};
 
@@ -358,6 +359,9 @@ export class Game {
 
             // Setup action button event handlers
             this._setupActionButtonHandlers();
+
+            // Initialize battle narrator system
+            this.view.initializeBattleNarration();
 
             // Render the initial board state immediately after state creation
             noop('🎨 Rendering initial game state with deck...');
