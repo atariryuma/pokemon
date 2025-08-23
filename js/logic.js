@@ -1,6 +1,56 @@
 import { GAME_PHASES } from './phase-manager.js';
 import { addLogEntry } from './state.js';
 
+// ==========================================
+// 手札制限システム（10枚上限）
+// ==========================================
+
+/**
+ * 手札の上限枚数
+ */
+export const HAND_LIMIT = 10;
+
+/**
+ * プレイヤーがカードをドローできるかチェック
+ * @param {object} state - ゲーム状態
+ * @param {string} player - 'player' または 'cpu'
+ * @returns {boolean} ドロー可能かどうか
+ */
+export function canDrawCard(state, player) {
+    const handSize = state.players[player].hand.length;
+    return handSize < HAND_LIMIT;
+}
+
+/**
+ * 手札制限の状況を取得
+ * @param {object} state - ゲーム状態 
+ * @param {string} player - 'player' または 'cpu'
+ * @returns {object} 手札制限状況
+ */
+export function getHandLimitStatus(state, player) {
+    const handSize = state.players[player].hand.length;
+    return {
+        canDraw: handSize < HAND_LIMIT,
+        isNearLimit: handSize >= 8,        // 8-9枚で警告
+        isAtLimit: handSize >= HAND_LIMIT, // 10枚で上限
+        currentSize: handSize,
+        limit: HAND_LIMIT,
+        remaining: Math.max(0, HAND_LIMIT - handSize)
+    };
+}
+
+/**
+ * カード獲得可能チェック（ドロー・トレーナーズ効果等）
+ * @param {object} state - ゲーム状態
+ * @param {string} player - 'player' または 'cpu'
+ * @param {number} cardCount - 獲得予定カード数
+ * @returns {boolean} 獲得可能かどうか
+ */
+export function canGainCards(state, player, cardCount = 1) {
+    const handSize = state.players[player].hand.length;
+    return handSize + cardCount <= HAND_LIMIT;
+}
+
 /**
  * Finds a card in a player's hand.
  * @param {object} playerState - The state of the player.

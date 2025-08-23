@@ -1105,10 +1105,26 @@ export class Game {
      * プレイヤードロー処理
      */
     async _handlePlayerDraw() {
-        if (this.state.hasDrawnThisTurn) {
+        // 既存のドロー制限チェック
+        if (this.state.hasDrawnThisTurn || this.state.turnState?.hasDrawn) {
             this.state = addLogEntry(this.state, { message: 'このターンはすでにカードを引いています。' });
-            this.view.showErrorMessage('このターンはすでにカードを引いています。', 'warning');
+            this.view.showError('ALREADY_DRAWN_CARD');
             return;
+        }
+        
+        // 手札制限チェック（10枚上限）
+        if (!Logic.canDrawCard(this.state, 'player')) {
+            this.state = addLogEntry(this.state, { message: '手札が上限のためドローできません。' });
+            this.view.showError('HAND_AT_LIMIT');
+            return;
+        }
+        
+        // 8-9枚で警告表示
+        const handStatus = Logic.getHandLimitStatus(this.state, 'player');
+        if (handStatus.isNearLimit && handStatus.currentSize === 8) {
+            this.view.showWarning('HAND_NEAR_LIMIT_8');
+        } else if (handStatus.isNearLimit && handStatus.currentSize === 9) {
+            this.view.showWarning('HAND_NEAR_LIMIT_9');
         }
         
         // Get the player's deck element for animation

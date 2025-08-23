@@ -1331,20 +1331,32 @@ export class View {
             return;
         }
 
-        // 通知タイプの場合はトーストで表示
-        if (type === 'toast') {
-            modalManager.showToast({
-                message,
-                type: 'info',
-                duration: 3000
-            });
-            return;
+        // 通知タイプやパネルタイプは統合されたバトル実況に表示
+        if (type === 'toast' || type === 'panel') {
+            try {
+                battleNarrator.addGameProgressMessage(message);
+                return;
+            } catch (error) {
+                console.warn('Failed to show message in battle narrator, falling back to toast:', error);
+                modalManager.showToast({
+                    message,
+                    type: 'info',
+                    duration: 3000
+                });
+                return;
+            }
         }
 
-        // パネル表示（進行状況・情報表示のみ、ボタンなし）
+        // Legacy panel display (fallback)
         if (!this.gameMessageDisplay) {
-            errorHandler.handleError(new Error('Game message display not found.'), 'game_state', false);
-            return;
+            // 統合されたバトル実況への fallback
+            try {
+                battleNarrator.addGameProgressMessage(message);
+                return;
+            } catch (error) {
+                errorHandler.handleError(new Error('Game message display not found.'), 'game_state', false);
+                return;
+            }
         }
 
         // メッセージを表示（ボタンは表示しない）

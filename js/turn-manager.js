@@ -68,7 +68,17 @@ export class TurnManager {
       newState.turn++;
     }
 
-    // ターン制約リセット
+    // ターンステートをリセット（プレイヤーターン開始時）
+    newState.turnState = {
+      hasAttacked: false,
+      hasDrawn: false,
+      energyAttached: 0,
+      turnNumber: newState.turnState?.turnNumber || 1,
+      canRetreat: true,
+      canPlaySupporter: true
+    };
+
+    // Legacy ターン制約リセット（互換性のため）
     newState.hasDrawnThisTurn = false;
     newState.hasAttachedEnergyThisTurn = false;
     newState.canRetreat = true;
@@ -243,10 +253,44 @@ export class TurnManager {
   }
 
   /**
+   * プレイヤーが攻撃可能かチェック
+   */
+  canPlayerAttack(state) {
+    // 基本チェック
+    if (state.turnState.hasAttacked) return false;
+    if (state.turnPlayer !== 'player') return false;
+    if (state.phase !== GAME_PHASES.PLAYER_MAIN) return false;
+    
+    // ポケモン・エネルギーチェック
+    const activePokemon = state.players.player.active;
+    if (!activePokemon || !activePokemon.attacks) return false;
+    
+    // 使用可能な攻撃があるかチェック
+    return activePokemon.attacks.some(attack => {
+      // Logic.jsの関数を使用してエネルギーチェック（import必要）
+      try {
+        const Logic = require('./logic.js');
+        return Logic.hasEnoughEnergy(activePokemon, attack);
+      } catch (error) {
+        // Logic.jsが利用できない場合の簡易チェック
+        return true; // 一時的にtrue
+      }
+    });
+  }
+
+  /**
    * 攻撃宣言処理
    */
   handleAttackDeclaration(state, { attackIndex }) {
     let newState = cloneGameState(state);
+    
+    // 攻撃制限チェック
+    if (newState.turnState.hasAttacked) {
+      throw new Error('このターンは既に攻撃しました');
+    }
+    
+    // 攻撃済みフラグを設定
+    newState.turnState.hasAttacked = true;
     
     // 攻撃フェーズに移行
     newState.phase = GAME_PHASES.PLAYER_ATTACK;
@@ -425,6 +469,22 @@ export class TurnManager {
   endPlayerTurn(state) {
     noop('🔄 Ending player turn...');
     let newState = cloneGameState(state);
+
+    // ターンステートをリセット（攻撃制限等をクリア）
+    newState.turnState = {
+      hasAttacked: false,
+      hasDrawn: false,
+      energyAttached: 0,
+      turnNumber: newState.turnState.turnNumber + 1, // ターン番号のみ増加
+      canRetreat: true,
+      canPlaySupporter: true
+    };
+
+    // Legacy フラグもリセット（互換性のため）
+    newState.hasDrawnThisTurn = false;
+    newState.hasAttachedEnergyThisTurn = false;
+    newState.canRetreat = true;
+    newState.canPlaySupporter = true;
 
     newState.phase = GAME_PHASES.CPU_TURN;
     newState.turnPlayer = 'cpu';

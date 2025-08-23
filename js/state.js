@@ -83,7 +83,17 @@ export function createInitialState() {
         // 処理中フラグ
         isProcessing: false,
         
-        // Turn constraints
+        // Turn state management (統合されたターン制約)
+        turnState: {
+            hasAttacked: false,           // ターン内攻撃済みフラグ
+            hasDrawn: false,              // ターン内ドロー済みフラグ
+            energyAttached: 0,            // ターン内エネルギー付与数
+            turnNumber: 1,                // ターン番号
+            canRetreat: true,             // にげる可能フラグ
+            canPlaySupporter: true        // サポート使用可能フラグ
+        },
+        
+        // Legacy turn constraints (互換性のため一時保持)
         hasDrawnThisTurn: false,
         hasAttachedEnergyThisTurn: false,
         canRetreat: true,

@@ -22,10 +22,14 @@ export const WARNING_MESSAGES = {
     // 手札関連
     HAND_LIMIT_EXCEEDED: '手札の上限を超えています',
     NO_CARDS_IN_HAND: '手札にカードがありません',
+    HAND_NEAR_LIMIT_8: '手札が上限に近づいています（8/10枚）',
+    HAND_NEAR_LIMIT_9: '手札が上限に近づいています（9/10枚）',
     
     // 行動関連
     BETTER_ACTION_AVAILABLE: 'より効果的な行動があります',
     CONSIDER_STRATEGY: '戦略を見直すことをおすすめします',
+    ALREADY_DRAWN_CARD: 'このターンはすでにカードを引いています',
+    ALREADY_RETREATED: 'このターンはすでににげました',
     
     // その他
     DECK_LOW: '山札の残りが少なくなっています',
@@ -44,12 +48,14 @@ export const ERROR_MESSAGES = {
     // 行動不可
     ACTION_NOT_ALLOWED: 'この行動はできません',
     INVALID_TARGET: '無効な対象です',
-    NO_ACTIVE_POKEMON: 'バトルポケモンがいないと負けです',
+    NO_ACTIVE_POKEMON: 'バトルポケモンがいないため、あなたの負けです。',
     
     // カード制限
     NO_DECK_CARDS: '山札がありません',
     CANNOT_RETREAT_FIRST_TURN: '1ターン目は逃げることができません',
     CARD_NOT_IN_HAND: 'そのカードは手札にありません',
+    HAND_AT_LIMIT: '手札が上限です。これ以上ドローできません（10/10枚）',
+    CANNOT_DRAW_HAND_FULL: '手札が満杯のためカード獲得はできません',
     
     // 状態異常
     POKEMON_ASLEEP: 'ポケモンが『ねむり』状態のため行動できません',

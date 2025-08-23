@@ -22,8 +22,8 @@
     "retreat_cost": 1,
     "attacks": [
       {
-        "name_en": "Scratch",
         "name_ja": "ひっかく",
+        "name_en": "Scratch",
         "cost": [
           "Lightning",
           "Colorless"
@@ -31,8 +31,8 @@
         "damage": 90
       },
       {
-        "name_en": "Recover",
         "name_ja": "回ふく",
+        "name_en": "Recover",
         "cost": [
           "Lightning",
           "Grass",
@@ -40,8 +40,8 @@
           "Colorless"
         ],
         "damage": 0,
-        "text_en": "Fully heal this Pokémon. The opponent's next attack does 70 less damage.",
-        "text_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。"
+        "text_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。",
+        "text_en": "Fully heal this Pokémon. The opponent's next attack does 70 less damage."
       }
     ],
     "image_file": "Akamayabato.webp"

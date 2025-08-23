@@ -16,11 +16,14 @@ export class BattleNarrator {
      * DOM要素を初期化
      */
     init() {
-        this.containerElement = document.getElementById('battle-commentary');
+        // 統合されたコンテナを優先的に取得
+        this.containerElement = document.getElementById('unified-battle-commentary') || 
+                               document.getElementById('battle-commentary');
         if (!this.containerElement) {
             console.warn('🎤 Battle commentary container not found');
             return false;
         }
+        console.log('🎤 Battle narrator initialized with container:', this.containerElement.id);
         return true;
     }
 
@@ -190,6 +193,62 @@ export class BattleNarrator {
      */
     narrateSystemMessage(message, details = {}) {
         this.addMessage(message, 'system');
+    }
+
+    /**
+     * ゲーム進行メッセージを統合（青いトーストからのリダイレクト）
+     * @param {string} message - ゲーム進行メッセージ
+     * @param {object} context - 追加のコンテキスト情報
+     */
+    addGameProgressMessage(message, context = {}) {
+        // 実況風に変換してから表示
+        const narrativeMessage = this.convertToNarrativeMessage(message, context);
+        this.addMessage(narrativeMessage, 'system');
+    }
+
+    /**
+     * メッセージを実況風に変換
+     * @param {string} message - 元のメッセージ
+     * @param {object} context - コンテキスト情報
+     * @returns {string} 変換されたメッセージ
+     */
+    convertToNarrativeMessage(message, context = {}) {
+        // 実況風変換テーブル
+        const narrativeMap = {
+            '山札をクリックしてカードを引いてください。': (ctx) => 
+                `ターン開始！山札から1枚ドローしてください${ctx.handCount ? `（手札: ${ctx.handCount}/10枚）` : ''}`,
+            '山札をクリックしてカードを1枚ドローしてください。': (ctx) => 
+                `ターン開始！山札から1枚ドローしてください${ctx.handCount ? `（手札: ${ctx.handCount}/10枚）` : ''}`,
+            'あなたのターンです。アクションを選択してください。': () =>
+                'メインフェーズに入りました！行動を選んでください',
+            'あなたのターンです。行動を選んでください。': () =>
+                'メインフェーズに入りました！行動を選んでください',
+            '攻撃を実行中...': (ctx) =>
+                `${ctx.pokemonName || 'ポケモン'}が『${ctx.attackName || 'わざ'}』で攻撃中...`,
+            'ポケモン配置完了！サイドカードを配布しています...': () =>
+                'セットアップ完了！サイドカード6枚を配布中...',
+            '相手のターンです...': () =>
+                '相手のターンが開始されました'
+        };
+
+        // 変換テーブルにあれば変換、なければそのまま
+        if (narrativeMap[message]) {
+            return narrativeMap[message](context);
+        }
+
+        // 部分マッチング変換
+        if (message.includes('山札をクリック')) {
+            return `ターン開始！山札から1枚ドローしてください${context.handCount ? `（手札: ${context.handCount}/10枚）` : ''}`;
+        }
+        if (message.includes('あなたのターン')) {
+            return 'メインフェーズに入りました！行動を選んでください';
+        }
+        if (message.includes('攻撃を実行')) {
+            return `${context.pokemonName || 'ポケモン'}が攻撃中...`;
+        }
+
+        // 変換できない場合はそのまま返す
+        return message;
     }
 
     /**
