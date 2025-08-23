@@ -90,7 +90,7 @@ export class ModalManager {
         
         const content = document.createElement('div');
         // widen modal for rich card details layout (image + info)
-        content.className = 'central-modal-content rounded-lg shadow-2xl p-6 w-full max-w-2xl m-4 transform transition-all duration-300 ease-out scale-95 opacity-0';
+        content.className = 'central-modal-content rounded-lg shadow-2xl p-6 w-fit max-w-5xl m-4 transform transition-all duration-300 ease-out scale-95 opacity-0';
         
         modal.appendChild(content);
         document.body.appendChild(modal);
