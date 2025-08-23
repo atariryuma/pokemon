@@ -582,12 +582,13 @@ export class View {
             // 基本的な表示設定のみ（Mac Dock効果は後で追加）
             handSlot.style.visibility = 'visible';
             handSlot.style.display = 'flex';
-            ZIndexManager.setHandNormal(handSlot);
             handSlot.style.position = 'relative';
             handSlot.style.opacity = '1'; // Always visible by default
-            
+
             handSlot.appendChild(cardEl);
             handElement.appendChild(handSlot);
+            // Append後にz-indexを設定し確実に前面表示
+            ZIndexManager.setHandNormal(handSlot);
         });
         
         // DOM挿入後の強制再描画
