@@ -16,6 +16,9 @@ const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.resolve(process.cwd());
 const DATA_DIR = path.join(ROOT, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'cards-master.json');
+const ASSETS_DIR = path.join(ROOT, 'assets');
+const CARD_IMAGES_DIR = path.join(ASSETS_DIR, 'cards');
+const CARD_FILES_DIR = path.resolve(process.env.CARD_SAVE_DIR || path.join(DATA_DIR, 'cards'));
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -43,7 +46,7 @@ async function ensureDataFile() {
   try {
     await fsp.access(DATA_FILE, fs.constants.F_OK);
   } catch {
-    await fsp.writeFile(DATA_FILE, JSON.stringify({ cards: [] }, null, 2), 'utf8');
+    await fsp.writeFile(DATA_FILE, JSON.stringify([], null, 2), 'utf8');
   }
 }
 
@@ -65,7 +68,7 @@ async function readCards() {
 async function writeCards(cards) {
   // Atomic-ish write: write to temp then rename
   const tmp = DATA_FILE + '.tmp';
-  const payload = JSON.stringify({ cards }, null, 2);
+  const payload = JSON.stringify(cards, null, 2);
   await fsp.writeFile(tmp, payload, 'utf8');
   await fsp.rename(tmp, DATA_FILE);
 }
@@ -89,7 +92,7 @@ function send(res, status, headers, body) {
 }
 
 function json(res, status, data) {
-  send(res, status, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify(data));
+  send(res, status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' }, JSON.stringify(data));
 }
 
 function notFound(res) { json(res, 404, { error: 'Not Found' }); }
@@ -131,7 +134,15 @@ async function handleApi(req, res, pathname) {
   // PUT    /api/cards/:id
   // DELETE /api/cards/:id
 
-  const parts = pathname.split('/').filter(Boolean); // ['api','cards',':id?']
+  const parts = pathname.split('/').filter(Boolean); // ['api', ...]
+  // File upload endpoint
+  if (parts[1] === 'images') {
+    return handleImageUpload(req, res, pathname);
+  }
+  if (parts[1] === 'card-file') {
+    return handleCardFile(req, res, pathname);
+  }
+
   const id = parts[2];
 
   try {
@@ -205,6 +216,97 @@ async function handleApi(req, res, pathname) {
   }
 }
 
+const ALLOWED_IMAGE_EXTS = new Set(['.webp', '.jpg', '.jpeg', '.png']);
+function mimeToExt(m) {
+  if (!m) return null;
+  const map = {
+    'image/webp': '.webp',
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+  };
+  return map[m.toLowerCase()] || null;
+}
+
+function sanitizeBaseName(name) {
+  const base = name.replace(/\.[^.]+$/, '');
+  return base.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) || 'img';
+}
+
+async function uniquePath(dir, base, ext) {
+  let candidate = path.join(dir, base + ext);
+  let n = 1;
+  while (true) {
+    try {
+      await fsp.access(candidate, fs.constants.F_OK);
+      candidate = path.join(dir, `${base}-${n}${ext}`);
+      n += 1;
+    } catch {
+      return candidate;
+    }
+  }
+}
+
+async function handleImageUpload(req, res, pathname) {
+  try {
+    if (req.method !== 'POST') return notFound(res);
+    await fsp.mkdir(CARD_IMAGES_DIR, { recursive: true });
+    const body = await parseBody(req);
+    if (!body || typeof body !== 'object') throw createHttpError(400, 'Invalid JSON');
+    const inputName = (body.filename || body.name || 'image').toString();
+    const data = body.data;
+    if (!data || typeof data !== 'string') throw createHttpError(400, 'data URL or base64 string required');
+
+    let mime = null;
+    let b64 = data;
+    const m = /^data:([^;]+);base64,(.*)$/i.exec(data);
+    if (m) { mime = m[1]; b64 = m[2]; }
+    let ext = path.extname(inputName).toLowerCase();
+    if (!ALLOWED_IMAGE_EXTS.has(ext)) {
+      const fromMime = mimeToExt(mime);
+      ext = fromMime || '.png';
+    }
+    if (!ALLOWED_IMAGE_EXTS.has(ext)) throw createHttpError(415, 'Unsupported image type');
+
+    const base = sanitizeBaseName(inputName);
+    const outPath = await uniquePath(CARD_IMAGES_DIR, base, ext);
+    const buf = Buffer.from(b64, 'base64');
+    if (buf.length > 20 * 1024 * 1024) throw createHttpError(413, 'Image too large');
+    const tmp = outPath + '.tmp';
+    await fsp.writeFile(tmp, buf);
+    await fsp.rename(tmp, outPath);
+    const rel = path.relative(ROOT, outPath).replace(/\\/g, '/');
+    return json(res, 201, { path: '/' + rel, filename: path.basename(outPath), mime: mime || undefined, size: buf.length });
+  } catch (err) {
+    const status = err.status || 500;
+    return json(res, status, { error: err.message || 'Upload failed' });
+  }
+}
+
+async function handleCardFile(req, res, pathname) {
+  try {
+    if (req.method !== 'POST') return notFound(res);
+    await fsp.mkdir(CARD_FILES_DIR, { recursive: true });
+    const body = await parseBody(req);
+    if (!body || typeof body !== 'object') throw createHttpError(400, 'Invalid JSON');
+    const card = body.card || body;
+    if (!card || typeof card !== 'object') throw createHttpError(400, 'card object required');
+    const preferred = body.filename || card.filename || card.file || '';
+    const baseFromCard = sanitizeBaseName(String(card.id || card.name || 'card'));
+    const base = sanitizeBaseName(String(preferred || baseFromCard));
+    const filename = base + '.json';
+    const outPath = path.join(CARD_FILES_DIR, filename);
+    const tmp = outPath + '.tmp';
+    const payload = JSON.stringify(card, null, 2);
+    await fsp.writeFile(tmp, payload, 'utf8');
+    await fsp.rename(tmp, outPath);
+    const rel = path.relative(ROOT, outPath).replace(/\\/g, '/');
+    return json(res, 201, { path: '/' + rel, filename });
+  } catch (err) {
+    const status = err.status || 500;
+    return json(res, status, { error: err.message || 'Save failed' });
+  }
+}
+
 function safeResolve(requestPath) {
   const decoded = decodeURIComponent(requestPath.split('?')[0]);
   const normalized = path.normalize(decoded).replace(/^\\|^\//, '');
@@ -240,6 +342,19 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname.startsWith('/api/')) {
     return handleApi(req, res, pathname);
+  }
+
+  // Normalize GET of master file to always return array
+  if (pathname === '/data/cards-master.json' && req.method === 'GET') {
+    try {
+      const { cards } = await readCards();
+      // Optionally migrate file format to array if it's currently object
+      try { await enqueueWrite(() => writeCards(cards)); } catch {}
+      return json(res, 200, cards);
+    } catch (err) {
+      const status = err.status || 500;
+      return json(res, status, { error: err.message || 'Server error' });
+    }
   }
 
   // Compatibility: allow direct writes to data/cards-master.json

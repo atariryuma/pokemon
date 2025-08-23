@@ -16,21 +16,23 @@
       }
     ],
     "resistance": {
-      "type": "None"
+      "type": "None",
+      "value": "undefined"
     },
     "retreat_cost": 1,
     "attacks": [
       {
-        "name_ja": "ひっかく",
         "name_en": "Scratch",
+        "name_ja": "ひっかく",
         "cost": [
-          "Lightning"
+          "Lightning",
+          "Colorless"
         ],
         "damage": 90
       },
       {
-        "name_ja": "回ふく",
         "name_en": "Recover",
+        "name_ja": "回ふく",
         "cost": [
           "Lightning",
           "Grass",
@@ -38,8 +40,8 @@
           "Colorless"
         ],
         "damage": 0,
-        "text_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。",
-        "text_en": "Fully heal this Pokémon. The opponent's next attack does 70 less damage."
+        "text_en": "Fully heal this Pokémon. The opponent's next attack does 70 less damage.",
+        "text_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。"
       }
     ],
     "image_file": "Akamayabato.webp"
@@ -1084,15 +1086,12 @@
     "id": "030"
   },
   {
-    "card_type": "Energy",
+    "id": "031",
     "name_en": "Metal Energy",
     "name_ja": "はがね エネルギー",
+    "card_type": "Energy",
     "energy_type": "Metal",
-    "effect_en": "Provides 1 Metal Energy.",
-    "effect_ja": "Metalのエネルギーを1個ぶん供給する。",
-    "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
-    "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
-    "image": "",
-    "id": "031"
+    "is_basic": false,
+    "image_file": "Energy_Metal.jpg"
   }
 ]

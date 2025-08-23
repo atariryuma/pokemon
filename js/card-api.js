@@ -62,6 +62,46 @@
     }).then(handle);
   }
 
+  // Save single card JSON file on the server
+  function saveCardFile(card, opts = {}) {
+    const payload = { card };
+    if (opts.filename) payload.filename = opts.filename;
+    return fetch(`${BASE}/api/card-file`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(handle);
+  }
+
+  // Upload image: accepts File or dataURL/base64 string
+  function uploadImage(fileOrData, opts = {}) {
+    if (typeof window === 'undefined') return Promise.reject(new Error('Browser only'));
+    const toDataUrl = (file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const p = (fileOrData && typeof fileOrData !== 'string' && fileOrData.name)
+      ? toDataUrl(fileOrData).then(data => ({ filename: fileOrData.name, data }))
+      : Promise.resolve({ filename: opts.filename || 'image', data: String(fileOrData || '') });
+    return p.then(payload => fetch(`${BASE}/api/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(handle));
+  }
+
+  // Helper to assign uploaded image URL to a card object
+  async function uploadAndAssign(card, fileOrData, fieldCandidates = ['image', 'image_url', 'img', 'picture']) {
+    const res = await uploadImage(fileOrData);
+    const url = res && res.path ? res.path : null;
+    if (!card || !url) return res;
+    const field = fieldCandidates.find(k => Object.prototype.hasOwnProperty.call(card, k)) || fieldCandidates[0];
+    card[field] = url;
+    return { ...res, field, url };
+  }
+
   // Back-compat helpers for code that read/write the raw JSON file
   function readRawFile() {
     return fetch(`${BASE}/data/cards-master.json`, { cache: 'no-cache' })
@@ -84,8 +124,10 @@
     update,
     remove,
     replaceAll,
+    saveCardFile,
+    uploadImage,
+    uploadAndAssign,
     readRawFile,
     writeRawFile,
   };
 })();
-
