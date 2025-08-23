@@ -397,12 +397,6 @@
             transform: rotateX(180deg) translateZ(20px);
         }
 
-        /* CPU側のカード操作制限 - プレースホルダーは除外 */
-        .cpu-card:not(.card-placeholder),
-        .cpu-card-no-rotate:not(.card-placeholder) {
-            pointer-events: none;
-        }
-        
         /* CPU側の空スロット - 統合ルールで制御 */
 
         .side-cards-container .card-slot:hover {
