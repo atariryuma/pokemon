@@ -136,7 +136,9 @@ class AnimationManager {
      * ポケモン要素の検索
      */
     findPokemonElement(pokemonId) {
-        return document.querySelector(`[data-card-id="${pokemonId}"]`) || 
+        // runtimeId を最優先に、互換で master id も探索
+        return document.querySelector(`[data-runtime-id="${pokemonId}"]`) ||
+               document.querySelector(`[data-card-id="${pokemonId}"]`) ||
                document.querySelector(`[data-pokemon-id="${pokemonId}"]`);
     }
 
@@ -487,7 +489,10 @@ export const unifiedAnimationManager = {
         const playerSelector = this.getPlayerSelector(playerId);
         const selectByCard = (scopeSelector) => {
             if (!cardId) return null;
-            return document.querySelector(`${playerSelector} ${scopeSelector} [data-card-id="${cardId}"]`)
+            // runtimeId 優先で探索し、互換で master id も試行
+            return document.querySelector(`${playerSelector} ${scopeSelector} [data-runtime-id="${cardId}"]`)
+                || document.querySelector(`${playerSelector} ${scopeSelector} .relative[data-runtime-id="${cardId}"]`)
+                || document.querySelector(`${playerSelector} ${scopeSelector} [data-card-id="${cardId}"]`)
                 || document.querySelector(`${playerSelector} ${scopeSelector} .relative[data-card-id="${cardId}"]`);
         };
 

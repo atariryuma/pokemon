@@ -893,19 +893,20 @@ export class Game {
      * ポケモンカードのドロップ処理
      */
     async _handlePokemonDrop(cardId, targetZone, targetIndex) {
-        const card = this.state.players.player.hand.find(c => c.id === cardId);
+        // cardId は runtimeId を想定（互換で master id も許容）
+        const card = this.state.players.player.hand.find(c => (c.runtimeId === cardId) || (c.id === cardId));
         if (!card) return;
 
         if (targetZone === 'bench' && card.stage === 'BASIC') {
             const newState = this.turnManager.handlePlayerMainPhase(this.state, 'place_basic', {
-                cardId,
+                cardId: card.id,
                 benchIndex: parseInt(targetIndex, 10)
             });
             this._updateState(newState);
             this.view.showSuccessMessage(`${card.name_ja}をベンチに配置しました`);
         } else if (targetZone === 'active' && card.stage === 'BASIC' && !this.state.players.player.active) {
             const newState = this.turnManager.handlePlayerMainPhase(this.state, 'place_active', {
-                cardId
+                cardId: card.id
             });
             this._updateState(newState);
             this.view.showSuccessMessage(`${card.name_ja}をバトル場に配置しました`);
@@ -925,22 +926,24 @@ export class Game {
 
         let targetPokemonId = null;
         if (targetZone === 'active' && this.state.players.player.active) {
-            targetPokemonId = this.state.players.player.active.id;
+            targetPokemonId = this.state.players.player.active.runtimeId || this.state.players.player.active.id;
         } else if (targetZone === 'bench') {
             const benchPokemon = this.state.players.player.bench[parseInt(targetIndex, 10)];
             if (benchPokemon) {
-                targetPokemonId = benchPokemon.id;
+                targetPokemonId = benchPokemon.runtimeId || benchPokemon.id;
             }
         }
 
         if (targetPokemonId) {
+            // ドロップ元カードは runtimeId かもしれないため、master id に変換
+            const energyMasterId = this.state.players.player.hand.find(c => (c.runtimeId === cardId) || (c.id === cardId))?.id || cardId;
             const newState = this.turnManager.handlePlayerMainPhase(this.state, 'attach_energy', {
-                energyId: cardId,
+                energyId: energyMasterId,
                 pokemonId: targetPokemonId
             });
             this._updateState(newState);
             
-            const energyCard = this.state.players.player.hand.find(c => c.id === cardId);
+            const energyCard = this.state.players.player.hand.find(c => (c.runtimeId === cardId) || (c.id === cardId));
             this.view.showSuccessMessage(`エネルギーを付けました`);
         } else {
             this.view.showErrorMessage('エネルギーはポケモンにのみ付けられます');
@@ -995,11 +998,11 @@ export class Game {
                     console.warn('⚠️ Player hand not initialized');
                     return;
                 }
-                
-                const card = this.state.players.player.hand.find(c => c.id === cardId);
+                // runtimeId 優先で特定（互換で master id も許容）
+                const card = this.state.players.player.hand.find(c => (c.runtimeId === cardId) || (c.id === cardId));
                 if (card && card.card_type === 'Pokémon' && card.stage === 'BASIC') {
                     this.selectedCardForSetup = card;
-                    this._highlightCard(cardId, true);
+                    this._highlightCard(card.runtimeId || card.id, true);
                     this.state.prompt.message = `「${card.name_ja}」をバトル場かベンチに配置してください。`;
                     this.view.updateStatusMessage(this.state.prompt.message);
                 } else if (card && card.card_type === 'Pokémon') {
@@ -1013,7 +1016,8 @@ export class Game {
                 const targetIndex = zone === 'bench' ? parseInt(index, 10) : 0;
 
                 // DOM上のカード要素を取得（手札のカード）
-                const cardElement = document.querySelector(`[data-card-id="${this.selectedCardForSetup.id}"]`);
+                const cardElement = document.querySelector(`[data-runtime-id="${this.selectedCardForSetup.runtimeId || this.selectedCardForSetup.id}"]`) ||
+                                    document.querySelector(`[data-card-id=\"${this.selectedCardForSetup.id}\"]`);
                 if (!cardElement) {
                     console.warn(`⚠️ Card element not found for ${this.selectedCardForSetup.id}`);
                 }
@@ -1028,7 +1032,7 @@ export class Game {
                 this.state = await this.setupManager.handlePokemonSelection(
                     this.state,
                     'player',
-                    cardToAnimate.id, // 事前に取得したIDを使用
+                    cardToAnimate.id, // ロジック層は master id で処理
                     zone,
                     targetIndex
                 );
@@ -1345,7 +1349,10 @@ export class Game {
     _placeOnBench(cardId) {
         const emptyIndex = this.state.players.player.bench.findIndex(slot => slot === null);
         if (emptyIndex !== -1) {
-            const newState = Logic.placeCardOnBench(this.state, 'player', cardId, emptyIndex);
+            // cardId は runtimeId の可能性があるため、master id に正規化
+            const handCard = this.state.players.player.hand.find(c => (c.runtimeId === cardId) || (c.id === cardId));
+            const masterId = handCard?.id || cardId;
+            const newState = Logic.placeCardOnBench(this.state, 'player', masterId, emptyIndex);
             this._updateState(newState);
         } else {
             this.view.showGameMessage('ベンチが満員です。');
@@ -1448,7 +1455,7 @@ export class Game {
      * 手札のカードクリック処理
      */
     async _handleHandCardClick(cardId) {
-        const card = this.state.players.player.hand.find(c => c.id === cardId);
+        const card = this.state.players.player.hand.find(c => (c.runtimeId === cardId) || (c.id === cardId));
         if (!card) return;
 
         if (card.card_type === 'Pokémon' && card.stage === 'BASIC') {
@@ -1457,7 +1464,7 @@ export class Game {
             await this.view.showInteractiveMessage(
                 cardInfoHtml,
                 [
-                    { text: 'はい', callback: () => this._placeOnBench(cardId) },
+                    { text: 'はい', callback: () => this._placeOnBench(card.runtimeId || card.id) },
                     { text: 'いいえ', callback: () => {} }
                 ],
                 'central',
@@ -3005,12 +3012,12 @@ export class Game {
     async _animateCardPlacement(cardElement, zone, index) {
         if (!cardElement) return;
 
-        const cardId = cardElement.dataset.cardId;
-        const card = this.state.players.player.hand.find(c => c.id === cardId);
+        const cardId = cardElement.dataset.runtimeId || cardElement.dataset.cardId;
+        const card = this.state.players.player.hand.find(c => (c.runtimeId === cardId) || (c.id === cardId));
 
         await animationManager.createUnifiedCardAnimation(
             'player',
-            cardId,
+            (card.runtimeId || card.id),
             'hand', // sourceZone is assumed to be hand for this legacy function
             zone,   // targetZone
             index,  // targetIndex
@@ -3028,7 +3035,7 @@ export class Game {
 
         await animationManager.createUnifiedCardAnimation(
             playerId,
-            card.id,
+            (card.runtimeId || card.id),
             'bench',
             'active',
             0, // active zone index is always 0
@@ -3045,7 +3052,7 @@ export class Game {
         const playerActiveSlot = document.querySelector('.player-self .active-bottom');
         if (playerActiveSlot) {
             const card = playerActiveSlot.querySelector('[data-card-id]');
-            if (card && card.dataset.cardId === pokemonId) {
+            if (card && (card.dataset.runtimeId === pokemonId || card.dataset.cardId === pokemonId)) {
                 return playerActiveSlot;
             }
         }
@@ -3055,7 +3062,7 @@ export class Game {
             const benchSlot = document.querySelector(`.player-self .bottom-bench-${i}`);
             if (benchSlot) {
                 const card = benchSlot.querySelector('[data-card-id]');
-                if (card && card.dataset.cardId === pokemonId) {
+                if (card && (card.dataset.runtimeId === pokemonId || card.dataset.cardId === pokemonId)) {
                     return benchSlot;
                 }
             }
@@ -3065,7 +3072,7 @@ export class Game {
         const cpuActiveSlot = document.querySelector('.opponent-board .active-top');
         if (cpuActiveSlot) {
             const card = cpuActiveSlot.querySelector('[data-card-id]');
-            if (card && card.dataset.cardId === pokemonId) {
+            if (card && (card.dataset.runtimeId === pokemonId || card.dataset.cardId === pokemonId)) {
                 return cpuActiveSlot;
             }
         }
@@ -3075,7 +3082,7 @@ export class Game {
             const benchSlot = document.querySelector(`.opponent-board .top-bench-${i}`);
             if (benchSlot) {
                 const card = benchSlot.querySelector('[data-card-id]');
-                if (card && card.dataset.cardId === pokemonId) {
+                if (card && (card.dataset.runtimeId === pokemonId || card.dataset.cardId === pokemonId)) {
                     return benchSlot;
                 }
             }
@@ -3090,7 +3097,8 @@ export class Game {
     async _animateBattlePokemonPlacement(cardId, targetZone, targetIndex) {
         try {
             // 準備フェーズのアニメーションシステムを流用
-            const sourceElement = document.querySelector(`[data-card-id="${cardId}"]`);
+            const sourceElement = document.querySelector(`[data-runtime-id="${cardId}"]`) ||
+                                  document.querySelector(`[data-card-id="${cardId}"]`);
             if (!sourceElement) return;
 
             // アニメーション実行（表面で配置）
@@ -3143,7 +3151,8 @@ export class Game {
      * カードハイライト
      */
     _highlightCard(cardId, highlight = true) {
-        const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+        const cardElement = document.querySelector(`[data-runtime-id="${cardId}"]`) ||
+                            document.querySelector(`[data-card-id="${cardId}"]`);
         if (cardElement) {
             if (highlight) {
                 animationManager.highlightCard(cardElement);

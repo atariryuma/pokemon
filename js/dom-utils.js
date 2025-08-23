@@ -74,11 +74,18 @@ export function findCardElement(playerId, cardId, zone = null) {
 
     // 所有者に基づいてカードを検索
     const selectors = [];
+    // runtimeId を最優先で探索（重複カード対策）
+    if (zone) {
+        selectors.push(`[data-owner="${normalizedId}"][data-zone="${zone}"] [data-runtime-id="${cardId}"]`);
+    }
+    selectors.push(`[data-owner="${normalizedId}"] [data-runtime-id="${cardId}"]`);
+    selectors.push(`[data-runtime-id="${cardId}"]`);
+    // 互換: master id でも探索（最終フォールバック）。同名衝突時の誤選択を避けるため最後にする。
     if (zone) {
         selectors.push(`[data-owner="${normalizedId}"][data-zone="${zone}"] [data-card-id="${cardId}"]`);
     }
     selectors.push(`[data-owner="${normalizedId}"] [data-card-id="${cardId}"]`);
-    selectors.push(`[data-card-id="${cardId}"]`); // 最後のフォールバック
+    selectors.push(`[data-card-id="${cardId}"]`); // 最終フォールバック
 
     for (const selector of selectors) {
         const element = document.querySelector(selector);

@@ -396,8 +396,8 @@ export class SetupManager {
     // 安全な手札コピーを作成
     const handCopy = [...playerState.hand];
 
-    // 手札からカードを見つける
-    const cardIndex = handCopy.findIndex(card => card.id === cardId);
+    // 手札からカードを見つける（runtimeId 優先、互換で master id）
+    const cardIndex = handCopy.findIndex(card => (card.runtimeId === cardId) || (card.id === cardId));
     if (cardIndex === -1) {
       console.warn(`⚠️ Card ${cardId} not found in ${playerId} hand`);
       return state;

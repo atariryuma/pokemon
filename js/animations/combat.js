@@ -202,7 +202,9 @@ export class CombatAnimations extends AnimationCore {
 
     // ヘルパー関数
     findPokemonElement(pokemonId) {
-        return document.querySelector(`[data-card-id="${pokemonId}"]`) ||
+        // runtimeId 優先で特定し、互換で master id / data-pokemon-id も探索
+        return document.querySelector(`[data-runtime-id="${pokemonId}"]`) ||
+               document.querySelector(`[data-card-id="${pokemonId}"]`) ||
                document.querySelector(`[data-pokemon-id="${pokemonId}"]`);
     }
 

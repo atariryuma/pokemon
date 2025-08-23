@@ -249,7 +249,10 @@ export class View {
     _handleHandClickDelegation(e) {
         const cardElement = e.target.closest('[data-card-id]');
         if (cardElement && this.cardClickHandler) {
-            this.cardClickHandler(cardElement.dataset);
+            // runtimeId を優先的に cardId として渡す（後方互換のためキー名は維持）
+            const ds = { ...cardElement.dataset };
+            ds.cardId = cardElement.dataset.runtimeId || cardElement.dataset.cardId;
+            this.cardClickHandler(ds);
         }
     }
 
@@ -1001,6 +1004,8 @@ export class View {
             ZIndexManager.ensureAbovePlaymat(container); // --z-card 相当
         }
 
+        // DOM識別は runtimeId を優先（重複回避）。マスターIDも保持（カード種別の参照用）。
+        container.dataset.runtimeId = card.runtimeId || card.id;
         container.dataset.cardId = card.id;
         container.dataset.owner = playerType;
         container.dataset.zone = zone;
@@ -1614,13 +1619,14 @@ export class View {
             e.stopPropagation();
             
             const cardInSlot = slotElement.querySelector('[data-card-id]');
-            const cardId = cardInSlot ? cardInSlot.dataset.cardId : null;
+            const cardId = cardInSlot ? (cardInSlot.dataset.runtimeId || cardInSlot.dataset.cardId) : null;
 
             const dataset = {
                 owner: owner,
                 zone: zone,
                 index: index.toString(),
-                cardId: cardId
+                cardId: cardId,
+                runtimeId: cardId // 後方互換: handler側は cardId を読む
             };
             
             this.cardClickHandler(dataset);

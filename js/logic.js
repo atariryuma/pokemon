@@ -8,7 +8,8 @@ import { addLogEntry } from './state.js';
  * @returns {{card: object, index: number} | null}
  */
 function findCardInHand(playerState, cardId) {
-    const index = playerState.hand.findIndex(c => c.id === cardId);
+    // runtimeId 優先で一致、互換で master id も許容
+    const index = playerState.hand.findIndex(c => (c.runtimeId === cardId) || (c.id === cardId));
     if (index === -1) {
         return null;
     }
@@ -128,10 +129,11 @@ export function drawCard(state, player) {
  * @returns {{pokemon: object, zone: string, index: number} | null}
  */
 function findPokemonById(playerState, pokemonId) {
-    if (playerState.active && playerState.active.id === pokemonId) {
+    // runtimeId 優先
+    if (playerState.active && (playerState.active.runtimeId === pokemonId || playerState.active.id === pokemonId)) {
         return { pokemon: playerState.active, zone: 'active', index: 0 };
     }
-    const benchIndex = playerState.bench.findIndex(p => p && p.id === pokemonId);
+    const benchIndex = playerState.bench.findIndex(p => p && (p.runtimeId === pokemonId || p.id === pokemonId));
     if (benchIndex !== -1) {
         return { pokemon: playerState.bench[benchIndex], zone: 'bench', index: benchIndex };
     }
@@ -658,4 +660,3 @@ export function canUseEnergy(pokemon, energyType) {
 
     return false; // どのワザにも使えなければfalse
 }
-
