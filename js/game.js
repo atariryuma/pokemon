@@ -2261,9 +2261,9 @@ export class Game {
         
         // 2. カードタイプに基づいてサブディレクトリを決定
         const getCardSubdir = (card) => {
-            if (card.card_type === 'Pokemon') return 'pokemon';
+            if (card.card_type === 'Pokemon' || card.card_type === 'Pokémon') return 'pokemon';
             if (card.card_type === 'Energy') return 'energy';
-            return 'trainer'; // Trainer cards
+            return 'trainer'; // Trainer cards and others
         };
         
         const subdir = getCardSubdir(card);
