@@ -88,6 +88,10 @@ export class View {
         // HoverManagerと統合してz-index管理を最適化
         setTimeout(() => {
             this._initHandDock();
+            // デバッグ関数を自動実行（問題調査用）
+            setTimeout(() => this.debugHandZIndexIssue(), 1000);
+            // グローバルデバッグ関数として公開
+            window.debugHandZIndex = () => this.debugHandZIndexIssue();
         }, 1000);
     }
 
@@ -660,26 +664,39 @@ export class View {
     _initHandDock() {
         const container = document.getElementById('player-hand');
         if (!container) return;
+        
+        // 簡潔な初期化ログ
+        const containerStyle = window.getComputedStyle(container);
+        console.log(`🃏 Hand container z-index: ${containerStyle.zIndex}`);
 
-        // 画面サイズに応じて動的に調整
+        // 画面サイズに応じて動的に調整（より大きく、ダイナミックに）
         const screenWidth = window.innerWidth || 800;
-        const RADIUS = Math.min(180, screenWidth * 0.2);        // 画面幅の20%、最大180px
-        const BASE_SCALE = 1.0;    // baseline equals CPU hand size
-        const MAX_SCALE = screenWidth < 768 ? 1.15 : 1.3;      // 小画面では控えめに
-        const MAX_LIFT = Math.min(34, screenWidth * 0.04);     // 画面幅の4%、最大34px
+        const RADIUS = Math.min(220, screenWidth * 0.25);        // 画面幅の25%、最大220px（拡張）
+        const BASE_SCALE = 1.1;    // より大きなベースサイズ
+        const MAX_SCALE = screenWidth < 768 ? 1.6 : 2.0;        // より大きな拡大効果
+        const MAX_LIFT = Math.min(50, screenWidth * 0.06);      // 画面幅の6%、最大50px（より高い浮上）
         const BASE_GAP = 2;        // px default spacing per side
-        const MAX_GAP = Math.min(6, screenWidth * 0.008);      // 画面幅の0.8%、最大6px
+        const MAX_GAP = Math.min(8, screenWidth * 0.01);       // 画面幅の1%、最大8px（より大きなギャップ）
 
         let rafId = null;
         let pendingX = null;
 
         const resetAll = () => {
             const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active)');
-            cards.forEach(el => {
+            cards.forEach((el, index) => {
+                // リセット時は最小限の変形のみ適用
                 el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
                 el.style.marginLeft = `${BASE_GAP}px`;
                 el.style.marginRight = `${BASE_GAP}px`;
                 ZIndexManager.setHandNormal(el);
+                
+                // 最初のカードのみz-index確認
+                if (index === 0 && cards.length > 0) {
+                    const zIndex = window.getComputedStyle(el).zIndex;
+                    if (zIndex === 'auto' || parseInt(zIndex) < 200) {
+                        console.warn(`⚠️ Hand card z-index issue: ${zIndex}`);
+                    }
+                }
             });
             
             // アニメーションフラグをクリア（必要に応じて）
@@ -702,6 +719,7 @@ export class View {
                 const lift = -MAX_LIFT * (t * t);
                 const gap = BASE_GAP + (MAX_GAP - BASE_GAP) * (t * t);
                 if (scale > 0) {
+                    // マックブック風効果のみ適用（コンテナの3D transformに影響しない）
                     el.style.transform = `translateY(${lift}px) scale(${scale.toFixed(3)})`;
                 }
                 el.style.marginLeft = `${gap}px`;
@@ -794,6 +812,39 @@ export class View {
         // Keeping it as a placeholder comment for now.
     }
 
+    /**
+     * 手札z-index問題の簡潔診断
+     */
+    debugHandZIndexIssue() {
+        const playerHand = document.getElementById('player-hand');
+        const gameBoard = document.getElementById('game-board');
+        const handCards = playerHand ? playerHand.querySelectorAll('.hand-slot') : [];
+        
+        console.group('🔍 Hand Z-Index Quick Check');
+        
+        // 重要な要素のz-indexのみ表示
+        const handZIndex = playerHand ? window.getComputedStyle(playerHand).zIndex : 'N/A';
+        const boardZIndex = gameBoard ? window.getComputedStyle(gameBoard).zIndex : 'N/A';
+        const cardZIndex = handCards.length > 0 ? window.getComputedStyle(handCards[0]).zIndex : 'N/A';
+        
+        console.log(`Hand Container: ${handZIndex}, Board: ${boardZIndex}, Card: ${cardZIndex}`);
+        
+        // 問題検出
+        if (handZIndex === 'auto' || parseInt(handZIndex) <= parseInt(boardZIndex)) {
+            console.error('❌ PROBLEM: Hand z-index is too low!');
+        } else {
+            console.log('✅ Hand z-index appears correct');
+        }
+        
+        // CSS変数確認
+        const root = document.documentElement;
+        const handVar = root.style.getPropertyValue('--z-hand') || 
+                       window.getComputedStyle(root).getPropertyValue('--z-hand');
+        console.log(`CSS Variable --z-hand: ${handVar}`);
+        
+        console.groupEnd();
+    }
+    
     /**
      * Dump key Z-order related computed styles for troubleshooting.
      */

@@ -30,13 +30,13 @@ export const Z_INDEX = {
     CARD_HOVER: 120,       // --z-card-hover
     CARD_EFFECTS: 130,     // --z-card-effects (ダメージ等)
 
-    // === レイヤー3: 手札特別系 (200-210) ===
-    HAND: 200,             // --z-hand (プレイヤー手札通常)
-    HAND_HOVER: 210,       // --z-hand-hover
+    // === レイヤー3: 手札特別系 (250-300) ===
+    HAND: 250,             // --z-hand (プレイヤー手札通常)
+    HAND_HOVER: 300,       // --z-hand-hover
 
-    // === レイヤー4: アニメーション系 (300-310) ===
-    ANIMATIONS: 300,       // --z-animations (移動アニメーション)
-    SELECTED: 310,         // --z-selected (選択状態)
+    // === レイヤー4: アニメーション系 (310-320) ===
+    ANIMATIONS: 310,       // --z-animations (移動アニメーション)
+    SELECTED: 320,         // --z-selected (選択状態)
 
     // === レイヤー5: UI・HUD系 (400-600) ===
     HUD_BASE: 400,         // --z-hud-base
@@ -92,7 +92,28 @@ export class ZIndexManager {
             console.warn(`Invalid element or z-index level: ${level}`);
             return;
         }
-        element.style.zIndex = Z_CSS_VARS[level];
+        
+        const cssVar = Z_CSS_VARS[level];
+        element.style.zIndex = cssVar;
+        
+        // CSS変数が正しく解決されない場合のフォールバック
+        const actualComputed = window.getComputedStyle(element).zIndex;
+        if (actualComputed === 'auto' || !actualComputed) {
+            // 数値で直接設定
+            const fallbackValue = Z_INDEX[level];
+            if (fallbackValue) {
+                element.style.zIndex = fallbackValue.toString();
+                console.log(`🔧 CSS variable fallback applied: ${level} → ${fallbackValue}`);
+            }
+        }
+        
+        // 手札関連で問題がある場合のみログ出力
+        if (level.includes('HAND') || element.closest('#player-hand')) {
+            const computedZIndex = window.getComputedStyle(element).zIndex;
+            if (!computedZIndex || computedZIndex === 'auto' || parseInt(computedZIndex) < 200) {
+                console.warn(`⚠️ Hand z-index PROBLEM: ${level} → ${computedZIndex} (${element.tagName}${element.id ? '#' + element.id : ''})`);
+            }
+        }
     }
 
     /**
@@ -152,6 +173,7 @@ export class ZIndexManager {
     static debug() {
         console.table(Z_INDEX);
     }
+    
 
     /**
      * プレイマットより上に確実に表示する

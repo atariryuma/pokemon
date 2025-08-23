@@ -87,16 +87,16 @@
         :root {
             /* レイアウト用変数 */
             --side-padding: 16px;
-            --card-height: clamp(96px, 18vh, 140px);
-            --hand-extra-gap: 16px;
+            --card-height: clamp(120px, 22vh, 180px);
+            --hand-extra-gap: 24px;
             --hand-height: calc(var(--card-height) + var(--hand-extra-gap));
-            --vertical-gap: 12px;
-            --overlap-cpu: clamp(6px, 2vh, 16px);
-            --overlap-player: clamp(12px, 3vh, 28px);
+            --vertical-gap: 8px;
+            --overlap-cpu: clamp(8px, 2.5vh, 20px);
+            --overlap-player: clamp(16px, 4vh, 36px);
             --footer-height: 80px; /* New variable for HUD area */
-            --board-margin-y: 2vh; /* Vertical margin for the board */
+            --board-margin-y: 0.5vh; /* Reduced vertical margin for the board */
             /* 遠近感（ボード専用） */
-            --scene-perspective: 1200px;
+            --scene-perspective: 1800px;
             /* === レイヤー1: プレイマット系 (5-15) === */
             --z-board-bg: 0;        /* 背景画像 */
             --z-board: 10;          /* ゲームボード基底 */
@@ -119,12 +119,12 @@
             --z-card-effects: 130;  /* カード付与効果（ダメージ等） */
 
             /* === レイヤー3: 手札特別系 (200-210) === */
-            --z-hand: 200;          /* プレイヤー手札通常 */
-            --z-hand-hover: 210;    /* プレイヤー手札ホバー */
+            --z-hand: 250;          /* プレイヤー手札通常 (引き上げ) */
+            --z-hand-hover: 300;    /* プレイヤー手札ホバー (さらに引き上げ) */
 
-            /* === レイヤー4: アニメーション系 (300-310) === */
-            --z-animations: 300;    /* 移動アニメーション */
-            --z-selected: 310;      /* 選択状態 */
+            /* === レイヤー4: アニメーション系 (310-320) === */
+            --z-animations: 310;    /* 移動アニメーション */
+            --z-selected: 320;      /* 選択状態 */
 
             /* === レイヤー5: UI・HUD系 (400-600) === */
             --z-hud-base: 400;      /* HUD基本 */
@@ -219,7 +219,7 @@
 
         #game-board {
             transform-style: preserve-3d;
-            transform: rotateX(40deg); /* Slightly more tilt */
+            transform: rotateX(45deg); /* More dramatic tilt for better perspective */
             position: relative;
             /* Adjust height to fit between hands and footer */
             height: min(
@@ -284,17 +284,17 @@
             align-items: flex-end;
             justify-content: center;
             pointer-events: auto;
-            transform: translateZ(150px); /* Bring it closer to the camera */
+            transform: translateZ(300px) scale(1.08) rotateX(-5deg); /* Much closer, larger, slight counter-rotation */
             transform-style: preserve-3d;
-            z-index: var(--z-hand);
+            z-index: var(--z-hand) !important; /* 強制的に最前面 */
         }
         
         /* 手札カード */
         #player-hand .hand-slot {
             pointer-events: auto;
-            z-index: var(--z-hand);
+            z-index: var(--z-hand) !important; /* 強制的に最前面 */
             /* 手札カードを確実に3D前面へ（ボード面より手前） */
-            transform: translateZ(1px);
+            transform: translateZ(2px);
             transform-style: preserve-3d;
             backface-visibility: hidden;
         }
@@ -374,14 +374,14 @@
         /* CPU手札エリア（上部） */
         #cpu-hand {
             position: absolute;
-            top: 0;
+            top: calc(var(--board-margin-y) * 0.5);
             width: 100%;
             height: var(--hand-height);
             display: flex;
             align-items: center;
             justify-content: center;
             pointer-events: none;
-            transform: translateZ(-80px) rotateX(15deg) scale(0.95);
+            transform: translateZ(-60px) rotateX(10deg) scale(0.98);
             transform-style: preserve-3d;
             z-index: var(--z-hand);
         }
@@ -956,10 +956,10 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
         #player-hand.hand-dock .hand-slot.hand-card {
-            transition: transform 140ms ease, filter 140ms ease;
+            transition: transform 140ms ease, filter 140ms ease, z-index 140ms ease;
             will-change: transform;
             transform-origin: bottom center;
-            filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+            filter: drop-shadow(0 8px 15px rgba(0,0,0,0.4));
             position: relative;
             z-index: var(--z-highlight);
         }
@@ -1092,9 +1092,9 @@
         #player-hand.hand-dock .hand-slot.hand-card img {
             pointer-events: auto;
         }
-        /* default: same size as CPU hand */
+        /* default: slightly larger than CPU hand for better visibility */
         #player-hand.hand-dock .hand-slot.hand-card {
-            transform: translateY(0) scale(1.0);
+            transform: translateY(0) scale(1.1);
         }
         
         /* Battle Modal Styles */

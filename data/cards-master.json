@@ -44,7 +44,7 @@
         "text_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。"
       }
     ],
-    "image_file": "Akamayabato.webp"
+    "image_file": "001_pokemon_akamayabato.webp"
   },
   {
     "id": "002",
@@ -90,7 +90,8 @@
         ],
         "damage": 80
       }
-    ]
+    ],
+    "image_file": "002_pokemon_cat_exv.webp"
   },
   {
     "id": "003",
@@ -133,7 +134,8 @@
         "text_en": "Reduce the opponent's next attack by 50.",
         "text_ja": "相手の次の攻撃を50小さくする。"
       }
-    ]
+    ],
+    "image_file": "003_pokemon_glasswing_butterfly_larva.webp"
   },
   {
     "id": "004",
@@ -178,7 +180,8 @@
         ],
         "damage": 50
       }
-    ]
+    ],
+    "image_file": "004_pokemon_glasswing_butterfly_larva.webp"
   },
   {
     "id": "005",
@@ -223,7 +226,8 @@
         "text_en": "Heal 50 HP from this Pokémon.",
         "text_ja": "自分のHPを50回ふくする。"
       }
-    ]
+    ],
+    "image_file": "005_pokemon_glasswing_butterfly.webp"
   },
   {
     "id": "006",
@@ -261,7 +265,8 @@
       "name_ja": "隠れる",
       "text_en": "Negate the next 5 attacks from the opponent.",
       "text_ja": "相手の次の5回の攻撃を無効化する。"
-    }
+    },
+    "image_file": "006_pokemon_kobane_inago.webp"
   },
   {
     "id": "007",
@@ -300,7 +305,8 @@
       "name_ja": "糸をはる",
       "text_en": "Negate the opponent's next attack.",
       "text_ja": "相手の次の攻撃を無効化する。"
-    }
+    },
+    "image_file": "007_pokemon_orange_spider.webp"
   },
   {
     "id": "008",
@@ -340,7 +346,8 @@
       "name_ja": "チート",
       "text_en": "Take one of your Prize cards.",
       "text_ja": "自分のサイドを1つとる。"
-    }
+    },
+    "image_file": "008_pokemon_tsumamurasaki_madara.webp"
   },
   {
     "id": "009",
@@ -388,7 +395,8 @@
         "text_en": "Flip 2 coins. If both are heads, fully heal this Pokémon.",
         "text_ja": "コインを2回投げ、すべてオモテなら、HPをすべて回ふく。"
       }
-    ]
+    ],
+    "image_file": "009_pokemon_grey_dagger_moth_larva.webp"
   },
   {
     "id": "010",
@@ -433,7 +441,8 @@
         "text_en": "Flip 2 coins. For each heads, add +20 damage.",
         "text_ja": "コインを2回投げ、オモテの数×20ダメージ追加。"
       }
-    ]
+    ],
+    "image_file": "010_pokemon_short-horned_grasshopper.webp"
   },
   {
     "id": "011",
@@ -481,7 +490,8 @@
         "text_en": "Skip 2 turns; on the 3rd turn this attack does +150 damage.",
         "text_ja": "2ターンスキップ。3ターン目に＋150ダメージ。"
       }
-    ]
+    ],
+    "image_file": "011_pokemon_haiirohitori.webp"
   },
   {
     "id": "012",
@@ -525,7 +535,8 @@
         ],
         "damage": 30
       }
-    ]
+    ],
+    "image_file": "012_pokemon_tateha_butterfly.webp"
   },
   {
     "id": "013",
@@ -570,7 +581,8 @@
         ],
         "damage": 120
       }
-    ]
+    ],
+    "image_file": "013_pokemon_caterpillar_exz.webp"
   },
   {
     "id": "014",
@@ -615,7 +627,8 @@
         ],
         "damage": 30
       }
-    ]
+    ],
+    "image_file": "014_pokemon_taiwan_clouded_yellow.webp"
   },
   {
     "id": "015",
@@ -657,7 +670,8 @@
         ],
         "damage": 10
       }
-    ]
+    ],
+    "image_file": "015_pokemon_kurohime_crane_fly.webp"
   },
   {
     "id": "016",
@@ -701,7 +715,8 @@
         ],
         "damage": 60
       }
-    ]
+    ],
+    "image_file": "016_pokemon_snail.webp"
   },
   {
     "id": "017",
@@ -745,7 +760,8 @@
         ],
         "damage": 90
       }
-    ]
+    ],
+    "image_file": "017_pokemon_bee_ex.webp"
   },
   {
     "id": "018",
@@ -791,7 +807,8 @@
         "text_en": "Reduce opponent's HP to 0.",
         "text_ja": "相手のHPを0にする。"
       }
-    ]
+    ],
+    "image_file": "018_pokemon_hosohari_stinkbug_ex.webp"
   },
   {
     "id": "019",
@@ -837,7 +854,8 @@
         ],
         "damage": 150
       }
-    ]
+    ],
+    "image_file": "019_pokemon_aokanabun.webp"
   },
   {
     "id": "020",
@@ -879,7 +897,8 @@
         ],
         "damage": 30
       }
-    ]
+    ],
+    "image_file": "020_pokemon_tonosama_grasshopper.webp"
   },
   {
     "id": "021",
@@ -914,7 +933,8 @@
         "text_en": "The opponent's next attack does 0 damage.",
         "text_ja": "相手の次の攻撃を0にする。"
       }
-    ]
+    ],
+    "image_file": "021_pokemon_rainbow_skink.webp"
   },
   {
     "id": "022",
@@ -948,7 +968,8 @@
         "text_en": "This attack does +30 more damage.",
         "text_ja": "このワザは＋30ダメージ。"
       }
-    ]
+    ],
+    "image_file": "022_pokemon_longhorn_beetle.webp"
   },
   {
     "id": "023",
