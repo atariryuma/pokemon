@@ -5,6 +5,20 @@
  */
 
 import { AnimationCore, ANIMATION_TIMING } from './core.js';
+import { findZoneElement, areValidElements } from '../dom-utils.js';
+
+// エネルギータイプ色定数
+const ENERGY_COLORS = {
+    fire: '#ff4444',
+    water: '#4285f4', 
+    grass: '#34a853',
+    lightning: '#fbbc04',
+    psychic: '#9c27b0',
+    fighting: '#ff6d00',
+    darkness: '#424242',
+    metal: '#607d8b',
+    colorless: '#9e9e9e'
+};
 
 export class EffectAnimations extends AnimationCore {
     constructor() {
@@ -15,29 +29,13 @@ export class EffectAnimations extends AnimationCore {
      * エネルギー付与アニメーション
      * @param {string} energyType - エネルギータイプ ('fire', 'water', etc.)
      * @param {string} pokemonId - 対象ポケモンID
-     * @param {Object} options - オプション
      */
-    async energy(energyType, pokemonId, options = {}) {
+    async energy(energyType, pokemonId) {
         const pokemonElement = this.findPokemonElement(pokemonId);
         
         if (!pokemonElement) return;
 
-        // エネルギータイプに応じた色とエフェクト
-        const energyColors = {
-            fire: '#ff4444',
-            water: '#4285f4',
-            grass: '#34a853',
-            lightning: '#fbbc04',
-            psychic: '#9c27b0',
-            fighting: '#ff6d00',
-            darkness: '#424242',
-            metal: '#607d8b',
-            colorless: '#9e9e9e'
-        };
-        
-        const color = energyColors[energyType.toLowerCase()] || energyColors.colorless;
-
-        // エネルギータイプに合わせた強い光るエフェクト
+        const color = ENERGY_COLORS[energyType.toLowerCase()] || ENERGY_COLORS.colorless;
         const glowClass = `anim-energy-glow-${energyType.toLowerCase()}`;
         
         // 1. 初期グロー設定
@@ -70,9 +68,8 @@ export class EffectAnimations extends AnimationCore {
      * 進化アニメーション
      * @param {string} fromPokemonId - 進化前ポケモンID
      * @param {string} toPokemonId - 進化後ポケモンID
-     * @param {Object} options - オプション
      */
-    async evolution(fromPokemonId, toPokemonId, options = {}) {
+    async evolution(fromPokemonId, toPokemonId) {
         const fromElement = this.findPokemonElement(fromPokemonId);
         const toElement = this.findPokemonElement(toPokemonId);
         
@@ -134,7 +131,7 @@ export class EffectAnimations extends AnimationCore {
         
         if (!pokemonElement) return;
 
-        // 緑色の回復グロー
+        // 緑色の回復グロー（healAmountは将来の拡張用）
         await this.animate(pokemonElement, 'anim-heal-glow', ANIMATION_TIMING.normal);
 
         // HP数値の更新エフェクト
@@ -150,8 +147,8 @@ export class EffectAnimations extends AnimationCore {
      * @param {number} cardCount - ドロー枚数
      */
     async draw(playerId, cardCount = 1) {
-        const deckElement = this.findZoneElement(playerId, 'deck');
-        const handElement = this.findZoneElement(playerId, 'hand');
+        const deckElement = findZoneElement(playerId, 'deck');
+        const handElement = findZoneElement(playerId, 'hand');
         
         if (!deckElement || !handElement) return;
 
@@ -229,42 +226,6 @@ export class EffectAnimations extends AnimationCore {
         return document.querySelector(`[data-card-id="${cardId}"]`);
     }
 
-    findZoneElement(playerId, zone) {
-        // CPUの場合、実際のDOM構造に合わせてセレクタを調整
-        if (playerId === 'cpu') {
-            switch (zone) {
-                case 'deck':
-                    return document.querySelector('.opponent-board .deck-container');
-                case 'hand':
-                    return document.querySelector('#cpu-hand');
-                case 'discard':
-                    return document.querySelector('.opponent-board .discard-container');
-                case 'active':
-                    return document.querySelector('.opponent-board .active-top');
-                case 'prize':
-                    return document.querySelector('.opponent-board .side-right');
-                default:
-                    return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
-            }
-        } else if (playerId === 'player') {
-            switch (zone) {
-                case 'deck':
-                    return document.querySelector('.player-self .deck-container');
-                case 'hand':
-                    return document.querySelector('#player-hand');
-                case 'discard':
-                    return document.querySelector('.player-self .discard-container');
-                case 'active':
-                    return document.querySelector('.player-self .active-bottom');
-                case 'prize':
-                    return document.querySelector('.player-self .side-left');
-                default:
-                    return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
-            }
-        }
-        
-        return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
-    }
 
     findHPElement(pokemonId) {
         const pokemon = this.findPokemonElement(pokemonId);

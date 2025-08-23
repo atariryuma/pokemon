@@ -10,6 +10,7 @@ import { CombatAnimations } from './animations/combat.js';
 import { EffectAnimations } from './animations/effects.js';
 import { UIAnimations } from './animations/ui.js';
 import { getCardImagePath } from './data-manager.js';
+import { areValidElements } from './dom-utils.js';
 
 /**
  * 統合アニメーションマネージャー
@@ -31,59 +32,39 @@ class AnimationManager {
     }
 
     /**
-     * エネルギータイプをIDと状態から推定
-     * @param {string} energyId
-     * @param {object} gameState
-     * @returns {string} energy type in lowercase ('fire','water',...)
+     * エネルギータイプを抽出
+     * @param {string} energyId - エネルギーカードID
+     * @returns {string} エネルギータイプ
      */
-    extractEnergyType(energyId, gameState) {
-        const normalize = (t) => (t || '').toString().toLowerCase();
-
-        const tryFromArray = (arr) => (Array.isArray(arr) ? arr.find(c => c && c.id === energyId) : null);
-        const tryFromPlayer = (p) => {
-            if (!p) return null;
-            return (
-                tryFromArray(p.hand) ||
-                tryFromArray(p.discard) ||
-                tryFromArray(p.deck) ||
-                (p.active && Array.isArray(p.active.attached_energy) ? p.active.attached_energy.find(e => e && e.id === energyId) : null) ||
-                (Array.isArray(p.bench) ? p.bench.flatMap(b => (b && b.attached_energy) ? b.attached_energy : []).find(e => e && e.id === energyId) : null)
-            );
-        };
-
-        let card = null;
-        if (gameState && gameState.players) {
-            card = tryFromPlayer(gameState.players.player) || tryFromPlayer(gameState.players.cpu);
+    extractEnergyType(energyId) {
+        try {
+            // data-manager.js から cardMasterList を取得
+            const cardMasterList = window.getCardMasterList?.() || [];
+            const card = cardMasterList.find(c => c?.id === energyId);
+            
+            if (card?.energy_type) {
+                // エネルギータイプの正規化
+                const typeMap = {
+                    'fighting': 'fighting',
+                    'fire': 'fire', 
+                    'water': 'water',
+                    'grass': 'grass',
+                    'lightning': 'lightning',
+                    'psychic': 'psychic',
+                    'darkness': 'darkness',
+                    'metal': 'metal',
+                    'colorless': 'colorless'
+                };
+                
+                const energyType = card.energy_type.toLowerCase();
+                return typeMap[energyType] || 'colorless';
+            }
+            
+            return 'colorless';
+        } catch (error) {
+            console.error('Error extracting energy type:', error);
+            return 'colorless';
         }
-
-        // 優先: カードオブジェクトの energy_type / type
-        const fromProp = normalize(card?.energy_type || card?.type);
-        const mapName = {
-            lightning: 'lightning',
-            electric: 'lightning',
-            water: 'water',
-            fire: 'fire',
-            grass: 'grass',
-            leaf: 'grass',
-            psychic: 'psychic',
-            fighting: 'fighting',
-            darkness: 'darkness',
-            dark: 'darkness',
-            metal: 'metal',
-            steel: 'metal',
-            colorless: 'colorless'
-        };
-
-        if (fromProp && mapName[fromProp]) return mapName[fromProp];
-
-        // 次: 英語名から推定（name_en がある場合）
-        const name = normalize(card?.name_en || card?.name_ja);
-        for (const key of Object.keys(mapName)) {
-            if (name && name.includes(key)) return mapName[key];
-        }
-
-        // 最後のフォールバック
-        return 'colorless';
     }
 
     /**
@@ -183,10 +164,25 @@ class AnimationManager {
         }
 
         try {
+            // DOM の準備を確認
+            await this.waitForDOM();
             return await animationFunction.apply(this, args);
         } catch (error) {
             console.warn('Animation execution error:', error);
         }
+    }
+
+    /**
+     * DOMの準備完了を待つ
+     */
+    async waitForDOM() {
+        return new Promise(resolve => {
+            if (document.readyState === 'complete') {
+                resolve();
+            } else {
+                requestAnimationFrame(() => resolve());
+            }
+        });
     }
 
     // 便利メソッド（よく使われるアニメーションのショートカット）
@@ -202,8 +198,8 @@ class AnimationManager {
      * エネルギー付与
      */
     async energyAttach(energyId, pokemonId, gameState) {
-        const energyType = this.extractEnergyType(energyId, gameState);
-        return this.execute(() => this.effect.energy(energyType, pokemonId, { energyCardId: energyId }));
+        const energyType = this.extractEnergyType(energyId);
+        return this.execute(() => this.effect.energy(energyType, pokemonId));
     }
     
     /**
@@ -279,16 +275,6 @@ class AnimationManager {
         return this.execute(() => this.unhighlightCard(cardElement));
     }
     
-    /**
-     * エネルギータイプ抽出ヘルパー
-     */
-    extractEnergyType(energyId, gameState) {
-        const energyTypes = ['fire', 'water', 'grass', 'lightning', 'psychic', 'fighting', 'darkness', 'metal', 'colorless'];
-        const lowerEnergyId = energyId.toLowerCase();
-        
-        return energyTypes.find(type => lowerEnergyId.includes(type)) || 'colorless';
-    }
-
     /**
      * カードを手札からフィールドに移動
      */
@@ -672,9 +658,11 @@ export const unifiedAnimationManager = {
     },
     
     // エネルギー系
-    createLightweightEnergyEffect: (energyId, pokemonId, gameState) => {
-        const energyType = unifiedAnimationManager.extractEnergyType(energyId, gameState);
-        return animate.effect.energy(energyType, pokemonId, { energyCardId: energyId });
+    createLightweightEnergyEffect: (energyId, pokemonId) => {
+        const energyType = unifiedAnimationManager.extractEnergyType(energyId);
+        return unifiedAnimationManager.execute(() => 
+            animate.effect.energy(energyType, pokemonId)
+        );
     },
     
     // 廃棄エネルギー
@@ -747,14 +735,5 @@ export const unifiedAnimationManager = {
             element.classList.remove('slot-highlight');
             delete element.dataset.highlightType;
         }
-    },
-    
-    // 内部ヘルパー
-    extractEnergyType(energyId, gameState) {
-        // エネルギータイプをIDから抽出するロジック
-        const energyTypes = ['fire', 'water', 'grass', 'lightning', 'psychic', 'fighting', 'darkness', 'metal', 'colorless'];
-        const lowerEnergyId = energyId.toLowerCase();
-        
-        return energyTypes.find(type => lowerEnergyId.includes(type)) || 'colorless';
     }
 };

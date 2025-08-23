@@ -6,6 +6,7 @@
  */
 
 import { AnimationCore, ANIMATION_TIMING } from './core.js';
+import { findZoneElement, findCardElement, findBenchSlot, areValidElements } from '../dom-utils.js';
 
 export class CardMoveAnimations extends AnimationCore {
     constructor() {
@@ -42,10 +43,13 @@ export class CardMoveAnimations extends AnimationCore {
      * 手札からアクティブへの移動
      */
     async handToActive(playerId, cardId, options = {}) {
-        const sourceElement = this.findCardElement(playerId, cardId, 'hand');
-        const targetElement = this.findZoneElement(playerId, 'active');
+        const sourceElement = findCardElement(playerId, cardId, 'hand');
+        const targetElement = findZoneElement(playerId, 'active');
         
-        if (!sourceElement || !targetElement) return;
+        if (!areValidElements(sourceElement, targetElement)) {
+            console.warn(`Cannot animate hand to active: playerId=${playerId}, cardId=${cardId}`);
+            return;
+        }
 
         // アニメーション実行
         await this.animate(sourceElement, 'anim-card-to-active', ANIMATION_TIMING.normal);
@@ -55,11 +59,14 @@ export class CardMoveAnimations extends AnimationCore {
      * 手札からベンチへの移動
      */
     async handToBench(playerId, cardId, options = {}) {
-        const sourceElement = this.findCardElement(playerId, cardId, 'hand');
         const { benchIndex = 0 } = options;
-        const targetElement = this.findBenchSlot(playerId, benchIndex);
+        const sourceElement = findCardElement(playerId, cardId, 'hand');
+        const targetElement = findBenchSlot(playerId, benchIndex);
         
-        if (!sourceElement || !targetElement) return;
+        if (!areValidElements(sourceElement, targetElement)) {
+            console.warn(`Cannot animate hand to bench: playerId=${playerId}, cardId=${cardId}, benchIndex=${benchIndex}`);
+            return;
+        }
 
         await this.animate(sourceElement, 'anim-card-to-bench', ANIMATION_TIMING.normal);
     }
@@ -68,9 +75,12 @@ export class CardMoveAnimations extends AnimationCore {
      * アクティブからトラッシュへ（気絶時）
      */
     async activeToDiscard(playerId, cardId, options = {}) {
-        const sourceElement = this.findCardElement(playerId, cardId, 'active');
+        const sourceElement = findCardElement(playerId, cardId, 'active');
         
-        if (!sourceElement) return;
+        if (!sourceElement) {
+            console.warn(`Cannot animate active to discard: playerId=${playerId}, cardId=${cardId}`);
+            return;
+        }
 
         // 気絶アニメーション
         await this.animate(sourceElement, 'anim-card-knockout', ANIMATION_TIMING.slow);
@@ -81,8 +91,8 @@ export class CardMoveAnimations extends AnimationCore {
      */
     async benchToActive(playerId, cardId, options = {}) {
         const { benchIndex = 0 } = options;
-        const sourceElement = this.findBenchSlot(playerId, benchIndex);
-        const targetElement = this.findZoneElement(playerId, 'active');
+        const sourceElement = findBenchSlot(playerId, benchIndex);
+        const targetElement = findZoneElement(playerId, 'active');
         
         if (!sourceElement || !targetElement) return;
 
@@ -93,8 +103,8 @@ export class CardMoveAnimations extends AnimationCore {
      * デッキから手札へ（ドロー）
      */
     async deckToHand(playerId, cardId, options = {}) {
-        const deckElement = this.findZoneElement(playerId, 'deck');
-        const handElement = this.findZoneElement(playerId, 'hand');
+        const deckElement = findZoneElement(playerId, 'deck');
+        const handElement = findZoneElement(playerId, 'hand');
         
         if (!deckElement || !handElement) return;
 
@@ -108,7 +118,7 @@ export class CardMoveAnimations extends AnimationCore {
      * 汎用移動（フォールバック）
      */
     async genericMove(playerId, cardId, from, to, options = {}) {
-        const sourceElement = this.findCardElement(playerId, cardId, from);
+        const sourceElement = findCardElement(playerId, cardId, from);
         
         if (!sourceElement) return;
 
@@ -143,7 +153,7 @@ export class CardMoveAnimations extends AnimationCore {
         }
 
         // 手札エリアを取得
-        const handElement = this.findZoneElement(playerId, 'hand');
+        const handElement = findZoneElement(playerId, 'hand');
         if (!handElement) {
             console.warn(`Hand element not found for ${playerId}`);
             return;
@@ -190,7 +200,7 @@ export class CardMoveAnimations extends AnimationCore {
         }
 
         // サイドエリアを取得
-        const prizeElement = this.findZoneElement(playerId, 'prize');
+        const prizeElement = findZoneElement(playerId, 'prize');
         if (!prizeElement) {
             console.warn(`Prize element not found for ${playerId}`);
             return;
@@ -225,8 +235,8 @@ export class CardMoveAnimations extends AnimationCore {
     async drawCardFromDeck(playerId, cardElement, options = {}) {
         const { duration = 600 } = options;
         
-        const deckElement = this.findZoneElement(playerId, 'deck');
-        const handElement = this.findZoneElement(playerId, 'hand');
+        const deckElement = findZoneElement(playerId, 'deck');
+        const handElement = findZoneElement(playerId, 'hand');
         
         if (!deckElement || !handElement || !cardElement) {
             console.warn('Missing elements for card draw animation');
@@ -315,49 +325,4 @@ export class CardMoveAnimations extends AnimationCore {
         }
     }
 
-    // ヘルパー関数
-    findCardElement(playerId, cardId, zone) {
-        return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"] [data-card-id="${cardId}"]`);
-    }
-
-    findZoneElement(playerId, zone) {
-        // CPUの場合、実際のDOM構造に合わせてセレクタを調整
-        if (playerId === 'cpu') {
-            switch (zone) {
-                case 'deck':
-                    return document.querySelector('.opponent-board .deck-container');
-                case 'hand':
-                    return document.querySelector('#cpu-hand');
-                case 'discard':
-                    return document.querySelector('.opponent-board .discard-container');
-                case 'active':
-                    return document.querySelector('.opponent-board .active-top');
-                case 'prize':
-                    return document.querySelector('.opponent-board .side-right');
-                default:
-                    return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
-            }
-        } else if (playerId === 'player') {
-            switch (zone) {
-                case 'deck':
-                    return document.querySelector('.player-self .deck-container');
-                case 'hand':
-                    return document.querySelector('#player-hand');
-                case 'discard':
-                    return document.querySelector('.player-self .discard-container');
-                case 'active':
-                    return document.querySelector('.player-self .active-bottom');
-                case 'prize':
-                    return document.querySelector('.player-self .side-left');
-                default:
-                    return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
-            }
-        }
-        
-        return document.querySelector(`[data-owner="${playerId}"][data-zone="${zone}"]`);
-    }
-
-    findBenchSlot(playerId, index) {
-        return document.querySelector(`[data-owner="${playerId}"][data-zone="bench"][data-index="${index}"]`);
-    }
 }
