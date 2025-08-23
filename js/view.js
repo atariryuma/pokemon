@@ -921,27 +921,32 @@ export class View {
         // 各カードスロットにカードを配置
         const prizeSlots = prizeContainer.querySelectorAll('.card-slot');
         const six = Array.isArray(prize) ? prize.slice(0, 6) : new Array(6).fill(null);
-        
+
         prizeSlots.forEach((slot, index) => {
             slot.innerHTML = ''; // 既存内容をクリア
-            
+
             if (index < six.length && six[index] !== null) {
                 const card = six[index];
                 const cardEl = this._createCardElement(card, playerType, 'prize', index, true); // 裏向き
-                
+
                 // カード要素のサイズを調整
                 cardEl.style.width = '100%';
                 cardEl.style.height = '100%';
-                
+
                 slot.appendChild(cardEl);
                 noop(`  🃏 Prize card ${index + 1} added to slot`);
 
-                // プレイヤーのサイドカードのみクリック可能にする
+                // 表示されているカードはクリック可能にする
+                slot.style.pointerEvents = 'auto';
                 if (playerType === 'player') {
                     this._makeSlotClickable(slot, playerType, 'prize', index);
                 }
+            } else {
+                // 空スロットはクリック不可とし、背面カードを操作可能にする
+                slot.style.pointerEvents = 'none';
+                slot.style.cursor = 'default';
+                slot.dataset.clickableSet = 'false';
             }
-            // nullの場合は空のスロットのまま（何も表示しない）
         });
 
         // Badge system removed - prize info now shown in right panel
