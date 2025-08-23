@@ -840,6 +840,8 @@ export class Game {
             case GAME_PHASES.PLAYER_DRAW:
                 if (zone === 'deck') {
                     await this._handlePlayerDraw();
+                } else {
+                    this.view.showError('DECK_NOT_SELECTED');
                 }
                 break;
                 
@@ -883,7 +885,7 @@ export class Game {
                     await this._handleEnergyDrop(cardId, targetZone, targetIndex);
                     break;
                 case 'Trainer':
-                    this.view.showInfoMessage('トレーナーカードはクリックで使用してください');
+                    this.view.showCustomToast('トレーナーカードはクリックで使用してください', 'warning');
                     break;
             }
         } catch (error) {
@@ -915,6 +917,8 @@ export class Game {
             });
             this._updateState(newState);
             this.view.showSuccessMessage(`${card.name_ja}をバトル場に配置しました`);
+        } else if (targetZone === 'active' && !this.state.players.player.active) {
+            this.view.showError('INVALID_INITIAL_POKEMON');
         } else {
             this.view.showErrorMessage('そこには配置できません');
         }
@@ -1012,10 +1016,7 @@ export class Game {
                     this.view.updateStatusMessage(this.state.prompt.message);
                 } else if (card && card.card_type === 'Pokémon') {
                     // 非たねポケモンが選択された場合はトーストで警告
-                    this.view.showCustomToast(
-                        `${card.name_ja}は${card.stage}ポケモンです。たねポケモンのみ選択できます。`,
-                        'warning'
-                    );
+                    this.view.showError('INVALID_INITIAL_POKEMON');
                     // Don't log as warning since this is expected behavior
                 }
                 // Silently ignore Energy and Trainer cards during setup
@@ -1770,8 +1771,8 @@ export class Game {
         // モーダルを即座に閉じる
         modalManager.closeCentralModal();
         
-        // 攻撃開始メッセージを表示
-        this.view.showInfoMessage('攻撃を実行しています...');
+        // 攻撃開始メッセージを表示（トーストではなく画面表示）
+        this.view.showGameMessage('攻撃を実行しています...');
         
         // 少し待ってからアニメーション開始
         memoryManager.setTimeout(async () => {
@@ -1814,18 +1815,30 @@ export class Game {
      * ターン終了ボタン処理
      */
     async _handleEndTurn() {
+        // 山札を引いていない場合は警告
+        if (this.state.phase === GAME_PHASES.PLAYER_DRAW) {
+            this.view.showError('DECK_NOT_SELECTED');
+            return;
+        }
+
+        // エネルギー付与のペンディングがある場合は警告を表示
+        if (this.state.pendingAction && this.state.pendingAction.type === 'attach-energy') {
+            this.view.showError('ENERGY_SELECTED_NO_TARGET');
+            return;
+        }
+
         // すべてのフローティングアクションボタンを非表示
         this.actionHUDManager.hideAllButtons();
         
         let newState = this.turnManager.endPlayerTurn(this.state);
         this._updateState(newState);
         
-        // ターン終了通知
-        this.view.showInfoMessage('ターンが終了しました');
+        // ターン終了通知を画面に表示
+        this.view.showGameMessage('ターンが終了しました');
         
         // CPUターン開始
         memoryManager.setTimeout(async () => {
-            this.view.showInfoMessage('相手のターンが開始されました');
+            this.view.showGameMessage('相手のターンが開始されました');
             await this._executeCpuTurn();
         }, 1000);
     }
