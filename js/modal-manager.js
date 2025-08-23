@@ -8,7 +8,7 @@
 import { animationManager } from './animation-manager.js';
 import { Z_INDEX, Z_CSS_VARS } from './z-index-constants.js';
 import { getCardImagePath } from './data-manager.js';
-import { battleNarrator } from './battle-narrator.js';
+import { battleStatus } from './battle-status.js';
 
 const noop = () => {};
 
@@ -261,7 +261,7 @@ export class ModalManager {
         // 青いトースト（info）を右パネルにリダイレクト
         if (type === 'info') {
             try {
-                battleNarrator.addGameProgressMessage(message);
+                battleStatus.addGameProgressMessage(message);
                 noop(`📢 Info toast redirected to right panel: ${message}`);
                 return; // トースト表示をスキップ
             } catch (error) {
