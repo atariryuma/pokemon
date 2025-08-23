@@ -56,6 +56,11 @@ export const ERROR_MESSAGES = {
     CARD_NOT_IN_HAND: 'そのカードは手札にありません',
     HAND_AT_LIMIT: '手札が上限です。これ以上ドローできません（10/10枚）',
     CANNOT_DRAW_HAND_FULL: '手札が満杯のためカード獲得はできません',
+
+    // 選択ミス
+    DECK_NOT_SELECTED: '山札をクリックしてカードを引いてください',
+    ENERGY_SELECTED_NO_TARGET: 'エネルギーを選びましたが、ポケモンを選んでいません',
+    INVALID_INITIAL_POKEMON: '最初に出せるのはたねポケモンだけです',
     
     // 状態異常
     POKEMON_ASLEEP: 'ポケモンが『ねむり』状態のため行動できません',
@@ -194,7 +199,8 @@ export const TOAST_MESSAGE_CATEGORIES = {
             'RETREAT_COST_INSUFFICIENT'
         ],
         errors: [
-            'ALREADY_ATTACHED_ENERGY'
+            'ALREADY_ATTACHED_ENERGY',
+            'ENERGY_SELECTED_NO_TARGET'
         ]
     },
     POKEMON: {
@@ -206,7 +212,8 @@ export const TOAST_MESSAGE_CATEGORIES = {
         errors: [
             'NO_ACTIVE_POKEMON',
             'POKEMON_ASLEEP',
-            'POKEMON_PARALYZED'
+            'POKEMON_PARALYZED',
+            'INVALID_INITIAL_POKEMON'
         ]
     },
     TURN: {
@@ -221,7 +228,8 @@ export const TOAST_MESSAGE_CATEGORIES = {
             'DECK_LOW'
         ],
         errors: [
-            'NO_DECK_CARDS'
+            'NO_DECK_CARDS',
+            'DECK_NOT_SELECTED'
         ]
     }
 };

@@ -1329,7 +1329,7 @@ export class View {
         if (type === 'toast') {
             modalManager.showToast({
                 message,
-                type: 'info',
+                type: 'warning',
                 duration: 3000
             });
             return;
@@ -1428,17 +1428,6 @@ export class View {
         modalManager.showToast({
             message,
             type: 'success',
-            duration
-        });
-    }
-
-    /**
-     * 情報メッセージ表示（トースト）
-     */
-    showInfoMessage(message, duration = 3000) {
-        modalManager.showToast({
-            message,
-            type: 'info',
             duration
         });
     }
