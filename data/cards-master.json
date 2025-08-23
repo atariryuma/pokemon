@@ -3,7 +3,7 @@
     "id": "001",
     "name_en": "Akamayabato",
     "name_ja": "アカメバト",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 130,
     "types": [
@@ -50,7 +50,7 @@
     "id": "002",
     "name_en": "Cat exv",
     "name_ja": "猫exv",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 200,
     "types": [
@@ -97,7 +97,7 @@
     "id": "003",
     "name_en": "Glasswing Butterfly Larva",
     "name_ja": "イシガケチョウ 幼虫",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 30,
     "types": [
@@ -141,7 +141,7 @@
     "id": "004",
     "name_en": "Glasswing Butterfly Larva",
     "name_ja": "イシガケチョウ 幼虫",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Stage1",
     "hp": 50,
     "types": [
@@ -187,7 +187,7 @@
     "id": "005",
     "name_en": "Glasswing Butterfly",
     "name_ja": "イシガケチョウ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Stage2",
     "hp": 70,
     "types": [
@@ -233,7 +233,7 @@
     "id": "006",
     "name_en": "Kobane Inago",
     "name_ja": "コバネイナゴ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 50,
     "types": [
@@ -272,7 +272,7 @@
     "id": "007",
     "name_en": "Orange Spider",
     "name_ja": "オレンジぐも",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 30,
     "types": [
@@ -312,7 +312,7 @@
     "id": "008",
     "name_en": "Tsumamurasaki Madara",
     "name_ja": "つまむらさきまだら",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 190,
     "types": [
@@ -353,7 +353,7 @@
     "id": "009",
     "name_en": "Grey Dagger Moth Larva",
     "name_ja": "ハイイロヒトリの幼虫",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 90,
     "types": [
@@ -402,7 +402,7 @@
     "id": "010",
     "name_en": "Short-horned Grasshopper",
     "name_ja": "ショウヨウバッタ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 80,
     "types": [
@@ -448,7 +448,7 @@
     "id": "011",
     "name_en": "Haiirohitori",
     "name_ja": "ハイイロヒトリ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Stage1",
     "hp": 120,
     "types": [
@@ -497,7 +497,7 @@
     "id": "012",
     "name_en": "Tateha Butterfly",
     "name_ja": "タテハチョウ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 90,
     "types": [
@@ -542,7 +542,7 @@
     "id": "013",
     "name_en": "Caterpillar exz",
     "name_ja": "毛虫exz",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 200,
     "types": [
@@ -588,7 +588,7 @@
     "id": "014",
     "name_en": "Taiwan Clouded Yellow",
     "name_ja": "タイワンキチョウ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 90,
     "types": [
@@ -634,7 +634,7 @@
     "id": "015",
     "name_en": "Kurohime Crane Fly",
     "name_ja": "クロヒメガガンボモドキ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 110,
     "types": [
@@ -677,7 +677,7 @@
     "id": "016",
     "name_en": "Snail",
     "name_ja": "カタツムリ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 80,
     "types": [
@@ -722,7 +722,7 @@
     "id": "017",
     "name_en": "Bee ex",
     "name_ja": "ミツバチex",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 190,
     "types": [
@@ -767,7 +767,7 @@
     "id": "018",
     "name_en": "Hosohari Stinkbug ex",
     "name_ja": "ホソヘリカメムシex",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 180,
     "types": [
@@ -814,7 +814,7 @@
     "id": "019",
     "name_en": "Aokanabun",
     "name_ja": "アオカナブン",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 180,
     "types": [
@@ -861,7 +861,7 @@
     "id": "020",
     "name_en": "Tonosama Grasshopper",
     "name_ja": "トノサマバッタ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 130,
     "types": [
@@ -904,7 +904,7 @@
     "id": "021",
     "name_en": "Rainbow Skink",
     "name_ja": "ニホントカゲ（レインボー）",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 170,
     "types": [
@@ -940,7 +940,7 @@
     "id": "022",
     "name_en": "Longhorn Beetle",
     "name_ja": "カミキリムシ",
-    "card_type": "Pokémon",
+    "card_type": "Pokemon",
     "stage": "Basic",
     "hp": 70,
     "types": [
@@ -975,7 +975,7 @@
     "id": "023",
     "name_en": "Colorless Energy",
     "name_ja": "無色 エネルギー",
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "energy_type": "Colorless",
     "effect_en": "Provides 1 Colorless Energy.",
     "effect_ja": "Colorlessのエネルギーを1個ぶん供給する。",
@@ -986,7 +986,7 @@
     "id": "024",
     "name_en": "Grass Energy",
     "name_ja": "くさ エネルギー",
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "energy_type": "Grass",
     "effect_en": "Provides 1 Grass Energy.",
     "effect_ja": "Grassのエネルギーを1個ぶん供給する。",
@@ -997,7 +997,7 @@
     "id": "025",
     "name_en": "Fire Energy",
     "name_ja": "ほのお エネルギー",
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "energy_type": "Fire",
     "effect_en": "Provides 1 Fire Energy.",
     "effect_ja": "Fireのエネルギーを1個ぶん供給する。",
@@ -1008,7 +1008,7 @@
     "id": "026",
     "name_en": "Water Energy",
     "name_ja": "みず エネルギー",
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "energy_type": "Water",
     "effect_en": "Provides 1 Water Energy.",
     "effect_ja": "Waterのエネルギーを1個ぶん供給する。",
@@ -1019,7 +1019,7 @@
     "id": "027",
     "name_en": "Lightning Energy",
     "name_ja": "でんき エネルギー",
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "energy_type": "Lightning",
     "effect_en": "Provides 1 Lightning Energy.",
     "effect_ja": "Lightningのエネルギーを1個ぶん供給する。",
@@ -1030,7 +1030,7 @@
     "id": "028",
     "name_en": "Psychic Energy",
     "name_ja": "エスパー エネルギー",
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "energy_type": "Psychic",
     "effect_en": "Provides 1 Psychic Energy.",
     "effect_ja": "Psychicのエネルギーを1個ぶん供給する。",
@@ -1041,7 +1041,7 @@
     "id": "029",
     "name_en": "Fighting Energy",
     "name_ja": "かくとう エネルギー",
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "energy_type": "Fighting",
     "effect_en": "Provides 1 Fighting Energy.",
     "effect_ja": "Fightingのエネルギーを1個ぶん供給する。",
@@ -1052,7 +1052,7 @@
     "id": "030",
     "name_en": "Darkness Energy",
     "name_ja": "あく エネルギー",
-    "card_type": "Basic Energy",
+    "card_type": "Energy",
     "energy_type": "Darkness",
     "effect_en": "Provides 1 Darkness Energy.",
     "effect_ja": "Darknessのエネルギーを1個ぶん供給する。",
@@ -1066,6 +1066,6 @@
     "card_type": "Special Energy",
     "energy_type": "Metal",
     "is_basic": false,
-    "image_file": "Energy_Metal.webp"
+    "image_file": "031_energy_metal.webp"
   }
 ]
