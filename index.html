@@ -39,6 +39,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/z-index-vars.css">
     <style>
         /* カスタムスタイル */
         body {
@@ -84,56 +85,20 @@
         /* ==========================================
            Z-INDEX統一管理システム
            ========================================== */
-        :root {
-            /* レイアウト用変数 */
-            --side-padding: 16px;
-            --card-height: clamp(120px, 22vh, 180px);
-            --hand-extra-gap: 24px;
-            --hand-height: calc(var(--card-height) + var(--hand-extra-gap));
-            --vertical-gap: 8px;
-            --overlap-cpu: clamp(8px, 2.5vh, 20px);
-            --overlap-player: clamp(16px, 4vh, 36px);
-            --footer-height: 80px; /* New variable for HUD area */
-            --board-margin-y: 0.5vh; /* Reduced vertical margin for the board */
-            /* 遠近感（ボード専用） */
-            --scene-perspective: 1800px;
-            /* === レイヤー1: プレイマット系 (5-15) === */
-            --z-board-bg: 0;        /* 背景画像 */
-            --z-board: 10;          /* ゲームボード基底 */
-            --z-placeholder: 20;    /* プレースホルダー（空スロット） */
-            --z-placeholder-hover: 30; /* プレースホルダーホバー */
-            --z-slots: 40;          /* スロット枠線 */
-            --z-hand-area: 50;      /* 手札エリア */
-            
-            /* === サイドカードスタック === */
-            --z-side-stack-1: 60;   /* サイドカード 1層目 */
-            --z-side-stack-2: 70;   /* サイドカード 2層目 */
-            --z-side-stack-3: 80;   /* サイドカード 3層目 */
-
-            /* === レイヤー2: 3Dカード系 (90-140) === */
-            --z-deck-effects: 90;   /* 山札・サイド影エフェクト（カード背面） */
-            --z-deck-hover: 95;     /* 山札ホバー（レイヤー内浮上） */
-            --z-card: 100;          /* 1枚カード通常 */
-            --z-highlight: 110;     /* ハイライト効果（カード背面） */
-            --z-card-hover: 120;    /* 1枚カードホバー */
-            --z-card-effects: 130;  /* カード付与効果（ダメージ等） */
-
-            /* === レイヤー3: 手札特別系 (200-210) === */
-            --z-hand: 250;          /* プレイヤー手札通常 (引き上げ) */
-            --z-hand-hover: 300;    /* プレイヤー手札ホバー (さらに引き上げ) */
-
-            /* === レイヤー4: アニメーション系 (310-320) === */
-            --z-animations: 310;    /* 移動アニメーション */
-            --z-selected: 320;      /* 選択状態 */
-
-            /* === レイヤー5: UI・HUD系 (400-600) === */
-            --z-hud-base: 400;      /* HUD基本 */
-            --z-panels: 410;        /* パネル */
-            --z-floating-hud: 420;  /* フローティングHUD */
-            --z-toast: 430;         /* トースト通知 */
-            --z-modals: 500;        /* 中央モーダル */
-            --z-critical: 600;      /* 致命的エラー */
-        }
+          :root {
+              /* レイアウト用変数 */
+              --side-padding: 16px;
+              --card-height: clamp(120px, 22vh, 180px);
+              --hand-extra-gap: 24px;
+              --hand-height: calc(var(--card-height) + var(--hand-extra-gap));
+              --vertical-gap: 8px;
+              --overlap-cpu: clamp(8px, 2.5vh, 20px);
+              --overlap-player: clamp(16px, 4vh, 36px);
+              --footer-height: 80px; /* New variable for HUD area */
+              --board-margin-y: 0.5vh; /* Reduced vertical margin for the board */
+              /* 遠近感（ボード専用） */
+              --scene-perspective: 1800px;
+          }
 
         /* 🎬 ゲームフローアニメーション */
         .game-start-flash {
