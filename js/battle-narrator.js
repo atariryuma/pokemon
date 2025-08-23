@@ -56,6 +56,14 @@ export class BattleNarrator {
     }
 
     /**
+     * シンプルなシステムメッセージを追加
+     * @param {string} message - 表示するメッセージ
+     */
+    announce(message) {
+        this.addMessage(message, 'system');
+    }
+
+    /**
      * プレイヤーの行動を実況
      */
     narratePlayerAction(action, details = {}) {
@@ -255,10 +263,10 @@ export class BattleNarrator {
      * ターン開始の実況
      */
     narrateTurnStart(player) {
-        const message = player === 'player' ? 
-            'あなたのターンです！' : 
+        const message = player === 'player' ?
+            'あなたのターンです！' :
             '相手のターンです！';
-        this.addMessage(message, 'system');
+        this.announce(message);
     }
 
     /**

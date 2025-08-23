@@ -1830,13 +1830,9 @@ export class Game {
      * CPUターン実行
      */
     async _executeCpuTurn() {
-        // CPUターン開始
-        let newState = await this.turnManager.startCpuTurn(this.state);
-        this._updateState(newState);
-        
-        // CPUの自動ターン実行
-        newState = await this.turnManager.executeCpuTurn(newState);
-        this._updateState(newState); // CPUターン最後に一度だけ呼ぶ
+        // シンプルなCPUターン処理
+        const newState = await this.turnManager.takeCpuTurn(this.state);
+        this._updateState(newState); // CPUターン完了後に一度だけ状態を更新
     }
 
     /**
