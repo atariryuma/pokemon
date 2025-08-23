@@ -92,6 +92,39 @@
     }).then(handle));
   }
 
+  // Get list of all uploaded images
+  function getAllImages() {
+    return fetch(`${BASE}/api/images`, { 
+      headers: { 'Accept': 'application/json' } 
+    }).then(handle);
+  }
+
+  // Delete specific image by filename
+  function deleteImage(filename) {
+    if (!filename) return Promise.reject(new Error('filename required'));
+    return fetch(`${BASE}/api/images/${encodeURIComponent(String(filename))}`, {
+      method: 'DELETE'
+    }).then(handle);
+  }
+
+  // Get list of unused images
+  function getUnusedImages() {
+    return fetch(`${BASE}/api/images/unused`, { 
+      headers: { 'Accept': 'application/json' } 
+    }).then(handle);
+  }
+
+  // Optimize image (resize and convert to webp)
+  function optimizeImage(filename, opts = {}) {
+    if (!filename) return Promise.reject(new Error('filename required'));
+    const payload = { filename, ...opts };
+    return fetch(`${BASE}/api/images/optimize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(handle);
+  }
+
   // Helper to assign uploaded image URL to a card object
   async function uploadAndAssign(card, fileOrData, fieldCandidates = ['image', 'image_url', 'img', 'picture']) {
     const res = await uploadImage(fileOrData);
@@ -126,6 +159,10 @@
     replaceAll,
     saveCardFile,
     uploadImage,
+    getAllImages,
+    deleteImage,
+    getUnusedImages,
+    optimizeImage,
     uploadAndAssign,
     readRawFile,
     writeRawFile,

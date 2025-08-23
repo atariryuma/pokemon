@@ -135,9 +135,9 @@ async function handleApi(req, res, pathname) {
   // DELETE /api/cards/:id
 
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
-  // File upload endpoint
+  // Image endpoints
   if (parts[1] === 'images') {
-    return handleImageUpload(req, res, pathname);
+    return handleImageEndpoints(req, res, pathname, parts);
   }
   if (parts[1] === 'card-file') {
     return handleCardFile(req, res, pathname);
@@ -279,6 +279,71 @@ async function handleImageUpload(req, res, pathname) {
   } catch (err) {
     const status = err.status || 500;
     return json(res, status, { error: err.message || 'Upload failed' });
+  }
+}
+
+async function handleImageEndpoints(req, res, pathname, parts) {
+  try {
+    const filename = parts[2];
+    
+    // GET /api/images - List all images
+    if (req.method === 'GET' && !filename) {
+      await fsp.mkdir(CARD_IMAGES_DIR, { recursive: true });
+      const files = await fsp.readdir(CARD_IMAGES_DIR);
+      const imageFiles = files.filter(f => ALLOWED_IMAGE_EXTS.has(path.extname(f).toLowerCase()));
+      const images = await Promise.all(imageFiles.map(async (file) => {
+        const filePath = path.join(CARD_IMAGES_DIR, file);
+        const stats = await fsp.stat(filePath);
+        return {
+          filename: file,
+          path: `/assets/cards/${file}`,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime
+        };
+      }));
+      return json(res, 200, { images });
+    }
+    
+    // DELETE /api/images/:filename - Delete specific image
+    if (req.method === 'DELETE' && filename) {
+      const filePath = path.join(CARD_IMAGES_DIR, filename);
+      try {
+        await fsp.access(filePath, fs.constants.F_OK);
+        await fsp.unlink(filePath);
+        return json(res, 200, { ok: true, deleted: filename });
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          return json(res, 404, { error: 'Image not found' });
+        }
+        throw err;
+      }
+    }
+    
+    // GET /api/images/unused - Find unused images
+    if (req.method === 'GET' && filename === 'unused') {
+      const { cards } = await readCards();
+      const usedImages = new Set();
+      cards.forEach(card => {
+        if (card.image_file) usedImages.add(card.image_file);
+      });
+      
+      const files = await fsp.readdir(CARD_IMAGES_DIR);
+      const imageFiles = files.filter(f => ALLOWED_IMAGE_EXTS.has(path.extname(f).toLowerCase()));
+      const unused = imageFiles.filter(file => !usedImages.has(file));
+      
+      return json(res, 200, { unused });
+    }
+    
+    // POST /api/images - Upload image (existing functionality)
+    if (req.method === 'POST' && !filename) {
+      return handleImageUpload(req, res, pathname);
+    }
+    
+    return notFound(res);
+  } catch (err) {
+    const status = err.status || 500;
+    return json(res, status, { error: err.message || 'Image operation failed' });
   }
 }
 

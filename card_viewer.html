@@ -296,6 +296,7 @@
       <button type="button" class="btn" id="btn-new-card">新規作成</button>
       <button type="button" class="btn" id="btn-open-master">master読込</button>
       <button type="button" class="btn primary" id="btn-save-master">master保存</button>
+      <button type="button" class="btn" id="btn-fix-extensions">拡張子修正</button>
     </div>
   </header>
 
@@ -432,7 +433,12 @@
             </div>
             <div class="flex-row" style="align-items:center; gap:8px; margin-top:6px;">
               <button type="button" class="btn" id="btn-pick-image">画像を選ぶ</button>
+              <button type="button" class="btn" id="btn-gallery">ギャラリー</button>
               <button type="button" class="btn" id="btn-guess-image">英名から推測</button>
+              <button type="button" class="btn" id="btn-optimize-image" style="display:none;">最適化</button>
+              <button type="button" class="btn btn-danger" id="btn-delete-image" style="display:none;">削除</button>
+            </div>
+            <div style="margin-top:4px;">
               <span class="hint">画像アップロード → ファイル名自動推測 → Chrome/Edgeでassets/cards/に自動保存</span>
             </div>
           </div>
@@ -1189,6 +1195,7 @@
       byId('btn-save').addEventListener('click', async () => { if (saveCurrentIntoList()){ await saveImageIfSelected(); markUnsaved(false); }});
       byId('btn-save-master').addEventListener('click', saveMaster);
       byId('btn-open-master').addEventListener('click', openMaster);
+      byId('btn-fix-extensions').addEventListener('click', fixAllExtensions);
       byId('btn-back-to-game').addEventListener('click', () => {
         if (unsaved && !confirm('未保存の変更があります。ゲームに戻りますか？')) return;
         window.location.href = 'index.html';
@@ -1222,7 +1229,10 @@
         markUnsaved(true); 
       });
       byId('btn-pick-image').addEventListener('click', openImagePicker);
+      byId('btn-gallery').addEventListener('click', openImageGallery);
       byId('btn-guess-image').addEventListener('click', () => { const guess = guessImageFile(); if (guess){ byId('image_file').value = guess; updatePreview(); markUnsaved(true);} });
+      byId('btn-optimize-image').addEventListener('click', optimizeCurrentImage);
+      byId('btn-delete-image').addEventListener('click', deleteCurrentImage);
       byId('zoom').addEventListener('input', (e) => { zoomLevel = Number(e.target.value); applyTransform(); });
       byId('btn-zoom-in').addEventListener('click', () => { zoomLevel = Math.min(3, (zoomLevel + 0.1)); byId('zoom').value = zoomLevel.toFixed(1); applyTransform(); });
       byId('btn-zoom-out').addEventListener('click', () => { zoomLevel = Math.max(0.5, (zoomLevel - 0.1)); byId('zoom').value = zoomLevel.toFixed(1); applyTransform(); });
@@ -1325,39 +1335,125 @@
       const input = byId('image_upload');
       if (input.files && input.files[0]) return URL.createObjectURL(input.files[0]);
       const t = (byId('card_type').value || 'Pokemon').toLowerCase();
-      // 2) Explicit filename
+      
+      // 2) Explicit filename with extension fallback
       const fileName = (byId('image_file').value || '').trim();
-      if (fileName) return `assets/cards/${t}/${fileName}`;
+      if (fileName) {
+        return getImageUrlWithFallback(`assets/cards/${t}/${fileName}`);
+      }
+      
       const ext = getImageExtension();
       // 3) Auto-map for Energy
       if (t === 'energy'){
         const et = (byId('energy_type').value || '').trim();
-        if (et) return `assets/cards/energy/Energy_${et}${ext}`;
+        if (et) return getImageUrlWithFallback(`assets/cards/energy/Energy_${et}${ext}`);
       }
       // 4) Heuristic for Pokemon from English name
       if (t === 'pokemon'){
         const en = (byId('name_en').value || '').trim();
         if (en){
           const guess = en.replace(/[^A-Za-z0-9]+/g, '_') + ext;
-          return `assets/cards/pokemon/${guess}`;
+          return getImageUrlWithFallback(`assets/cards/pokemon/${guess}`);
         }
       }
       // 5) No image
       return '';
     }
+
+    function getImageUrlWithFallback(basePath) {
+      // 拡張子候補リスト（優先順位順）
+      const extensions = ['.webp', '.jpg', '.jpeg', '.png'];
+      const pathWithoutExt = basePath.replace(/\.[^.]+$/, '');
+      const currentExt = basePath.match(/\.[^.]+$/)?.[0] || '';
+      
+      // 元の拡張子が含まれていない場合は追加
+      if (currentExt && !extensions.includes(currentExt.toLowerCase())) {
+        extensions.unshift(currentExt);
+      }
+      
+      // 元のパスが拡張子を持つ場合、それを最優先にする
+      if (currentExt) {
+        const filteredExts = extensions.filter(ext => ext !== currentExt);
+        return basePath; // まず元のパスを試行（404時にフォールバックはimg.onerrorで処理）
+      }
+      
+      // 拡張子がない場合は.webpを優先
+      return pathWithoutExt + '.webp';
+    }
+
+    function tryExtensionFallback(imgElement, originalUrl, onAllFailed) {
+      const extensions = ['.webp', '.jpg', '.jpeg', '.png'];
+      const pathWithoutExt = originalUrl.replace(/\.[^.]+$/, '');
+      const currentExt = originalUrl.match(/\.[^.]+$/)?.[0] || '';
+      
+      // 現在の拡張子以外の候補を取得
+      const fallbackExtensions = extensions.filter(ext => ext !== currentExt.toLowerCase());
+      
+      let attemptIndex = 0;
+      
+      function tryNextExtension() {
+        if (attemptIndex >= fallbackExtensions.length) {
+          onAllFailed();
+          return;
+        }
+        
+        const nextUrl = pathWithoutExt + fallbackExtensions[attemptIndex];
+        attemptIndex++;
+        
+        imgElement.onerror = () => {
+          tryNextExtension();
+        };
+        
+        imgElement.onload = () => {
+          // 成功した場合、対応する拡張子でファイル名を更新
+          const newExtension = fallbackExtensions[attemptIndex - 1];
+          const currentFileName = byId('image_file').value.trim();
+          if (currentFileName) {
+            const newFileName = currentFileName.replace(/\.[^.]+$/, '') + newExtension;
+            byId('image_file').value = newFileName;
+            markUnsaved(true);
+            console.log(`画像拡張子を自動修正: ${currentFileName} → ${newFileName}`);
+          }
+        };
+        
+        imgElement.src = nextUrl;
+      }
+      
+      // フォールバック開始
+      tryNextExtension();
+    }
     function updatePreview(){
       const url = currentPreviewUrl();
       const img = byId('preview-img');
       const empty = byId('preview-empty');
-      if (!url){ img.removeAttribute('src'); empty.style.display = 'block'; return; }
+      const deleteBtn = byId('btn-delete-image');
+      
+      if (!url){ 
+        img.removeAttribute('src'); 
+        empty.style.display = 'block'; 
+        deleteBtn.style.display = 'none';
+        return; 
+      }
+      
       img.src = url;
       img.onerror = () => {
-        img.onerror = null;
-        img.src = 'assets/ui/card_back.webp';
-        empty.textContent = '画像が見つかりません。画像ファイル名またはエネルギータイプを設定してください。';
-        empty.style.display = 'block';
+        // 拡張子フォールバック試行
+        tryExtensionFallback(img, url, () => {
+          img.onerror = null;
+          img.src = 'assets/ui/card_back.webp';
+          empty.textContent = '画像が見つかりません。画像ファイル名またはエネルギータイプを設定してください。';
+          empty.style.display = 'block';
+          deleteBtn.style.display = 'none';
+        });
       };
-      img.onload = () => { empty.style.display = 'none'; };
+      img.onload = () => { 
+        empty.style.display = 'none'; 
+        // 画像ファイル名が指定されている場合のみボタンを表示
+        const filename = byId('image_file').value.trim();
+        const isOptimizable = filename && !filename.toLowerCase().endsWith('.webp');
+        deleteBtn.style.display = filename ? 'inline-block' : 'none';
+        byId('btn-optimize-image').style.display = isOptimizable ? 'inline-block' : 'none';
+      };
       applyTransform();
       // Reflect current filename into the input (if using assets path)
       try {
@@ -1427,6 +1523,362 @@
     // ---------- Modal
     function openModal(html){ const panel = byId('modal-panel'); const modal = byId('modal'); if (!panel||!modal) return; panel.innerHTML = html; modal.classList.remove('invisible'); const mb = byId('modal-backdrop'); if (mb) mb.onclick = closeModal; }
     function closeModal(){ const modal = byId('modal'); if (modal) modal.classList.add('invisible'); }
+
+    // ---------- Image Gallery
+    async function openImageGallery() {
+      try {
+        const response = await CardAPI.getAllImages();
+        const images = response.images || [];
+        
+        const html = `
+          <div style="max-height: 70vh; overflow-y: auto;">
+            <h2 style="margin: 0 0 16px 0; color: var(--text); font-size: 20px;">画像ギャラリー (${images.length}件)</h2>
+            
+            <!-- Search and Filter Controls -->
+            <div style="margin-bottom: 16px; display: flex; gap: 8px; align-items: center;">
+              <input type="text" id="gallery-search" placeholder="ファイル名で検索..." style="
+                flex: 1; padding: 6px 10px; border: 1px solid var(--border); 
+                border-radius: 6px; background: var(--bg-secondary); color: var(--text);
+              " />
+              <select id="gallery-filter-ext" style="
+                padding: 6px 10px; border: 1px solid var(--border); 
+                border-radius: 6px; background: var(--bg-secondary); color: var(--text);
+              ">
+                <option value="">全拡張子</option>
+                <option value=".webp">.webp</option>
+                <option value=".jpg">.jpg</option>
+                <option value=".jpeg">.jpeg</option>
+                <option value=".png">.png</option>
+              </select>
+              <select id="gallery-sort" style="
+                padding: 6px 10px; border: 1px solid var(--border); 
+                border-radius: 6px; background: var(--bg-secondary); color: var(--text);
+              ">
+                <option value="name">名前順</option>
+                <option value="size">サイズ順</option>
+                <option value="date">更新日順</option>
+              </select>
+            </div>
+            
+            <div id="gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+              ${images.map(img => `
+                <div class="gallery-item" data-filename="${img.filename}" style="
+                  border: 2px solid var(--border); 
+                  border-radius: 8px; 
+                  overflow: hidden; 
+                  cursor: pointer; 
+                  transition: all 0.2s;
+                  background: var(--bg-secondary);
+                ">
+                  <img src="${img.path}" alt="${img.filename}" style="
+                    width: 100%; 
+                    height: 120px; 
+                    object-fit: cover; 
+                    display: block;
+                  " />
+                  <div style="padding: 6px; text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); word-break: break-all;">
+                      ${img.filename}
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-tertiary); margin-top: 2px;">
+                      ${(img.size / 1024).toFixed(1)}KB
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="margin-top: 16px; text-align: right;">
+              <button onclick="closeModal()" class="btn">閉じる</button>
+              <button onclick="showUnusedImages()" class="btn" style="margin-left: 8px;">未使用画像</button>
+            </div>
+          </div>
+        `;
+        
+        openModal(html);
+        
+        // 検索・フィルタリング機能
+        let filteredImages = [...images];
+        
+        function updateGalleryDisplay() {
+          const searchTerm = byId('gallery-search').value.toLowerCase();
+          const extFilter = byId('gallery-filter-ext').value;
+          const sortBy = byId('gallery-sort').value;
+          
+          // フィルタリング
+          filteredImages = images.filter(img => {
+            const matchesSearch = img.filename.toLowerCase().includes(searchTerm);
+            const matchesExt = !extFilter || img.filename.toLowerCase().endsWith(extFilter);
+            return matchesSearch && matchesExt;
+          });
+          
+          // ソート
+          filteredImages.sort((a, b) => {
+            switch(sortBy) {
+              case 'name':
+                return a.filename.localeCompare(b.filename);
+              case 'size':
+                return b.size - a.size; // 大きい順
+              case 'date':
+                return new Date(b.modified) - new Date(a.modified); // 新しい順
+              default:
+                return 0;
+            }
+          });
+          
+          // 表示更新
+          const grid = byId('gallery-grid');
+          grid.innerHTML = filteredImages.map(img => `
+            <div class="gallery-item" data-filename="${img.filename}" style="
+              border: 2px solid var(--border); 
+              border-radius: 8px; 
+              overflow: hidden; 
+              cursor: pointer; 
+              transition: all 0.2s;
+              background: var(--bg-secondary);
+            ">
+              <img src="${img.path}" alt="${img.filename}" style="
+                width: 100%; 
+                height: 120px; 
+                object-fit: cover; 
+                display: block;
+              " />
+              <div style="padding: 6px; text-align: center;">
+                <div style="font-size: 11px; color: var(--text-secondary); word-break: break-all;">
+                  ${img.filename}
+                </div>
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-top: 2px;">
+                  ${(img.size / 1024).toFixed(1)}KB
+                </div>
+              </div>
+            </div>
+          `).join('');
+          
+          // イベントリスナー再追加
+          attachGalleryEvents();
+          
+          // 件数表示更新
+          const title = document.querySelector('h2');
+          title.textContent = `画像ギャラリー (${filteredImages.length}/${images.length}件)`;
+        }
+        
+        function attachGalleryEvents() {
+          document.querySelectorAll('.gallery-item').forEach(item => {
+            item.addEventListener('click', () => {
+              const filename = item.dataset.filename;
+              byId('image_file').value = filename;
+              updatePreview();
+              markUnsaved(true);
+              closeModal();
+            });
+            
+            // ホバー効果
+            item.addEventListener('mouseenter', () => {
+              item.style.borderColor = 'var(--primary)';
+              item.style.transform = 'scale(1.05)';
+            });
+            item.addEventListener('mouseleave', () => {
+              item.style.borderColor = 'var(--border)';
+              item.style.transform = 'scale(1)';
+            });
+          });
+        }
+        
+        // 初期表示のイベント設定
+        attachGalleryEvents();
+        
+        // 検索・フィルタイベント
+        byId('gallery-search').addEventListener('input', updateGalleryDisplay);
+        byId('gallery-filter-ext').addEventListener('change', updateGalleryDisplay);
+        byId('gallery-sort').addEventListener('change', updateGalleryDisplay);
+        
+      } catch (error) {
+        console.error('Failed to load image gallery:', error);
+        alert('画像ギャラリーの読み込みに失敗しました');
+      }
+    }
+
+    async function showUnusedImages() {
+      try {
+        const response = await CardAPI.getUnusedImages();
+        const unused = response.unused || [];
+        
+        if (unused.length === 0) {
+          alert('未使用の画像はありません');
+          return;
+        }
+        
+        const html = `
+          <div style="max-height: 70vh; overflow-y: auto;">
+            <h2 style="margin: 0 0 16px 0; color: var(--text); font-size: 20px;">未使用画像 (${unused.length}件)</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+              ${unused.map(filename => `
+                <div class="unused-item" data-filename="${filename}" style="
+                  border: 2px solid #ff6b6b; 
+                  border-radius: 8px; 
+                  overflow: hidden; 
+                  background: var(--bg-secondary);
+                  position: relative;
+                ">
+                  <img src="/assets/cards/${filename}" alt="${filename}" style="
+                    width: 100%; 
+                    height: 120px; 
+                    object-fit: cover; 
+                    display: block;
+                    opacity: 0.7;
+                  " />
+                  <div style="padding: 6px; text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); word-break: break-all;">
+                      ${filename}
+                    </div>
+                    <button onclick="deleteUnusedImage('${filename}')" class="btn btn-danger" style="font-size: 10px; padding: 2px 6px; margin-top: 4px;">削除</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="margin-top: 16px; text-align: right;">
+              <button onclick="closeModal()" class="btn">閉じる</button>
+            </div>
+          </div>
+        `;
+        
+        openModal(html);
+        
+      } catch (error) {
+        console.error('Failed to load unused images:', error);
+        alert('未使用画像の取得に失敗しました');
+      }
+    }
+
+    async function deleteUnusedImage(filename) {
+      if (!confirm(`画像「${filename}」を削除しますか？この操作は取り消せません。`)) return;
+      
+      try {
+        await CardAPI.deleteImage(filename);
+        showUnusedImages(); // リフレッシュ
+      } catch (error) {
+        console.error('Failed to delete image:', error);
+        alert('画像の削除に失敗しました');
+      }
+    }
+
+    async function deleteCurrentImage() {
+      const filename = byId('image_file').value.trim();
+      if (!filename) {
+        alert('削除する画像ファイル名が指定されていません');
+        return;
+      }
+      
+      if (!confirm(`画像「${filename}」を削除しますか？この操作は取り消せません。`)) return;
+      
+      try {
+        await CardAPI.deleteImage(filename);
+        byId('image_file').value = '';
+        updatePreview();
+        markUnsaved(true);
+        alert('画像を削除しました');
+      } catch (error) {
+        console.error('Failed to delete image:', error);
+        alert('画像の削除に失敗しました');
+      }
+    }
+
+    // ---------- Extension Consistency Fixes
+    async function fixAllExtensions() {
+      if (!confirm('すべてのカードの画像拡張子を実際のファイルと照合して修正しますか？')) return;
+      
+      try {
+        const response = await CardAPI.getAllImages();
+        const availableImages = response.images || [];
+        const imageMap = new Map();
+        
+        // 利用可能な画像をマップに登録（拡張子なしのベース名でインデックス）
+        availableImages.forEach(img => {
+          const baseName = img.filename.replace(/\.[^.]+$/, '').toLowerCase();
+          if (!imageMap.has(baseName)) {
+            imageMap.set(baseName, []);
+          }
+          imageMap.get(baseName).push(img.filename);
+        });
+        
+        let fixedCount = 0;
+        cards.forEach(card => {
+          if (card.image_file) {
+            const baseName = card.image_file.replace(/\.[^.]+$/, '').toLowerCase();
+            const availableFiles = imageMap.get(baseName);
+            
+            if (availableFiles && availableFiles.length > 0) {
+              // 優先順位: .webp > .jpg > .jpeg > .png
+              const preferredOrder = ['.webp', '.jpg', '.jpeg', '.png'];
+              let bestMatch = availableFiles[0];
+              
+              for (const ext of preferredOrder) {
+                const candidate = availableFiles.find(f => f.toLowerCase().endsWith(ext));
+                if (candidate) {
+                  bestMatch = candidate;
+                  break;
+                }
+              }
+              
+              if (bestMatch !== card.image_file) {
+                console.log(`拡張子修正: ${card.image_file} → ${bestMatch} (${card.name_en || card.id})`);
+                card.image_file = bestMatch;
+                fixedCount++;
+              }
+            }
+          }
+        });
+        
+        if (fixedCount > 0) {
+          markUnsaved(true);
+          updatePreview();
+          renderList();
+          alert(`${fixedCount}個のカードの拡張子を修正しました。「master保存」で確定してください。`);
+        } else {
+          alert('修正が必要な拡張子はありませんでした。');
+        }
+        
+      } catch (error) {
+        console.error('Extension fix failed:', error);
+        alert('拡張子修正に失敗しました');
+      }
+    }
+
+    // ---------- Image Optimization
+    async function optimizeCurrentImage() {
+      const filename = byId('image_file').value.trim();
+      if (!filename) {
+        alert('最適化する画像ファイル名が指定されていません');
+        return;
+      }
+      
+      if (filename.toLowerCase().endsWith('.webp')) {
+        alert('この画像は既にWebP形式で最適化されています');
+        return;
+      }
+      
+      if (!confirm(`画像「${filename}」をWebP形式に最適化しますか？元のファイルは保持されます。`)) return;
+      
+      try {
+        const result = await CardAPI.optimizeImage(filename, {
+          maxWidth: 800,
+          maxHeight: 1200,
+          quality: 85
+        });
+        
+        if (result.optimizedPath) {
+          // 最適化されたファイル名を設定
+          const optimizedFilename = result.optimizedPath.split('/').pop();
+          byId('image_file').value = optimizedFilename;
+          updatePreview();
+          markUnsaved(true);
+          alert(`画像を最適化しました: ${filename} → ${optimizedFilename}\nサイズ: ${(result.originalSize/1024).toFixed(1)}KB → ${(result.optimizedSize/1024).toFixed(1)}KB`);
+        }
+      } catch (error) {
+        console.error('Failed to optimize image:', error);
+        alert('画像の最適化に失敗しました: ' + error.message);
+      }
+    }
+    
     function guessNameFromCard(card){
       const t = (card.card_type||'Pokemon').toLowerCase();
       const extMatch = (card.image_file || '').toLowerCase().match(/\.[^.]+$/);
