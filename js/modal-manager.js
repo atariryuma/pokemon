@@ -105,17 +105,25 @@ export class ModalManager {
         const container = document.createElement('div');
         container.id = 'toast-container';
         container.className = 'space-y-2 pointer-events-none';
-        
-        // 完全フローティング固定スタイル
-        container.style.position = 'fixed';
-        container.style.top = '520px'; // ステータスパネル（480px + 40px余白）の下
-        container.style.right = '20px';
-        container.style.zIndex = MODAL_PRIORITY.TOAST; // 95 - 中央モーダル(100)より背面
+
+        const uiArea = document.getElementById('ui-area');
+        container.style.zIndex = MODAL_PRIORITY.TOAST; // 通知レイヤー
         container.style.transform = 'none';
         container.style.willChange = 'auto';
         container.style.perspective = 'none';
-        
-        document.body.appendChild(container);
+
+        if (uiArea) {
+            container.style.position = 'absolute';
+            container.style.top = '20px';
+            container.style.right = '20px';
+            uiArea.appendChild(container);
+        } else {
+            container.style.position = 'fixed';
+            container.style.top = '20px';
+            container.style.right = '20px';
+            document.body.appendChild(container);
+        }
+
         return container;
     }
 
@@ -125,10 +133,18 @@ export class ModalManager {
     createActionHUD() {
         const hud = document.createElement('div');
         hud.id = 'action-hud';
-        hud.className = 'hidden fixed pointer-events-none';
+        hud.className = 'hidden pointer-events-none';
         hud.style.zIndex = MODAL_PRIORITY.ACTION_HUD;
-        
-        document.body.appendChild(hud);
+
+        const uiArea = document.getElementById('ui-area');
+        if (uiArea) {
+            hud.style.position = 'absolute';
+            uiArea.appendChild(hud);
+        } else {
+            hud.classList.add('fixed');
+            document.body.appendChild(hud);
+        }
+
         return hud;
     }
 
