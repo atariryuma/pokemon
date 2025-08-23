@@ -13,6 +13,7 @@ const mimeTypes = {
     '.json': 'application/json',
     '.webp': 'image/webp',
     '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
     '.png': 'image/png'
 };
 

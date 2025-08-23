@@ -83,7 +83,10 @@ def main(apply=False):
             unique_candidates.append(c)
             seen.add(c)
 
-    files = [f for f in os.listdir(IMG_DIR) if f.lower().endswith('.webp')]
+    files = [
+        f for f in os.listdir(IMG_DIR)
+        if f.lower().endswith(('.webp', '.png', '.jpg', '.jpeg'))
+    ]
     current_bases = [os.path.splitext(f)[0] for f in files]
 
     mapping = []
@@ -96,7 +99,8 @@ def main(apply=False):
         count = target_counts.get(target_base, 0) + 1
         target_counts[target_base] = count
         final_base = target_base if count == 1 else f"{target_base}_{count}"
-        dst = final_base + '.webp'
+        ext = os.path.splitext(fname)[1].lower()
+        dst = final_base + ext
         if fname == dst:
             mapping.append((fname, fname, score))
         else:
