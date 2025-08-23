@@ -821,7 +821,7 @@ export class Game {
 
     async _handleCardClick(dataset) {
         const { owner, zone, cardId, index } = dataset;
-        if (owner !== 'player') return;
+        // CPU側のプレースホルダーも反応させるため、所有者チェックを撤廃
 
         // 処理中の場合はクリックを無視
         if (this.state.isProcessing) {
