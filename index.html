@@ -896,8 +896,8 @@
             font-weight: 500;
         }
 
-        /* バトル実況エリアのスタイル */
-        .battle-commentary-area {
+        /* バトル状況エリアのスタイル */
+        .battle-status-area {
             background: rgba(0, 0, 0, 0.5);
             border-radius: 8px;
             padding: 8px;
@@ -968,21 +968,21 @@
         }
 
         /* スクロールバーのスタイル */
-        .battle-commentary-area::-webkit-scrollbar {
+        .battle-status-area::-webkit-scrollbar {
             width: 4px;
         }
 
-        .battle-commentary-area::-webkit-scrollbar-track {
+        .battle-status-area::-webkit-scrollbar-track {
             background: rgba(0, 0, 0, 0.2);
             border-radius: 2px;
         }
 
-        .battle-commentary-area::-webkit-scrollbar-thumb {
+        .battle-status-area::-webkit-scrollbar-thumb {
             background: rgba(59, 130, 246, 0.5);
             border-radius: 2px;
         }
 
-        .battle-commentary-area::-webkit-scrollbar-thumb:hover {
+        .battle-status-area::-webkit-scrollbar-thumb:hover {
             background: rgba(59, 130, 246, 0.7);
         }
 
@@ -2504,10 +2504,10 @@
                     </div>
                 </div>
 
-                <!-- Unified Battle Commentary Area -->
+                <!-- Unified Battle Status Area -->
                 <div class="status-info-section">
-                    <div class="status-info-title">バトル実況</div>
-                    <div id="unified-battle-commentary" class="battle-commentary-area">
+                    <div class="status-info-title">バトル状況</div>
+                    <div id="unified-battle-status" class="battle-status-area">
                         <div class="commentary-message commentary-system">
                             <span class="commentary-icon">🎮</span>
                             <span class="commentary-text">ゲームを開始してください</span>

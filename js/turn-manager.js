@@ -9,7 +9,7 @@ import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
-import { battleNarrator } from './battle-narrator.js';
+import { battleStatus } from './battle-status.js';
 
 const noop = () => {};
 
@@ -102,7 +102,7 @@ export class TurnManager {
       player: 'player',
       message: `プレイヤーのターン ${newState.turn} 開始`
     });
-    battleNarrator.narrateTurnStart('player');
+    battleStatus.narrateTurnStart('player');
 
     return newState;
   }
@@ -529,7 +529,7 @@ export class TurnManager {
       player: 'cpu',
       message: `CPUのターン ${newState.turn} 開始`
     });
-    battleNarrator.narrateTurnStart('cpu');
+    battleStatus.narrateTurnStart('cpu');
 
     return newState;
   }

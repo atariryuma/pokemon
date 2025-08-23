@@ -5,7 +5,7 @@ import { GAME_PHASES } from './phase-manager.js';
 import { BUTTON_IDS, CONTAINER_IDS, CSS_CLASSES } from './ui-constants.js';
 import { errorHandler } from './error-handler.js';
 import { modalManager } from './modal-manager.js';
-import { battleNarrator } from './battle-narrator.js';
+import { battleStatus } from './battle-status.js';
 import { ToastMessenger } from './toast-messages.js';
 
 // Z-index定数 (CSS変数と連携) - 最小限に削減
@@ -85,9 +85,9 @@ export class View {
         // Message system
         this.toastMessenger = new ToastMessenger(modalManager);
 
-        // Initialize battle narrator
+        // Initialize battle status
         setTimeout(() => {
-            battleNarrator.init();
+            battleStatus.init();
         }, 500);
 
         // Initialize Mac Dock–style magnification for player's hand (delayed)
@@ -1331,13 +1331,13 @@ export class View {
             return;
         }
 
-        // 通知タイプやパネルタイプは統合されたバトル実況に表示
+        // 通知タイプやパネルタイプは統合されたバトル状況に表示
         if (type === 'toast' || type === 'panel') {
             try {
-                battleNarrator.addGameProgressMessage(message);
+                battleStatus.addGameProgressMessage(message);
                 return;
             } catch (error) {
-                console.warn('Failed to show message in battle narrator, falling back to toast:', error);
+                console.warn('Failed to show message in battle status, falling back to toast:', error);
                 modalManager.showToast({
                     message,
                     type: 'info',
@@ -1349,9 +1349,9 @@ export class View {
 
         // Legacy panel display (fallback)
         if (!this.gameMessageDisplay) {
-            // 統合されたバトル実況への fallback
+            // 統合されたバトル状況への fallback
             try {
-                battleNarrator.addGameProgressMessage(message);
+                battleStatus.addGameProgressMessage(message);
                 return;
             } catch (error) {
                 errorHandler.handleError(new Error('Game message display not found.'), 'game_state', false);
@@ -1696,48 +1696,48 @@ export class View {
     }
 
     // ==========================================
-    // バトル実況・通知システム
+    // バトル状況・通知システム
     // ==========================================
 
     /**
-     * バトル実況メッセージを追加
+     * バトル状況メッセージを更新
      * @param {string} action - アクションタイプ
      * @param {Object} details - 詳細情報
      * @param {string} player - 'player' または 'cpu'
      */
-    addBattleNarration(action, details = {}, player = 'player') {
+    updateBattleStatus(action, details = {}, player = 'player') {
         if (player === 'player') {
-            battleNarrator.narratePlayerAction(action, details);
+            battleStatus.narratePlayerAction(action, details);
         } else if (player === 'cpu') {
-            battleNarrator.narrateCpuAction(action, details);
+            battleStatus.narrateCpuAction(action, details);
         } else {
-            battleNarrator.narrateSystemMessage(action, details);
+            battleStatus.narrateSystemMessage(action, details);
         }
     }
 
     /**
-     * バトル結果を実況
+     * バトル結果を報告
      * @param {string} result - 結果タイプ
      * @param {Object} details - 詳細情報
      */
-    addBattleResult(result, details = {}) {
-        battleNarrator.narrateBattleResult(result, details);
+    updateBattleResult(result, details = {}) {
+        battleStatus.narrateBattleResult(result, details);
     }
 
     /**
-     * ターン開始の実況
+     * ターン開始の報告
      * @param {string} player - 'player' または 'cpu'
      */
     narrateTurnStart(player) {
-        battleNarrator.narrateTurnStart(player);
+        battleStatus.narrateTurnStart(player);
     }
 
     /**
-     * フェーズ変更の実況
+     * フェーズ変更の報告
      * @param {string} phase - フェーズ名
      */
     narratePhaseChange(phase) {
-        battleNarrator.narratePhaseChange(phase);
+        battleStatus.narratePhaseChange(phase);
     }
 
     /**
@@ -1771,56 +1771,56 @@ export class View {
     // ポケモンカードゲーム専用ヘルパーメソッド
 
     /**
-     * エネルギー付与の実況
+     * エネルギー付与の状況を更新
      */
     narrateEnergyAttach(pokemonName, energyType, player = 'player') {
-        this.addBattleNarration('attach_energy', { 
-            pokemon: pokemonName, 
-            energyType: energyType 
+        this.updateBattleStatus('attach_energy', {
+            pokemon: pokemonName,
+            energyType: energyType
         }, player);
     }
 
     /**
-     * 攻撃の実況
+     * 攻撃の状況を更新
      */
     narrateAttack(pokemonName, attackName, damage, player = 'player') {
-        this.addBattleNarration('attack', { 
-            pokemon: pokemonName, 
-            attackName: attackName, 
-            damage: damage 
+        this.updateBattleStatus('attack', {
+            pokemon: pokemonName,
+            attackName: attackName,
+            damage: damage
         }, player);
     }
 
     /**
-     * 進化の実況
+     * 進化の状況を更新
      */
     narrateEvolution(fromPokemon, toPokemon, player = 'player') {
-        this.addBattleNarration('evolve', { 
-            from: fromPokemon, 
-            to: toPokemon 
+        this.updateBattleStatus('evolve', {
+            from: fromPokemon,
+            to: toPokemon
         }, player);
     }
 
     /**
-     * ポケモンきぜつの実況
+     * ポケモンきぜつの状況を更新
      */
     narrateKO(pokemonName) {
-        this.addBattleResult('ko', { pokemon: pokemonName });
-        this.addBattleNarration('ko_pokemon', { pokemon: pokemonName }, 'system');
+        this.updateBattleResult('ko', { pokemon: pokemonName });
+        this.updateBattleStatus('ko_pokemon', { pokemon: pokemonName }, 'system');
     }
 
     /**
-     * ゲーム開始時の実況初期化
+     * ゲーム開始時の状況初期化
      */
-    initializeBattleNarration() {
-        battleNarrator.narrateGameStart();
+    initializeBattleStatus() {
+        battleStatus.narrateGameStart();
     }
 
     /**
-     * ゲーム終了時の実況
+     * ゲーム終了時の報告
      */
     narrateGameEnd(winner) {
-        battleNarrator.narrateGameEnd(winner);
+        battleStatus.narrateGameEnd(winner);
     }
     
 }
