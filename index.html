@@ -1059,9 +1059,6 @@
         .pokemon-action-hud {
             transform-origin: bottom right; /* 右下基点に変更 */
             animation: fadeInScale 0.4s ease-out;
-            max-width: calc(100vw - 3rem); /* 画面幅に応じて調整 */
-            max-height: calc(100vh - 6rem); /* 画面高さに応じて調整 */
-            overflow-y: auto; /* 縦スクロール対応 */
         }
         
         @keyframes fadeInScale {
@@ -1077,7 +1074,6 @@
         
         .pokemon-action-btn {
             display: flex;
-            width: 100%; /* HUD幅に合わせてボタン幅を調整 */
             align-items: center;
             gap: 12px;
             padding: 14px 20px;
@@ -1992,24 +1988,24 @@
             }
         }
 
-        @keyframes toastSlideIn {
+        @keyframes toastAlertDrop {
             from {
-                transform: translateX(100%);
+                transform: translateX(-50%) translateY(-20px);
                 opacity: 0;
             }
             to {
-                transform: translateX(0);
+                transform: translateX(-50%) translateY(0);
                 opacity: 1;
             }
         }
 
-        @keyframes toastSlideOut {
+        @keyframes toastAlertFade {
             from {
-                transform: translateX(0);
+                transform: translateX(-50%) translateY(0);
                 opacity: 1;
             }
             to {
-                transform: translateX(100%);
+                transform: translateX(-50%) translateY(-10px);
                 opacity: 0;
             }
         }
@@ -2035,11 +2031,11 @@
         }
 
         .toast-enter {
-            animation: toastSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: toastAlertDrop 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
         .toast-exit {
-            animation: toastSlideOut 0.3s ease-out forwards;
+            animation: toastAlertFade 0.3s ease-out forwards;
         }
 
         .hud-enter {
@@ -2067,7 +2063,6 @@
             }
 
             .pokemon-action-hud {
-                max-width: calc(100vw - 2rem);
                 bottom: 1rem;
                 right: 1rem;
             }
@@ -2117,10 +2112,8 @@
             }
 
             .pokemon-action-hud {
-                max-width: calc(100vw - 1rem);
                 bottom: 0.5rem;
                 right: 0.5rem;
-                max-height: calc(100vh - 8rem);
             }
 
             .pokemon-action-btn {
@@ -2527,7 +2520,7 @@
         </div>
     </div>
 <!-- Floating Action HUD (Bottom-right) -->
-<div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud); max-width: calc(100vw - 3rem); max-height: calc(100vh - 6rem); overflow-y: auto;">
+<div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
     <button type="button" id="start-game-button-float" class="pokemon-action-btn">
         <span class="pokemon-btn-icon">🎴</span>
         <span class="pokemon-btn-text">手札を7枚引く</span>

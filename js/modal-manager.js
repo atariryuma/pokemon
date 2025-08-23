@@ -279,7 +279,7 @@ export class ModalManager {
         // 表示アニメーション（CSSアニメーションクラスを使用）
         requestAnimationFrame(() => {
             toast.classList.add('toast-enter');
-            toast.style.transform = 'translateX(0)';
+            toast.style.transform = 'translateX(-50%)';
             toast.style.opacity = '1';
         });
 
@@ -312,12 +312,12 @@ export class ModalManager {
         toast.className = `
             ${typeStyles[type] || typeStyles.info}
             text-white px-4 py-3 rounded-lg shadow-lg border-l-4 
-            cursor-pointer transform translate-x-full opacity-0 
+            cursor-pointer transform opacity-0 
             transition-all duration-300 ease-out pointer-events-auto
             max-w-sm backdrop-filter backdrop-blur-sm toast-item
         `.trim();
         
-        toast.style.transform = 'translateX(100%)';
+        toast.style.transform = 'translateX(-50%) translateY(-20px)';
         toast.style.opacity = '0';
         
         const messageEl = document.createElement('div');
@@ -334,7 +334,7 @@ export class ModalManager {
      */
     async removeToast(toast) {
         toast.classList.add('toast-exit');
-        toast.style.transform = 'translateX(100%)';
+        toast.style.transform = 'translateX(-50%) translateY(-10px)';
         toast.style.opacity = '0';
         
         await new Promise(resolve => setTimeout(resolve, 300));
