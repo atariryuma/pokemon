@@ -935,18 +935,11 @@ export class View {
 
                 slot.appendChild(cardEl);
                 noop(`  🃏 Prize card ${index + 1} added to slot`);
-
-                // 表示されているカードはクリック可能にする
-                slot.style.pointerEvents = 'auto';
-                if (playerType === 'player') {
-                    this._makeSlotClickable(slot, playerType, 'prize', index);
-                }
-            } else {
-                // 空スロットはクリック不可とし、背面カードを操作可能にする
-                slot.style.pointerEvents = 'none';
-                slot.style.cursor = 'default';
-                slot.dataset.clickableSet = 'false';
             }
+
+            // スロットは常にインタラクティブにする（CPU側プレースホルダー対応）
+            slot.style.pointerEvents = 'auto';
+            this._makeSlotClickable(slot, playerType, 'prize', index);
         });
 
         // Badge system removed - prize info now shown in right panel
@@ -1602,21 +1595,11 @@ export class View {
 
         slotElement.style.cursor = 'pointer';
 
-        // CPU側は基本的に操作不可だが、表向きカードは情報表示のためにクリック可能
+        // CPU側もプレースホルダーを含めて操作可能にする
         if (owner === 'cpu') {
-            // 表向きカード（配置済み）のみクリック可能
             const cardInSlot = slotElement.querySelector('[data-card-id]');
             const hasCard = cardInSlot && cardInSlot.dataset.cardId;
-            
-            if (!hasCard) {
-                // カードがないスロットは操作不可
-                slotElement.style.pointerEvents = 'none';
-                slotElement.style.cursor = 'default';
-                return;
-            }
-            
-            // 表向きカードの場合は情報表示用クリックを許可
-            slotElement.style.cursor = 'help';
+            slotElement.style.cursor = hasCard ? 'help' : 'pointer';
         }
 
         // シンプルなクリック処理（プレイヤー側の操作 + CPU側の情報表示）
