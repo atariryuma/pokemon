@@ -42,13 +42,15 @@
     <style>
         /* カスタムスタイル */
         body {
+            margin: 0; /* ブラウザデフォルトの余白を削除し縦スクロールを防止 */
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
             background: #1a1a2e;
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
             overflow-x: hidden; /* 横スクロールを防止 */
+            overflow-y: hidden; /* 縦スクロールを防止 */
             perspective: 1500px; /* 3D効果を復活 */
-            padding: 0rem 0; /* 上下の余白を十分に確保 */
-            transform: scale(1.0); 
+            padding: 0; /* 不要な上下余白を排除 */
+            transform: scale(1.0);
             transform-origin: center top; /* 拡大の基準点を上中央に */
         }
 
@@ -183,6 +185,7 @@
             width: 679px !important;           /* 完全固定サイズ */
             height: 679px !important;          /* 完全固定サイズ */
             margin: 0 auto;         /* 中央配置 */
+            left: -30px;            /* 全体をやや左に寄せる */
             z-index: var(--z-board);
         }
 
@@ -761,11 +764,6 @@
             right: 0;
             bottom: 0;
             z-index: var(--z-board);
-        }
-
-        /* 盤面の下に余白を追加して、固定手札と重ならないようにするためのスクロールエリア */
-        .scroll-spacer { 
-            height: 18rem; /* 手札位置に合わせて適度な余白 */
         }
 
         /* ゲームボード装飾 */
@@ -2343,10 +2341,6 @@
 
         </div>
     </div>
-
-<!-- Extra scroll space so bench doesn't sit under the fixed hand overlay -->
-<div class="scroll-spacer" aria-hidden="true"></div>
-
 <!-- Floating Action HUD (Bottom-left) -->
 <div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
     <button type="button" id="start-game-button-float" class="pokemon-action-btn">
