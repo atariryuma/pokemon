@@ -803,7 +803,7 @@ export class Game {
                 }
             },
             cardEditor: () => {
-                window.open('card_viewer.html', '_blank');
+                window.location.href = 'card_viewer.html';
             }
         });
         

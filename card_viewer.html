@@ -1119,7 +1119,7 @@
       byId('btn-open-master').addEventListener('click', openMaster);
       byId('btn-back-to-game').addEventListener('click', () => {
         if (unsaved && !confirm('未保存の変更があります。ゲームに戻りますか？')) return;
-        window.close() || (window.location.href = 'index.html');
+        window.location.href = 'index.html';
       });
       byId('card_type').addEventListener('change', () => { onTypeChange(); updatePreview(); markUnsaved(true); });
       byId('btn-add-attack').addEventListener('click', () => {
