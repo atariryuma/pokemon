@@ -10,7 +10,7 @@ const mimeTypes = {
     '.html': 'text/html',
     '.js': 'text/javascript',
     '.css': 'text/css',
-    '.json': 'application/json',
+    '.json': 'application/json; charset=utf-8',
     '.webp': 'image/webp',
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
@@ -30,12 +30,13 @@ const server = http.createServer((req, res) => {
 
     if (req.method === 'POST' && req.url === '/data/cards-master.json') {
         let body = '';
+        req.setEncoding('utf8');
         req.on('data', chunk => {
             body += chunk;
         });
         req.on('end', () => {
             const savePath = path.join(__dirname, 'data', 'cards-master.json');
-            fs.writeFile(savePath, body, err => {
+            fs.writeFile(savePath, body, 'utf8', err => {
                 if (err) {
                     res.writeHead(500, {
                         'Content-Type': 'text/plain',
