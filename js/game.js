@@ -1,7 +1,7 @@
 import { createInitialState } from './state.js';
 import { View } from './view.js';
 import * as Logic from './logic.js';
-import { animate, animationManager, unifiedAnimationManager } from './animation-manager.js';
+import { animate, animationManager } from './animation-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { phaseManager, GAME_PHASES } from './phase-manager.js';
 import { BUTTON_IDS, ACTION_BUTTON_GROUPS } from './ui-constants.js';
@@ -27,7 +27,7 @@ export class Game {
         this.phaseManager = phaseManager;
         this.setupManager = setupManager;
         this.turnManager = turnManager;
-        this.unifiedAnimationManager = unifiedAnimationManager;
+        // unifiedAnimationManager は廃止（flow経由に統一）
         this.animate = animate;
         this.actionHUDManager = actionHUDManager;
         
@@ -677,15 +677,16 @@ export class Game {
         const sequence = [
             {
                 type: 'animation', 
-                animation: () => animationManager.createUnifiedCardAnimation('player', fromActiveId, 'active', 'bench', toBenchIndex)
+                animation: async () => {
+                    const { animateFlow } = await import('./animations/flow.js');
+                    await animateFlow.activeToBench('player', toBenchIndex);
+                }
             },
             {
                 type: 'pre-render',
                 stateUpdate: (state) => Logic.retreat(state, 'player', fromActiveId, toBenchIndex)
             },
-            {
-                type: 'post-render'
-            }
+            { type: 'post-render' }
         ];
         
         await this._executeAnimationSequence(sequence);
@@ -701,7 +702,10 @@ export class Game {
             },
             {
                 type: 'animation',
-                animation: () => animationManager.createUnifiedCardAnimation('player', cardId, 'hand', zone, targetIndex)
+                animation: async () => {
+                    const { animateFlow } = await import('./animations/flow.js');
+                    await animateFlow.handToZone('player', cardId, zone, targetIndex);
+                }
             },
             {
                 type: 'post-render'
@@ -1064,28 +1068,19 @@ export class Game {
                 // DOM更新を待つ
                 await new Promise(resolve => requestAnimationFrame(resolve));
 
-                // カード移動アニメーションを実行（CPU側と同じ統一アニメーション）
+                // カード移動アニメーションを実行（シンプルAPI）
                 noop('[Setup] Starting setup animation');
-                if (cardElement) {
-                    try {
-                        await animationManager.createUnifiedCardAnimation(
-                            'player',
-                            cardToAnimate.id,
-                            'hand',
-                            zone,
-                            targetIndex,
-                            {
-                                isSetupPhase: true,
-                                card: cardToAnimate,
-                                initialSourceRect: initialCardRect
-                            }
-                        );
-                        noop('[Setup] Animation completed');
-                    } catch (error) {
-                        console.error('❌ Setup animation failed:', error);
+                try {
+                    const runtimeOrMasterId = cardToAnimate.runtimeId || cardToAnimate.id;
+                    const { animateFlow } = await import('./animations/flow.js');
+                    if (zone === 'active') {
+                        await animateFlow.handToActive('player', runtimeOrMasterId, { isSetupPhase: true, initialSourceRect: initialCardRect });
+                    } else if (zone === 'bench') {
+                        await animateFlow.handToBench('player', runtimeOrMasterId, targetIndex, { isSetupPhase: true, initialSourceRect: initialCardRect });
                     }
-                } else {
-                    console.warn('⚠️ Card element not found for animation');
+                    noop('[Setup] Animation completed');
+                } catch (error) {
+                    console.error('❌ Setup animation failed:', error);
                 }
                 
                 // アニメーション完了後に確定HUDを再表示（確実に表示されるように）
@@ -2325,7 +2320,9 @@ export class Game {
     /**
      * 詳細統計表示
      */
-    _showDetailedStats(stats) {
+    _showDetailedStats(stats = null) {
+        // 互換: 引数が未指定の場合は現在の状態から統計を取得
+        const effectiveStats = stats || this._getGameStats();
         this.view.displayModal({
             title: 'ゲーム詳細統計',
             message: `
@@ -2334,17 +2331,17 @@ export class Game {
                     <div class="grid grid-cols-2 gap-4">
                         <div class="player-stats">
                             <h4 class="font-semibold">プレイヤー</h4>
-                            <p>残りサイド: ${stats.playerPrizes}</p>
+                            <p>残りサイド: ${effectiveStats.playerPrizes}</p>
                         </div>
                         <div class="cpu-stats">
                             <h4 class="font-semibold">CPU</h4>
-                            <p>残りサイド: ${stats.cpuPrizes}</p>
+                            <p>残りサイド: ${effectiveStats.cpuPrizes}</p>
                         </div>
                     </div>
                     <div class="mt-4">
-                        <p><strong>総ターン数:</strong> ${stats.turns}</p>
-                        <p><strong>勝者:</strong> ${stats.winner === 'player' ? 'プレイヤー' : 'CPU'}</p>
-                        <p><strong>勝因:</strong> ${stats.reason}</p>
+                        <p><strong>総ターン数:</strong> ${effectiveStats.totalTurns || effectiveStats.turns || 0}</p>
+                        <p><strong>勝者:</strong> ${effectiveStats.winner === 'player' ? 'プレイヤー' : 'CPU'}</p>
+                        <p><strong>勝因:</strong> ${effectiveStats.reason}</p>
                     </div>
                 </div>
             `,
@@ -2829,7 +2826,12 @@ export class Game {
 
         // プレイヤー側のみアニメーション実行
         if (playerPrizeElements.length > 0) {
-            await animate.prizeDeal(playerPrizeElements, 'player');
+            try {
+                const { animateFlow } = await import('./animations/flow.js');
+                await animateFlow.dealPrizesFor('player', playerPrizeElements);
+            } catch (e) {
+                console.error('Prize animation failed:', e);
+            }
             this.prizeAnimationStatus.player = true;
             noop('✅ Player prize card animation completed');
             
@@ -2880,7 +2882,12 @@ export class Game {
 
         // CPU側のみアニメーション実行
         if (cpuPrizeElements.length > 0) {
-            await animate.prizeDeal(cpuPrizeElements, 'cpu');
+            try {
+                const { animateFlow } = await import('./animations/flow.js');
+                await animateFlow.dealPrizesFor('cpu', cpuPrizeElements);
+            } catch (e) {
+                console.error('Prize animation failed:', e);
+            }
             this.prizeAnimationStatus.cpu = true;
             noop('✅ CPU prize card animation completed');
             

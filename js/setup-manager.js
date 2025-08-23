@@ -4,7 +4,8 @@
  * 初期ポケモン選択、マリガン、サイドカード配置などを管理
  */
 
-import { animate, animationManager, unifiedAnimationManager } from './animation-manager.js';
+// アニメーションは flow に統一
+import { animateFlow } from './animations/flow.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
@@ -631,6 +632,10 @@ export class SetupManager {
         
         if (placementIndex === 0) {
           // 最初のポケモンはアクティブに配置
+          // 初期位置（CPU手札）をキャプチャ
+          const cpuHand = document.getElementById('cpu-hand');
+          const srcEl = cpuHand ? cpuHand.querySelector(`[data-runtime-id="${pokemon.runtimeId || pokemon.id}"]`) || cpuHand.querySelector(`[data-card-id="${pokemon.id}"]`) : null;
+          const initialSourceRect = srcEl ? srcEl.getBoundingClientRect() : null;
           newState = Logic.placeCardInActive(currentState, 'cpu', pokemon.id);
           if (newState.players.cpu.active) {
             newState.players.cpu.active.setupFaceDown = true;
@@ -641,13 +646,16 @@ export class SetupManager {
               sourceZone: 'hand',
               targetZone: 'active',
               targetIndex: 0,
-              options: { isSetupPhase: true, card: pokemon }
+              options: { isSetupPhase: true, card: pokemon, initialSourceRect }
             };
           }
         } else {
           // 2番目以降はベンチに配置
           const benchIndex = placementIndex - 1;
           if (benchIndex < 5) {
+            const cpuHand = document.getElementById('cpu-hand');
+            const srcEl = cpuHand ? cpuHand.querySelector(`[data-runtime-id="${pokemon.runtimeId || pokemon.id}"]`) || cpuHand.querySelector(`[data-card-id="${pokemon.id}"]`) : null;
+            const initialSourceRect = srcEl ? srcEl.getBoundingClientRect() : null;
             newState = Logic.placeCardOnBench(currentState, 'cpu', pokemon.id, benchIndex);
             if (newState.players.cpu.bench[benchIndex]) {
               newState.players.cpu.bench[benchIndex].setupFaceDown = true;
@@ -658,7 +666,7 @@ export class SetupManager {
                 sourceZone: 'hand',
                 targetZone: 'bench',
                 targetIndex: benchIndex,
-                options: { isSetupPhase: true, card: pokemon }
+                options: { isSetupPhase: true, card: pokemon, initialSourceRect }
               };
             }
           }
@@ -673,14 +681,12 @@ export class SetupManager {
 
         // アニメーションを実行
         if (animationDetails) {
-          await unifiedAnimationManager.createUnifiedCardAnimation(
-            animationDetails.playerId,
-            animationDetails.cardId,
-            animationDetails.sourceZone,
-            animationDetails.targetZone,
-            animationDetails.targetIndex,
-            animationDetails.options
-          );
+          // シンプルAPI（実座標クローン移動）
+          if (animationDetails.targetZone === 'active') {
+            await animateFlow.handToActive('cpu', animationDetails.cardId, { isSetupPhase: true, initialSourceRect: animationDetails.options.initialSourceRect });
+          } else if (animationDetails.targetZone === 'bench') {
+            await animateFlow.handToBench('cpu', animationDetails.cardId, animationDetails.targetIndex, { isSetupPhase: true, initialSourceRect: animationDetails.options.initialSourceRect });
+          }
         }
 
       } catch (error) {

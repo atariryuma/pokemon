@@ -4,7 +4,7 @@
  * プレイヤーとCPUのターン進行、制約管理、自動処理を統括
  */
 
-import { animate, animationManager, unifiedAnimationManager } from './animation-manager.js';
+import { animate, animationManager } from './animation-manager.js';
 import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
@@ -578,18 +578,12 @@ export class TurnManager {
         newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
         
         // 統一アニメーション実行（既存のマネージャーを使用）
-        await unifiedAnimationManager.createUnifiedCardAnimation(
-          'cpu',
-          selectedPokemon.id,
-          'hand',
-          'bench',
-          emptyBenchIndex,
-          {
-            isSetupPhase: false,
-            card: selectedPokemon,
-            initialSourceRect
-          }
-        );
+        try {
+          const { animateFlow } = await import('./animations/flow.js');
+          await animateFlow.handToBench('cpu', selectedPokemon.runtimeId || selectedPokemon.id, emptyBenchIndex, { isSetupPhase: false });
+        } catch (e) {
+          console.warn('CPU bench place animation failed:', e);
+        }
         
         newState = addLogEntry(newState, {
           type: 'pokemon_played',
@@ -852,18 +846,12 @@ export class TurnManager {
       
       if (promotedPokemon) {
         // Create promotion animation with new API
-      await unifiedAnimationManager.createUnifiedCardAnimation(
-        playerId,
-        promotedPokemon.id,
-        'bench',
-        'active',
-        0,
-        {
-          isNewActiveSelection: true,
-          sourceIndex: benchIndex,
-          card: promotedPokemon
-        }
-      );
+      try {
+        const { animateFlow } = await import('./animations/flow.js');
+        await animateFlow.benchToActive(playerId, benchIndex, { isNewActiveSelection: true });
+      } catch (e) {
+        console.warn('Promotion animation failed:', e);
+      }
       }
       
       // Clear knockout context and reset phase
@@ -909,18 +897,14 @@ export class TurnManager {
     // Add CPU selection animation with new API
     const cpuActive = newState.players.cpu.active;
     if (cpuActive) {
-      await unifiedAnimationManager.createUnifiedCardAnimation(
-        'cpu',
-        cpuActive.id,
-        'bench',
-        'active',
-        0,
-        {
-          isNewActiveSelection: true,
-          isCpuAutoSelect: true,
-          card: cpuActive
-        }
-      );
+      try {
+        const { animateFlow } = await import('./animations/flow.js');
+        // benchIndex を再特定
+        const idx = newState.players.cpu.bench.findIndex(p => p && (p.runtimeId === cpuActive.runtimeId || p.id === cpuActive.id));
+        await animateFlow.benchToActive('cpu', Math.max(0, idx), { isNewActiveSelection: true, isCpuAutoSelect: true });
+      } catch (e) {
+        console.warn('CPU auto promote animation failed:', e);
+      }
     }
     
     // Set appropriate phase after CPU selection
