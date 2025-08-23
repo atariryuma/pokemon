@@ -907,7 +907,14 @@ export class SetupManager {
       
       if (!currentState.players.cpu.active) {
         console.log('🤖 _scheduleCPUFullAutoSetup: CPU needs Pokemon setup');
-        currentState = await this.unifiedCpuPokemonSetup(currentState, true);
+        const cpuOnlyState = await this.unifiedCpuPokemonSetup(currentState, true);
+
+        // 👇 プレイヤーが同時に操作しても配置が消えないよう、直前の状態とマージする
+        const latestState = cloneGameState(window.gameInstance.state);
+        latestState.players.cpu = cpuOnlyState.players.cpu;
+        latestState.log = cpuOnlyState.log;
+        currentState = latestState;
+
         window.gameInstance._updateState(currentState);
       } else {
         console.log('🤖 _scheduleCPUFullAutoSetup: CPU already has active Pokemon, skipping placement');
