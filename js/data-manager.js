@@ -165,7 +165,12 @@ export function getCardImagePath(cardNameEn, card = null) {
     } else if (cardNameEn.includes("Energy")) {
         folder = 'energy';
     }
-    
+
+    // image_file が指定されている場合はそのまま使用
+    if (card && card.image_file) {
+        return `assets/cards/${folder}/${card.image_file}`;
+    }
+
     // エネルギーカード
     if (folder === 'energy' || cardNameEn.includes("Energy")) {
         const energyType = cardNameEn.split(" ")[0];

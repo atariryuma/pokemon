@@ -874,14 +874,17 @@
         return warnings;
       }
       
-      // .webp拡張子チェック
-      if (!imageFile.toLowerCase().endsWith('.webp')) {
-        warnings.push('• 画像ファイルが.webp形式ではありません (推奨: .webp)');
+      // 画像拡張子チェック
+      const extMatch = imageFile.toLowerCase().match(/\.[^.]+$/);
+      const ext = extMatch ? extMatch[0] : '';
+      const allowedExts = ['.webp', '.jpg', '.jpeg', '.png'];
+      if (!allowedExts.includes(ext)) {
+        warnings.push('• 画像ファイルがサポートされていない形式です (対応: .webp/.jpg/.jpeg/.png)');
       }
       
       // 英語名との整合性チェック（ポケモンカードの場合）
       if (data.card_type === 'Pokemon' && data.name_en) {
-        const expectedFileName = data.name_en.replace(/[^A-Za-z0-9]+/g, '_') + '.webp';
+        const expectedFileName = data.name_en.replace(/[^A-Za-z0-9]+/g, '_') + ext;
         const fileNameWithoutExt = imageFile.replace(/\.[^.]+$/, '');
         const nameEnNormalized = data.name_en.replace(/[^A-Za-z0-9]+/g, '_');
         
@@ -894,7 +897,7 @@
       
       // エネルギーカードの場合の命名チェック
       if (data.card_type === 'Energy' && data.energy_type) {
-        const expectedFileName = `Energy_${data.energy_type}.webp`;
+        const expectedFileName = `Energy_${data.energy_type}${ext}`;
         if (imageFile !== expectedFileName) {
           warnings.push(`• エネルギーカードの画像ファイル名が標準と異なります\n  推奨ファイル名: ${expectedFileName}`);
         }
@@ -1051,15 +1054,20 @@
       
       // ファイル名を自動生成（既に設定されている場合はそれを使用）
       let fileName = byId('image_file').value.trim();
+      let ext = '.webp';
+      if (fileName) {
+        const extMatch = fileName.match(/\.[^.]+$/);
+        ext = extMatch ? extMatch[0] : '.webp';
+      }
       if (!fileName) {
         // IDベースでファイル名を生成（確実にユニーク）
         if (cardType === 'energy') {
           const energyType = byId('energy_type').value.trim();
-          fileName = energyType ? `${cardId}_Energy_${energyType}.webp` : `${cardId}.webp`;
+          fileName = energyType ? `${cardId}_Energy_${energyType}${ext}` : `${cardId}${ext}`;
         } else {
           // IDをプレフィックスとして使用
           const safeName = nameEn ? nameEn.replace(/[^A-Za-z0-9]+/g, '_') : 'Card';
-          fileName = `${cardId}_${safeName}.webp`;
+          fileName = `${cardId}_${safeName}${ext}`;
         }
         byId('image_file').value = fileName; // UI に反映
       }
@@ -1231,6 +1239,11 @@
     }
 
     // ---------- Preview helpers
+    function getImageExtension() {
+      const name = (byId('image_file').value || '').trim().toLowerCase();
+      const match = name.match(/\.[^.]+$/);
+      return match ? match[0] : '.webp';
+    }
     function currentPreviewUrl(){
       // 1) Uploaded
       const input = byId('image_upload');
@@ -1239,16 +1252,17 @@
       // 2) Explicit filename
       const fileName = (byId('image_file').value || '').trim();
       if (fileName) return `assets/cards/${t}/${fileName}`;
+      const ext = getImageExtension();
       // 3) Auto-map for Energy
       if (t === 'energy'){
         const et = (byId('energy_type').value || '').trim();
-        if (et) return `assets/cards/energy/Energy_${et}.webp`;
+        if (et) return `assets/cards/energy/Energy_${et}${ext}`;
       }
       // 4) Heuristic for Pokemon from English name
       if (t === 'pokemon'){
         const en = (byId('name_en').value || '').trim();
         if (en){
-          const guess = en.replace(/[^A-Za-z0-9]+/g, '_') + '.webp';
+          const guess = en.replace(/[^A-Za-z0-9]+/g, '_') + ext;
           return `assets/cards/pokemon/${guess}`;
         }
       }
@@ -1290,17 +1304,18 @@
       const cardType = (byId('card_type').value || 'Pokemon').toLowerCase();
       const cardId = (byId('id').value || '').trim();
       const nameEn = (byId('name_en').value || '').trim();
-      
+      const ext = getImageExtension();
+
       if (!cardId) return ''; // IDが必須
-      
+
       if (cardType === 'energy'){
         const energyType = (byId('energy_type').value || '').trim();
-        return energyType ? `${cardId}_Energy_${energyType}.webp` : `${cardId}.webp`;
+        return energyType ? `${cardId}_Energy_${energyType}${ext}` : `${cardId}${ext}`;
       }
-      
+
       if (cardType === 'pokemon' || cardType === 'trainer'){
-        if (!nameEn) return `${cardId}.webp`; // 名前がない場合はIDのみ
-        
+        if (!nameEn) return `${cardId}${ext}`; // 名前がない場合はIDのみ
+
         // 特別な名前のマッピングをチェック
         const specialNames = {
           "Glasswing Butterfly Larva": "Glasswing_Butterfly_Larva",
@@ -1323,10 +1338,10 @@
         };
         
         const fileName = specialNames[nameEn] || nameEn.replace(/[^A-Za-z0-9]+/g, '_');
-        return `${cardId}_${fileName}.webp`;
+        return `${cardId}_${fileName}${ext}`;
       }
-      
-      return `${cardId}.webp`;
+
+      return `${cardId}${ext}`;
     }
     function openImagePicker(){
       // シンプルなファイル選択
@@ -1338,8 +1353,10 @@
     function closeModal(){ const modal = byId('modal'); if (modal) modal.classList.add('invisible'); }
     function guessNameFromCard(card){
       const t = (card.card_type||'Pokemon').toLowerCase();
-      if (t==='energy' && card.energy_type) return `Energy_${card.energy_type}.webp`;
-      if (t==='pokemon' && card.name_en) return card.name_en.replace(/[^A-Za-z0-9]+/g,'_')+'.webp';
+      const extMatch = (card.image_file || '').toLowerCase().match(/\.[^.]+$/);
+      const ext = extMatch ? extMatch[0] : '.webp';
+      if (t==='energy' && card.energy_type) return `Energy_${card.energy_type}${ext}`;
+      if (t==='pokemon' && card.name_en) return card.name_en.replace(/[^A-Za-z0-9]+/g,'_')+ext;
       return '';
     }
     function goNext(){
