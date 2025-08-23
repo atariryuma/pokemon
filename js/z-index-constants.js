@@ -9,42 +9,42 @@
  * CSS変数の値をJavaScriptから参照可能にする
  */
 export const Z_INDEX = {
-    // === レイヤー1: プレイマット系 (5-18) ===
-    BOARD_BG: 5,           // --z-board-bg (背景画像)
+    // === レイヤー1: 2Dプレイマット系 (0-95) ===
+    BOARD_BG: 0,           // --z-board-bg (背景画像)
     BOARD: 10,             // --z-board (ゲームボード基底)
-    PLACEHOLDER: 12,       // --z-placeholder (空スロット)
-    PLACEHOLDER_HOVER: 15, // --z-placeholder-hover
-    SLOTS: 16,             // --z-slots (スロット枠線)
-    HAND_AREA: 18,         // --z-hand-area (手札エリア)
-    
-    // === サイドカードスタック (20-22) ===
-    SIDE_STACK_1: 20,      // --z-side-stack-1
-    SIDE_STACK_2: 21,      // --z-side-stack-2
-    SIDE_STACK_3: 22,      // --z-side-stack-3
-    
-    // === レイヤー2: カード系 (22-40) ===
-    DECK_EFFECTS: 22,      // --z-deck-effects (山札・サイド影)
-    DECK_HOVER: 23,        // --z-deck-hover
-    CARD: 25,              // --z-card (1枚カード通常)
-    HIGHLIGHT: 26,         // --z-highlight (ハイライト効果)
-    CARD_HOVER: 30,        // --z-card-hover
-    CARD_EFFECTS: 40,      // --z-card-effects (ダメージ等)
-    
-    // === レイヤー3: 手札特別系 (50-58) ===
-    HAND: 50,              // --z-hand (プレイヤー手札通常)
-    HAND_HOVER: 55,        // --z-hand-hover
-    
-    // === レイヤー4: アニメーション系 (60-78) ===
-    ANIMATIONS: 60,        // --z-animations (移動アニメーション)
-    SELECTED: 65,          // --z-selected (選択状態)
-    
-    // === レイヤー5: UI・HUD系 (80-110) ===
-    HUD_BASE: 80,          // --z-hud-base
-    PANELS: 85,            // --z-panels
-    FLOATING_HUD: 90,      // --z-floating-hud
-    TOAST: 95,             // --z-toast
-    MODALS: 100,           // --z-modals
-    CRITICAL: 110          // --z-critical (致命的エラー・アニメーション)
+    PLACEHOLDER: 20,       // --z-placeholder (空スロット)
+    PLACEHOLDER_HOVER: 30, // --z-placeholder-hover
+    SLOTS: 40,             // --z-slots (スロット枠線)
+    HAND_AREA: 50,         // --z-hand-area (手札エリア)
+
+    // === サイドカードスタック (60-80) ===
+    SIDE_STACK_1: 60,      // --z-side-stack-1
+    SIDE_STACK_2: 70,      // --z-side-stack-2
+    SIDE_STACK_3: 80,      // --z-side-stack-3
+
+    // === レイヤー2: 3Dカード系 (90-140) ===
+    DECK_EFFECTS: 90,      // --z-deck-effects (山札・サイド影)
+    DECK_HOVER: 95,        // --z-deck-hover
+    CARD: 100,             // --z-card (1枚カード通常)
+    HIGHLIGHT: 110,        // --z-highlight (ハイライト効果)
+    CARD_HOVER: 120,       // --z-card-hover
+    CARD_EFFECTS: 130,     // --z-card-effects (ダメージ等)
+
+    // === レイヤー3: 手札特別系 (200-210) ===
+    HAND: 200,             // --z-hand (プレイヤー手札通常)
+    HAND_HOVER: 210,       // --z-hand-hover
+
+    // === レイヤー4: アニメーション系 (300-310) ===
+    ANIMATIONS: 300,       // --z-animations (移動アニメーション)
+    SELECTED: 310,         // --z-selected (選択状態)
+
+    // === レイヤー5: UI・HUD系 (400-600) ===
+    HUD_BASE: 400,         // --z-hud-base
+    PANELS: 410,           // --z-panels
+    FLOATING_HUD: 420,     // --z-floating-hud
+    TOAST: 430,            // --z-toast
+    MODALS: 500,           // --z-modals
+    CRITICAL: 600          // --z-critical (致命的エラー・アニメーション)
 };
 
 /**
