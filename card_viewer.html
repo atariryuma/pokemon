@@ -293,6 +293,7 @@
       <button type="button" class="btn primary" id="btn-back-to-game">🎮 ゲームに戻る</button>
       <div class="spacer"></div>
       <button type="button" class="btn" id="btn-open-drawer">カード一覧 (Ctrl+K)</button>
+      <button type="button" class="btn" id="btn-new-card">新規作成</button>
       <button type="button" class="btn" id="btn-open-master">master読込</button>
       <button type="button" class="btn primary" id="btn-save-master">master保存</button>
     </div>
@@ -1028,18 +1029,20 @@
 
     async function saveMaster(){
       if (!saveCurrentIntoList()) return;
-      // master JSON 文字列
       const json = JSON.stringify(cards, null, 2);
-      
-      // ダウンロードで保存
-      const blob = new Blob([json], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'cards-master.json';
-      a.click();
-      URL.revokeObjectURL(a.href);
-      setStatus('master をダウンロードしました');
-      markUnsaved(false);
+      try {
+        const res = await fetch('data/cards-master.json', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: json
+        });
+        if (!res.ok) throw new Error('save failed');
+        setStatus('master を保存しました');
+        markUnsaved(false);
+      } catch (e) {
+        console.error(e);
+        alert('master の保存に失敗しました');
+      }
     }
 
 
@@ -1108,6 +1111,7 @@
       byId('filterType').addEventListener('change', renderList);
       byId('search').addEventListener('input', renderList);
       byId('btn-new').addEventListener('click', newCard);
+      byId('btn-new-card').addEventListener('click', newCard);
       byId('btn-duplicate').addEventListener('click', duplicateCard);
       byId('btn-delete').addEventListener('click', deleteCard);
       byId('btn-save').addEventListener('click', async () => { if (saveCurrentIntoList()){ await saveImageIfSelected(); markUnsaved(false); }});
