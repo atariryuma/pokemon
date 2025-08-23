@@ -934,12 +934,17 @@ export class View {
                 cardEl.style.height = '100%';
 
                 slot.appendChild(cardEl);
-                noop(`  🃏 Prize card ${index + 1} added to slot`);
-            }
+                slot.style.display = '';
 
-            // スロットは常にインタラクティブにする（CPU側プレースホルダー対応）
-            slot.style.pointerEvents = 'auto';
-            this._makeSlotClickable(slot, playerType, 'prize', index);
+                // スロットは常にインタラクティブにする（CPU側プレースホルダー対応）
+                slot.style.pointerEvents = 'auto';
+                this._makeSlotClickable(slot, playerType, 'prize', index);
+                noop(`  🃏 Prize card ${index + 1} added to slot`);
+            } else {
+                // サイドカードを取得した後はプレースホルダーを非表示にして再選択を防ぐ
+                slot.style.display = 'none';
+                slot.style.pointerEvents = 'none';
+            }
         });
 
         // Badge system removed - prize info now shown in right panel
