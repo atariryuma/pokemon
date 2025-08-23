@@ -8,7 +8,6 @@
 import { animationManager } from './animation-manager.js';
 import { Z_INDEX, Z_CSS_VARS } from './z-index-constants.js';
 import { getCardImagePath } from './data-manager.js';
-import { battleStatus } from './battle-status.js';
 
 const noop = () => {};
 
@@ -258,18 +257,6 @@ export class ModalManager {
         duration = 3000,
         position = 'top-right'
     }) {
-        // 青いトースト（info）を右パネルにリダイレクト
-        if (type === 'info') {
-            try {
-                battleStatus.addGameProgressMessage(message);
-                noop(`📢 Info toast redirected to right panel: ${message}`);
-                return; // トースト表示をスキップ
-            } catch (error) {
-                console.warn('Failed to redirect info toast to right panel:', error);
-                // フォールバックとして通常のトースト表示を続行
-            }
-        }
-        
         const toast = this.createToastElement({ message, type });
         
         // 位置に応じたコンテナを取得/作成
