@@ -218,7 +218,8 @@ export class EffectAnimations extends AnimationCore {
 
     // ヘルパー関数
     findPokemonElement(pokemonId) {
-        return document.querySelector(`[data-card-id="${pokemonId}"]`) ||
+        return document.querySelector(`[data-runtime-id="${pokemonId}"]`) ||
+               document.querySelector(`[data-card-id="${pokemonId}"]`) ||
                document.querySelector(`[data-pokemon-id="${pokemonId}"]`);
     }
 
