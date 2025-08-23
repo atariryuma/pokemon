@@ -15,35 +15,45 @@ function shuffle(array) {
 }
 
 /**
- * ランダムなデッキを作成する（ポケモン20枚、エネルギー40枚）
+ * 最適化されたデッキ作成（ポケモン20枚、エネルギー40枚）
+ * メモリ効率とパフォーマンスを改善
  * @returns {Array} 作成されたデッキ（シャッフル済み）
  */
 function createDeck() {
-    const deck = [];
+    const cardMasterList = getCardMasterList();
+    
+    // フィルタリング結果をキャッシュして処理効率向上
+    const pokemon = cardMasterList.filter(c => c.card_type === 'Pokémon');
+    const energy = cardMasterList.filter(c => c.card_type === 'Basic Energy');
+    
+    // デッキサイズを事前確保してメモリ効率向上
+    const deck = new Array(60);
+    let deckIndex = 0;
     let cardId = 0;
     
-    const cardMasterList = getCardMasterList();
-
-    // Add Pokémon
-    const pokemon = cardMasterList.filter(c => c.card_type === 'Pokémon');
+    // ポケモンカード追加（20枚）
+    const pokemonCount = pokemon.length;
     for (let i = 0; i < 20; i++) {
-        const randomPokemon = pokemon[Math.floor(Math.random() * pokemon.length)];
-        // Create a copy and add unique runtime ID while preserving original card's id
-        deck.push({ 
-            ...randomPokemon, 
-            runtimeId: `card-${cardId++}` // For runtime tracking, keep original id for template
-        });
+        const randomIndex = Math.floor(Math.random() * pokemonCount);
+        const selectedPokemon = pokemon[randomIndex];
+        
+        // 軽量なカードオブジェクト作成（必要最小限のコピー）
+        deck[deckIndex++] = { 
+            ...selectedPokemon, 
+            runtimeId: `card-${cardId++}`
+        };
     }
 
-    // Add Energy
-    const energy = cardMasterList.filter(c => c.card_type === 'Basic Energy');
+    // エネルギーカード追加（40枚）
+    const energyCount = energy.length;
     for (let i = 0; i < 40; i++) {
-        const randomEnergy = energy[Math.floor(Math.random() * energy.length)];
-        // Create a copy and add unique runtime ID while preserving original card's id
-        deck.push({ 
-            ...randomEnergy, 
-            runtimeId: `card-${cardId++}` // For runtime tracking, keep original id for template
-        });
+        const randomIndex = Math.floor(Math.random() * energyCount);
+        const selectedEnergy = energy[randomIndex];
+        
+        deck[deckIndex++] = { 
+            ...selectedEnergy, 
+            runtimeId: `card-${cardId++}`
+        };
     }
 
     return shuffle(deck);

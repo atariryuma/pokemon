@@ -516,23 +516,41 @@
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     // --------- ID自動生成
+    /**
+     * ID生成システム（data-manager.jsと統一）
+     * 3桁ゼロパディング形式でユニークなIDを生成
+     */
     function generateNextId() {
-      const existingIds = cards.map(c => c.id).filter(Boolean);
-      const numericIds = existingIds
-        .map(id => parseInt(id, 10))
-        .filter(n => !isNaN(n))
-        .sort((a, b) => a - b);
+      const usedIds = new Set();
+      let nextAutoId = 1;
       
-      let nextId = 1;
-      for (const id of numericIds) {
-        if (id === nextId) {
-          nextId++;
-        } else {
-          break;
+      // 既存IDを収集・正規化
+      cards.forEach(c => {
+        if (c.id) {
+          // IDを3桁ゼロパディング形式に正規化
+          const numericId = parseInt(c.id, 10);
+          if (!isNaN(numericId) && numericId > 0) {
+            const normalizedId = String(numericId).padStart(3, '0');
+            usedIds.add(normalizedId);
+            nextAutoId = Math.max(nextAutoId, numericId + 1);
+          } else {
+            // 数値以外のIDもそのまま記録
+            usedIds.add(String(c.id));
+          }
         }
-      }
+      });
       
-      return String(nextId).padStart(3, '0'); // 001, 002, 003...
+      // ユニークなIDを生成
+      let candidateId = nextAutoId;
+      let formattedId;
+      
+      do {
+        formattedId = String(candidateId).padStart(3, '0');
+        candidateId++;
+      } while (usedIds.has(formattedId));
+      
+      console.log(`🆔 Generated new ID: ${formattedId} (next available after checking ${usedIds.size} existing IDs)`);
+      return formattedId;
     }
 
     const schemaGuard = (obj) => {
@@ -786,8 +804,15 @@
       }, 100);
     }
 
+    /**
+     * 現在編集中のカードをリストに保存
+     * data-manager.jsの正規化ロジックと統一
+     */
     function saveCurrentIntoList(){
-      const data = readForm();
+      const rawData = readForm();
+      
+      // データ正規化を適用
+      const data = normalizeCardForEditor(rawData);
       
       // 基本必須項目チェック
       if (!data || !data.id || !data.name_en || !data.name_ja || !data.card_type){
@@ -825,11 +850,69 @@
       } else {
         cards[activeIndex] = data;
       }
-      setStatus('✅ カードをリストに保存しました。「master保存」でファイルに保存できます。');
+      setStatus(`✅ カードを保存: ${data.name_en} (ID: ${data.id}) [${data.card_type}]`);
       renderList();
       updatePreview();
-      markUnsaved(false); // 修正: 保存後は保存済み状態にする
+      markUnsaved(false);
       return true;
+    }
+
+    /**
+     * エディター用カードデータ正規化
+     * data-manager.jsの正規化ロジックと統一
+     */
+    function normalizeCardForEditor(card) {
+      const normalized = { ...card };
+      
+      // === ID正規化 ===
+      if (!normalized.id || normalized.id.trim() === '') {
+        normalized.id = generateNextId();
+      } else {
+        // 3桁ゼロパディング形式に正規化
+        const numericId = parseInt(normalized.id, 10);
+        if (!isNaN(numericId) && numericId > 0) {
+          normalized.id = String(numericId).padStart(3, '0');
+        }
+      }
+      
+      // === カードタイプ正規化 ===
+      if (normalized.card_type === 'Pokemon') {
+        normalized.card_type = 'Pokémon';
+      } else if (normalized.card_type === 'Energy') {
+        // is_basic プロパティで基本/特殊エネルギーを判定
+        if (normalized.is_basic === false) {
+          normalized.card_type = 'Special Energy';
+        } else {
+          normalized.card_type = 'Basic Energy';
+        }
+      }
+      
+      // === 画像フィールド統一 ===
+      if (!normalized.image_file && normalized.image) {
+        normalized.image_file = normalized.image;
+        delete normalized.image;
+      }
+      
+      // 空の画像フィールドをクリア
+      if (normalized.image_file === '' || normalized.image_file === null) {
+        delete normalized.image_file;
+      }
+      
+      // === ステージ正規化 ===
+      if (normalized.stage === 'Basic') normalized.stage = 'BASIC';
+      if (normalized.stage === 'Stage1') normalized.stage = 'STAGE1';
+      if (normalized.stage === 'Stage2') normalized.stage = 'STAGE2';
+      
+      // === 必須フィールド警告 ===
+      const warnings = [];
+      if (!normalized.name_en) warnings.push('英語名が未設定');
+      if (!normalized.name_ja) warnings.push('日本語名が未設定');
+      
+      if (warnings.length > 0) {
+        console.warn(`⚠️ Card warnings for ID ${normalized.id}:`, warnings);
+      }
+      
+      return normalized;
     }
     
     function validateCardData(data) {

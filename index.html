@@ -42,16 +42,43 @@
     <style>
         /* カスタムスタイル */
         body {
-            margin: 0; /* ブラウザデフォルトの余白を削除し縦スクロールを防止 */
+            margin: 0;
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            background: #1a1a2e;
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
-            overflow-x: hidden; /* 横スクロールを防止 */
-            overflow-y: auto; /* 必要に応じて縦スクロール */
-            /* 3Dはボード要素に限定し、手札は通常レイヤーで最前面に */
-            padding: 0; /* 不要な上下余白を排除 */
-            transform: scale(1.0);
-            transform-origin: center top; /* 拡大の基準点を上中央に */
+            overflow: hidden; /* Prevent all scrolling */
+        }
+
+        .game-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            padding: 0 var(--side-padding);
+            box-sizing: border-box;
+        }
+
+        #game-stage {
+            flex-grow: 1;
+            position: relative;
+            perspective: var(--scene-perspective);
+            transform-style: preserve-3d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .game-footer {
+            flex-shrink: 0;
+            height: var(--footer-height);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-bottom: 1rem;
+        }
+
+        #floating-action-hud {
+            position: relative;
+            z-index: var(--z-floating-hud);
         }
 
         /* ==========================================
@@ -66,6 +93,8 @@
             --vertical-gap: 12px;
             --overlap-cpu: clamp(6px, 2vh, 16px);
             --overlap-player: clamp(12px, 3vh, 28px);
+            --footer-height: 80px; /* New variable for HUD area */
+            --board-margin-y: 2vh; /* Vertical margin for the board */
             /* 遠近感（ボード専用） */
             --scene-perspective: 1200px;
             /* === レイヤー1: プレイマット系 (5-15) === */
@@ -190,16 +219,16 @@
 
         #game-board {
             transform-style: preserve-3d;
-            transform: rotateX(35deg);
+            transform: rotateX(40deg); /* Slightly more tilt */
             position: relative;
-            /* 画面に応じて正方形で最大化（上下の手札領域を差し引く） */
+            /* Adjust height to fit between hands and footer */
             height: min(
-                calc(100vh - (var(--hand-height) * 2) - var(--vertical-gap)),
+                calc(100vh - var(--hand-height) - var(--footer-height) - var(--board-margin-y) * 2),
                 calc(100vw - var(--side-padding) * 2)
             );
-            aspect-ratio: 1 / 1; /* 正方形維持 */
+            aspect-ratio: 1 / 1;
             width: auto;
-            margin: 0 auto;         /* 中央配置 */
+            margin: var(--board-margin-y) auto;
             z-index: var(--z-board);
         }
 
@@ -247,20 +276,17 @@
         
         /* 手札エリア（下部、フロー内） */
         #player-hand {
-            z-index: var(--z-hand);
-            position: relative;
-            left: auto;
-            right: auto;
-            bottom: auto;
-            height: var(--hand-height) !important;
-            min-height: var(--hand-height) !important;
-            pointer-events: auto;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: var(--hand-height);
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            margin-top: 0;
-            transform: translateZ(200px);
+            pointer-events: auto;
+            transform: translateZ(150px); /* Bring it closer to the camera */
             transform-style: preserve-3d;
+            z-index: var(--z-hand);
         }
         
         /* 手札カード */
@@ -347,18 +373,17 @@
 
         /* CPU手札エリア（上部） */
         #cpu-hand {
-            position: relative !important;
-            display: flex !important;
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: var(--hand-height);
+            display: flex;
             align-items: center;
             justify-content: center;
-            height: var(--hand-height) !important;
-            min-height: var(--hand-height) !important;
-            /* CPU手札は操作対象外のためイベント透過にしてボードのクリックを妨げない */
-            pointer-events: none !important;
-            z-index: auto !important;
-            margin-bottom: calc(var(--overlap-cpu) * -1);
-            transform: translateZ(-60px) rotateX(10deg) scale(0.97);
+            pointer-events: none;
+            transform: translateZ(-80px) rotateX(15deg) scale(0.95);
             transform-style: preserve-3d;
+            z-index: var(--z-hand);
         }
         
         /* カードスロットホバー効果の復旧 */

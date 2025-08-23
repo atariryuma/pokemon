@@ -23,26 +23,7 @@ export async function loadCardsFromJSON(forceReload = false) {
         const rawData = await response.json();
         cardMasterList = normalizeCardData(rawData);
         
-        // 開発用詳細ログ（静音化）
-        const DEBUG_DATA = false;
-        if (DEBUG_DATA && cardMasterList.length > 0) {
-            console.log('First card loaded:', cardMasterList[0]);
-            console.log('Card properties:', Object.keys(cardMasterList[0]));
-            const pokemon = cardMasterList.filter(c => c.card_type === 'Pokémon');
-            const basicEnergy = cardMasterList.filter(c => c.card_type === 'Basic Energy');
-            const rawEnergy = cardMasterList.filter(c => c.card_type === 'Energy');
-            const trainer = cardMasterList.filter(c => c.card_type === 'Trainer');
-            console.log('Card counts - Pokémon:', pokemon.length, 'Basic Energy:', basicEnergy.length, 'Raw Energy:', rawEnergy.length, 'Trainer:', trainer.length);
-            if (basicEnergy.length > 0) {
-                console.log('First Basic Energy card:', basicEnergy[0]);
-            }
-            const missingNameEn = cardMasterList.filter(c => !c.name_en);
-            if (missingNameEn.length > 0) {
-                console.warn('Cards missing name_en:', missingNameEn.length);
-                console.log('First missing name_en card:', missingNameEn[0]);
-            }
-        }
-        
+        // 静音読み込み完了
         noop(`📦 Loaded ${cardMasterList.length} cards from JSON${forceReload ? ' (forced reload)' : ''}`);
         return cardMasterList;
     } catch (error) {
@@ -108,34 +89,111 @@ export function enableAutoRefresh() {
 }
 
 /**
- * カード画像パスを取得
+ * カード画像パスを取得（IDベース優先の統一システム）
  * @param {string} cardNameEn - カードの英語名
  * @param {Object} card - カードオブジェクト（タイプ判定用）
  * @returns {string} 画像ファイルのパス
  */
 export function getCardImagePath(cardNameEn, card = null) {
     // 引数の妥当性チェック
-    if (!cardNameEn || typeof cardNameEn !== 'string') {
-        console.warn('⚠️ getCardImagePath: invalid cardNameEn:', cardNameEn, 'card:', card);
+    if (!card && (!cardNameEn || typeof cardNameEn !== 'string')) {
+        console.warn('⚠️ getCardImagePath: invalid inputs:', { cardNameEn, card });
         return 'assets/ui/card_back.webp'; // フォールバック画像
     }
     
-    // デバッグ: カード情報をログに出力
-    if (card && (!card.name_en || !card.card_type)) {
-        console.warn('⚠️ Card missing properties:', {
-            name_en: card.name_en,
-            card_type: card.card_type,
-            id: card.id,
-            fullCard: card
-        });
+    // カードオブジェクトがある場合はそれを優先
+    const finalCard = card || { name_en: cardNameEn };
+    const finalNameEn = finalCard.name_en || cardNameEn || 'Unknown';
+    
+    // カードタイプによるフォルダ判定
+    const folder = getCardTypeFolder(finalCard.card_type);
+    
+    // === 優先順位1: image_file が明示的に指定されている場合 ===
+    if (finalCard.image_file) {
+        return `assets/cards/${folder}/${finalCard.image_file}`;
     }
     
-    // 特別なカード名のマッピング（実際のファイル名に合わせて修正）
+    // === 優先順位2: IDベースの画像パス生成 ===
+    if (finalCard.id) {
+        const idBasedPath = generateIdBasedImagePath(finalCard, folder);
+        return idBasedPath;
+    }
+    
+    // === 優先順位3: エネルギーカード専用ロジック ===
+    if (folder === 'energy' || finalNameEn.includes('Energy')) {
+        const energyImagePath = generateEnergyImagePath(finalNameEn, finalCard);
+        return energyImagePath;
+    }
+    
+    // === 優先順位4: 従来の名前ベースシステム（フォールバック） ===
+    const nameBasedPath = generateNameBasedImagePath(finalNameEn, folder, finalCard);
+    return nameBasedPath;
+}
+
+/**
+ * IDベースの画像パスを生成
+ * @param {Object} card - カードオブジェクト
+ * @param {string} folder - フォルダ名
+ * @returns {string} 画像パス
+ */
+function generateIdBasedImagePath(card, folder) {
+    const sanitizedName = sanitizeFileName(card.name_en);
+    const id = card.id.padStart(3, '0'); // ID正規化
+    
+    // IDベース命名規則: {ID}_{folder}_{sanitized_name}.webp
+    const idBasedFileName = `${id}_${folder}_${sanitizedName}.webp`;
+    
+    // 開発モードでのみデバッグ
+    if (typeof window !== 'undefined' && window.DEBUG_IMAGE_PATHS) {
+        console.debug(`🆔 ID-based path: ${card.name_en} (${card.id}) → ${idBasedFileName}`);
+    }
+    
+    return `assets/cards/${folder}/${idBasedFileName}`;
+}
+
+/**
+ * エネルギーカード専用の画像パス生成
+ * @param {string} nameEn - 英語名
+ * @param {Object} card - カードオブジェクト
+ * @returns {string} 画像パス
+ */
+function generateEnergyImagePath(nameEn, card) {
+    // エネルギータイプ抽出
+    let energyType = card.energy_type;
+    if (!energyType) {
+        // 名前からタイプを推測
+        energyType = nameEn.split(" ")[0];
+    }
+    
+    const energyImageMap = {
+        "Colorless": "Energy_Colorless",
+        "Grass": "Energy_Grass",
+        "Fire": "Energy_Fire",
+        "Water": "Energy_Water",
+        "Lightning": "Energy_Lightning",
+        "Psychic": "Energy_Psychic",
+        "Fighting": "Energy_Fighting",
+        "Darkness": "Energy_Darkness",
+        "Metal": "Energy_Metal"
+    };
+    
+    const imageName = energyImageMap[energyType] || "Energy_Colorless";
+    return `assets/cards/energy/${imageName}.webp`;
+}
+
+/**
+ * 従来の名前ベース画像パス生成（フォールバック）
+ * @param {string} nameEn - 英語名
+ * @param {string} folder - フォルダ名
+ * @param {Object} card - カードオブジェクト
+ * @returns {string} 画像パス
+ */
+function generateNameBasedImagePath(nameEn, folder, card) {
+    // 特別なカード名のマッピング（既存のspecialNamesを維持）
     const specialNames = {
         "Glasswing Butterfly Larva": "Glasswing_Butterfly_Larva",
         "Cat exv": "Cat_exv",
         "Grey Dagger Moth Larva": "Grey_Dagger_Moth_Larva",
-        // Hyphenated name requires explicit mapping to match renamed asset
         "Short-horned Grasshopper": "Short-horned_Grasshopper",
         "Tateha Butterfly": "Tateha_Butterfly",
         "Caterpillar exz": "Caterpillar_exz",
@@ -150,57 +208,13 @@ export function getCardImagePath(cardNameEn, card = null) {
         "Kobane Inago": "Kobane_Inago",
         "Orange Spider": "Orange_Spider"
     };
-
-    // カードタイプによるフォルダ判定
-    let folder = 'pokemon'; // デフォルト
     
-    if (card && card.card_type) {
-        if (card.card_type === 'Energy' || card.card_type === 'Basic Energy' || card.card_type === 'Special Energy') {
-            folder = 'energy';
-        } else if (card.card_type === 'Trainer') {
-            folder = 'trainer';
-        } else if (card.card_type === 'Pokémon' || card.card_type === 'Pokemon') {
-            folder = 'pokemon';
-        }
-    } else if (cardNameEn.includes("Energy")) {
-        folder = 'energy';
-    }
-
-    // image_file が指定されている場合はそのまま使用
-    if (card && card.image_file) {
-        return `assets/cards/${folder}/${card.image_file}`;
-    }
-
-    // エネルギーカード
-    if (folder === 'energy' || cardNameEn.includes("Energy")) {
-        const energyType = cardNameEn.split(" ")[0];
-        const energyImageMap = {
-            "Colorless": "Energy_Colorless",
-            "Grass": "Energy_Grass",
-            "Fire": "Energy_Fire",
-            "Water": "Energy_Water",
-            "Lightning": "Energy_Lightning",
-            "Psychic": "Energy_Psychic",
-            "Fighting": "Energy_Fighting",
-            "Darkness": "Energy_Darkness",
-            "Metal": "Energy_Colorless" // Metal uses Colorless as fallback
-        };
-        const imageName = energyImageMap[energyType] || "Energy_Colorless";
-        return `assets/cards/energy/${imageName}.webp`;
-    }
-
-    // ポケモン・トレーナーカード
-    let fileName;
-    
-    // 現在は従来の名前ベースを使用（後でID-ベースに移行予定）
-    // TODO: 将来的にはIDベースの命名規則に移行する
-    fileName = specialNames[cardNameEn] || cardNameEn.replace(/ /g, '_');
-    
+    const fileName = specialNames[nameEn] || nameEn.replace(/ /g, '_');
     const imagePath = `assets/cards/${folder}/${fileName}.webp`;
     
-    // デバッグ情報（開発時のみ）
-    if (cardNameEn && !specialNames[cardNameEn] && cardNameEn !== cardNameEn.replace(/ /g, '_')) {
-        console.debug(`🔍 Image path for "${cardNameEn}": ${imagePath} (ID: ${card?.id})`);
+    // 移行期間中の開発者向け情報（本番では無効）
+    if (card && card.id && typeof window !== 'undefined' && window.DEBUG_IMAGE_PATHS) {
+        console.debug(`⚠️ Using name-based fallback for "${nameEn}" (ID: ${card.id}). Consider migrating to ID-based naming.`);
     }
     
     return imagePath;
@@ -265,7 +279,7 @@ function normalizeCardData(rawData) {
         // IDが欠落または無効な場合、自動生成
         if (!normalized.id || typeof normalized.id !== 'string' || normalized.id.trim() === '') {
             normalized.id = generateUniqueId(usedIds, nextAutoId);
-            console.warn(`⚠️ Missing ID for card at index ${index}, auto-generated: ${normalized.id}`);
+            noop(`⚠️ Missing ID for card at index ${index}, auto-generated: ${normalized.id}`);
         } else {
             // IDを3桁ゼロパディング形式に正規化
             const numericId = parseInt(normalized.id, 10);
@@ -277,7 +291,7 @@ function normalizeCardData(rawData) {
             if (usedIds.has(normalized.id)) {
                 const originalId = normalized.id;
                 normalized.id = generateUniqueId(usedIds, nextAutoId);
-                console.warn(`⚠️ Duplicate ID detected: ${originalId}, reassigned to: ${normalized.id}`);
+                noop(`⚠️ Duplicate ID detected: ${originalId}, reassigned to: ${normalized.id}`);
             }
         }
         
