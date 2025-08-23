@@ -9,6 +9,7 @@ import { CardOrientationManager } from './card-orientation.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
+import { battleNarrator } from './battle-narrator.js';
 
 const noop = () => {};
 
@@ -101,6 +102,7 @@ export class TurnManager {
       player: 'player',
       message: `プレイヤーのターン ${newState.turn} 開始`
     });
+    battleNarrator.narrateTurnStart('player');
 
     return newState;
   }
@@ -527,7 +529,19 @@ export class TurnManager {
       player: 'cpu',
       message: `CPUのターン ${newState.turn} 開始`
     });
+    battleNarrator.narrateTurnStart('cpu');
 
+    return newState;
+  }
+
+  /**
+   * CPUターンを一括で処理
+   * @param {object} state - 現在のゲーム状態
+   * @returns {object} 更新されたゲーム状態
+   */
+  async takeCpuTurn(state) {
+    let newState = await this.startCpuTurn(state);
+    newState = await this.executeCpuTurn(newState);
     return newState;
   }
 
