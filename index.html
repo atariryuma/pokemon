@@ -47,8 +47,8 @@
             background: #1a1a2e;
             background: linear-gradient(135deg, #16222A 0%, #3A6073 100%);
             overflow-x: hidden; /* 横スクロールを防止 */
-            overflow-y: hidden; /* 縦スクロールを防止 */
-            perspective: 1500px; /* 3D効果を復活 */
+            overflow-y: auto; /* 必要に応じて縦スクロール */
+            /* 3Dはボード要素に限定し、手札は通常レイヤーで最前面に */
             padding: 0; /* 不要な上下余白を排除 */
             transform: scale(1.0);
             transform-origin: center top; /* 拡大の基準点を上中央に */
@@ -58,6 +58,16 @@
            Z-INDEX統一管理システム
            ========================================== */
         :root {
+            /* レイアウト用変数 */
+            --side-padding: 16px;
+            --card-height: clamp(96px, 18vh, 140px);
+            --hand-extra-gap: 16px;
+            --hand-height: calc(var(--card-height) + var(--hand-extra-gap));
+            --vertical-gap: 12px;
+            --overlap-cpu: clamp(6px, 2vh, 16px);
+            --overlap-player: clamp(12px, 3vh, 28px);
+            /* 遠近感（ボード専用） */
+            --scene-perspective: 1200px;
             /* === レイヤー1: プレイマット系 (5-15) === */
             --z-board-bg: 0;        /* 背景画像 */
             --z-board: 10;          /* ゲームボード基底 */
@@ -182,10 +192,14 @@
             transform-style: preserve-3d;
             transform: rotateX(35deg);
             position: relative;
-            width: 679px !important;           /* 完全固定サイズ */
-            height: 679px !important;          /* 完全固定サイズ */
+            /* 画面に応じて正方形で最大化（上下の手札領域を差し引く） */
+            height: min(
+                calc(100vh - (var(--hand-height) * 2) - var(--vertical-gap)),
+                calc(100vw - var(--side-padding) * 2)
+            );
+            aspect-ratio: 1 / 1; /* 正方形維持 */
+            width: auto;
             margin: 0 auto;         /* 中央配置 */
-            left: -30px;            /* 全体をやや左に寄せる */
             z-index: var(--z-board);
         }
 
@@ -194,25 +208,25 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 679px !important;           /* 完全固定サイズ */
-            height: 679px !important;          /* 完全固定サイズ */
-            object-fit: none;       /* 1:1ピクセルマッピング */
+            width: 100% !important;   /* コンテナにフィット */
+            height: 100% !important;  /* コンテナにフィット */
+            object-fit: contain;       /* 歪みなくフィット（正方形のため等倍） */
             z-index: var(--z-board-bg);
             pointer-events: none;   /* クリックイベントを通過させる */
         }
 
 
 
-        /* ボード基盤 */
+        /* ボード基盤 - スタジアムと同等のレイヤーに統一 */
         .player-board.player-self,
         .player-board.opponent-board {
-            z-index: var(--z-board-bg);
-            pointer-events: auto;
+            z-index: var(--z-board);
+            pointer-events: auto; /* プレースホルダーのクリックを有効化 */
         }
         
-        /* プレイマットの下部は手札エリアと重複しないよう制限 */
+        /* プレイマットとプレースホルダーの座標整合を優先（下部オフセットを撤廃） */
         .player-board.player-self {
-            bottom: 130px;
+            bottom: 0;
         }
         
         /* カードスロット - 統合設定 */
@@ -221,29 +235,42 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
             position: absolute;
-            z-index: var(--z-slots);
+            z-index: var(--z-board); /* Stadiumと同等のレイヤーに統一 */
             pointer-events: auto;
             min-width: 20px;
             min-height: 28px;
             overflow: visible;
             transform-style: preserve-3d;
+            /* Stadiumと同等の3D位置（背景より前） */
+            transform: translateZ(1px);
         }
         
-        /* 手札エリア */
+        /* 手札エリア（下部、フロー内） */
         #player-hand {
-            z-index: var(--z-hand-area);
-            pointer-events: none;
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 10px;
-            height: 60px;
+            z-index: var(--z-hand);
+            position: relative;
+            left: auto;
+            right: auto;
+            bottom: auto;
+            height: var(--hand-height) !important;
+            min-height: var(--hand-height) !important;
+            pointer-events: auto;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            margin-top: 0;
+            transform: translateZ(200px);
+            transform-style: preserve-3d;
         }
         
         /* 手札カード */
         #player-hand .hand-slot {
             pointer-events: auto;
             z-index: var(--z-hand);
+            /* 手札カードを確実に3D前面へ（ボード面より手前） */
+            transform: translateZ(1px);
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
         }
 
         /* 手札カードの表示を強制 */
@@ -260,36 +287,7 @@
         }
 
 
-        /* Side cards stacking effects */
-        .side-cards-container {
-            position: static;
-        }
-
-        .side-cards-container .card-slot {
-            position: absolute;
-            z-index: var(--z-card);
-        }
-
-        .side-cards-container .side-right-1,
-        .side-cards-container .side-left-1 {
-            z-index: var(--z-side-stack-1);
-            transform: translateZ(6px);
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
-        }
-
-        .side-cards-container .side-right-2,
-        .side-cards-container .side-left-2 {
-            z-index: var(--z-side-stack-2);
-            transform: translateZ(3px) translate(2px, 2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.65);
-        }
-
-        .side-cards-container .side-right-3,
-        .side-cards-container .side-left-3 {
-            z-index: var(--z-side-stack-3);
-            transform: translateZ(0px) translate(4px, 4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-        }
+        /* Prize stacking: ビジュアルの特殊効果は一旦無効化し、統一スタイルに寄せる */
 
         /* Deck stacking effects */
         .deck-container {
@@ -347,13 +345,20 @@
             transform: translateZ(1px);
         }
 
-        /* CPU手札要素を完全無効化 */
+        /* CPU手札エリア（上部） */
         #cpu-hand {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
+            position: relative !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            height: var(--hand-height) !important;
+            min-height: var(--hand-height) !important;
+            /* CPU手札は操作対象外のためイベント透過にしてボードのクリックを妨げない */
             pointer-events: none !important;
-            z-index: -1 !important;
+            z-index: auto !important;
+            margin-bottom: calc(var(--overlap-cpu) * -1);
+            transform: translateZ(-60px) rotateX(10deg) scale(0.97);
+            transform-style: preserve-3d;
         }
         
         /* カードスロットホバー効果の復旧 */
@@ -407,13 +412,7 @@
             transform: rotateX(180deg) translateZ(20px);
         }
 
-        /* サイドカード（プライズ）専用のホバー効果 */
-        .side-cards-container .card-slot:hover {
-            transform: translateY(-8px) scale(1.08);
-            border-color: #4dd0fd;
-            box-shadow: 0 0 25px #4dd0fd80;
-            z-index: var(--z-card-hover);
-        }
+        /* サイドカード専用ホバー効果は廃止。共通の .card-slot:hover を適用 */
 
         
 
@@ -774,16 +773,13 @@
 
         #game-status-panel {
             color: #fff;
-            padding: 1rem;
-            font-size: 0.875rem;
-            width: min(320px, calc(100vw - 40px)) !important; /* 画面幅に応じて調整 */
-            min-height: min(500px, calc(100vh - 40px)) !important; /* 画面高さに応じて調整 */
-            max-height: calc(100vh - 40px) !important; /* 画面全体から適切な余白を確保 */
-            /* 右側中央寄りに配置 */
+            padding: 1rem 1.25rem;
+            font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+            width: min(360px, calc(100vw - 40px)) !important;
             position: fixed !important;
-            top: 50% !important;
-            right: 20px !important;
-            transform: translateY(-50%) !important; /* 垂直方向中央揃え */
+            top: 16px !important;
+            right: 16px !important;
+            transform: none !important;
             z-index: var(--z-panels);
             will-change: auto !important;
             perspective: none !important;
@@ -1211,129 +1207,30 @@
             font-style: italic;
         }
 
-        /* 手札用の下部余白を追加 */
+        /* レイアウト全体 */
         body {
-            padding-bottom: 90px !important; /* Mac Dock拡大効果を考慮した余白（調整値の半分） */
+            padding: 0 var(--side-padding);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
+            min-height: 100vh;
+            gap: calc(var(--vertical-gap) / 2);
+        }
+
+        /* 3Dシーン（ボード・手札を同一パース空間に） */
+        .game-stage {
+            perspective: var(--scene-perspective);
+            transform-style: preserve-3d;
+            position: relative;
         }
 
         /* サイドカード6枚重ね配置スタイル（プレイマット座標を保持） */
         .prize-stack {
-            position: relative;
-            /* プレイマット座標を完全保持 - width/heightを強制しない */
+            position: static; /* 位置の包含ブロックにならないようにする */
         }
         
-        .prize-stack .card-slot:first-child {
-            position: relative;
-            z-index: var(--z-board);
-            /* プレイマットの元座標を保持 */
-        }
-        
-        .prize-stack .card-slot:last-child {
-            position: absolute;
-            top: 3px;
-            left: -4px;
-            z-index: var(--z-board-bg);
-            /* プレイマット座標に基づくサイズを保持 */
-        }
-        
-        /* CPU側（opponent-board）は右下はみ出し */
-        .opponent-board .prize-stack .card-slot:last-child {
-            top: 3px;
-            left: 4px;
-        }
-
-        /* プレイマット座標定義 - プレイヤー側 (side-left) - JavaScriptの動的設定を上書き */
-        .player-board.player-self .side-cards-container .card-slot.side-left-1 {
-            left: 43px;
-            top: 332px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        .player-board.player-self .side-cards-container .card-slot.side-left-1-back {
-            left: 47px;
-            top: 335px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        
-        .player-board.player-self .side-cards-container .card-slot.side-left-2 {
-            left: 43px;
-            top: 435px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        .player-board.player-self .side-cards-container .card-slot.side-left-2-back {
-            left: 47px;
-            top: 438px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        
-        .player-board.player-self .side-cards-container .card-slot.side-left-3 {
-            left: 43px;
-            top: 538px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        .player-board.player-self .side-cards-container .card-slot.side-left-3-back {
-            left: 47px;
-            top: 541px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-
-        /* プレイマット座標定義 - CPU側 (side-right) - JavaScriptの動的設定を上書き */
-        .player-board.opponent-board .side-cards-container .card-slot.side-right-1 {
-            left: 564px;
-            top: 38px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        .player-board.opponent-board .side-cards-container .card-slot.side-right-1-back {
-            left: 568px;
-            top: 41px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        
-        .player-board.opponent-board .side-cards-container .card-slot.side-right-2 {
-            left: 564px;
-            top: 143px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        .player-board.opponent-board .side-cards-container .card-slot.side-right-2-back {
-            left: 568px;
-            top: 146px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-        
-        .player-board.opponent-board .side-cards-container .card-slot.side-right-3 {
-            left: 564px;
-            top: 248px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
-                /* プレイマット座標定義 - CPU側 (side-right) - JavaScriptの動的設定を上書き */
-        .player-board.opponent-board .side-cards-container .card-slot.side-right-3-back {
-            left: 568px;
-            top: 251px;
-            width: 73px;
-            height: 104px;
-            position: absolute;
-        }
+        /* Prize back-side offset は JS で相対%指定により適用（px固定を廃止） */
 
         
 
@@ -2280,14 +2177,15 @@
 
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center text-white p-4">
+<body class="min-h-screen flex flex-col items-stretch text-white p-4">
 
-    <!-- CPU Hand -->
-    <div id="cpu-hand" class="fixed top-0 left-0 w-full h-32 flex justify-center items-center p-2 gap-x-1" style="z-index: var(--z-hand);">
-        <!-- CPUの手札はここに動的に追加されます -->
-    </div>
+    <div id="game-stage" class="game-stage w-full flex flex-col items-center" style="gap: calc(var(--vertical-gap)/2);">
+        <!-- CPU Hand (scene child) -->
+        <div id="cpu-hand" class="w-full flex justify-center items-center p-2 gap-x-1">
+            <!-- CPUの手札はここに動的に追加されます -->
+        </div>
 
-    <div id="game-board">
+        <div id="game-board">
         <img class="board-bg" src="assets/playmat/playmat.jpg" alt="Playmat" onerror="this.style.display='none'"/>
         
         <!-- 相手プレイヤーのフィールド -->
@@ -2362,6 +2260,12 @@
             </div>
             <div class="card-slot bottom-right-trash" data-zone="Trash"></div>
         </div>
+        </div>
+
+        <!-- Player Hand (scene child) -->
+        <div id="player-hand" class="w-full flex justify-center items-end p-2 gap-x-1" style="overflow: visible;">
+            <!-- プレイヤーの手札はここに動的に追加されます -->
+        </div>
     </div>
 
 
@@ -2429,8 +2333,8 @@
 
         </div>
     </div>
-<!-- Floating Action HUD (Bottom-right) -->
-<div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
+<!-- Floating Action HUD (Responsive position) -->
+<div id="floating-action-hud" class="w-full flex flex-wrap gap-3 justify-center pokemon-action-hud" style="z-index: var(--z-floating-hud); margin-top: 8px;">
     <button type="button" id="start-game-button-float" class="pokemon-action-btn">
         <span class="pokemon-btn-icon">🎴</span>
         <span class="pokemon-btn-text">手札を7枚引く</span>
@@ -2457,10 +2361,7 @@
     </button>
 </div>
 
-<!-- Player Hand -->
-<div id="player-hand" class="fixed left-0 w-full flex justify-center items-end p-2 gap-x-1" style="bottom: 10px; z-index: var(--z-hand); overflow: visible; pointer-events: none;">
-    <!-- プレイヤーの手札はここに動的に追加されます -->
-</div>
+<!-- Player Hand moved inside #game-stage -->
 
 <!-- Card Info Panel -->
 <div id="card-info-panel" class="hidden fixed" style="z-index: var(--z-panels);"></div>
@@ -2535,92 +2436,38 @@
             const stadium = find('stadium');
             if (stadium) coordsShared['stadium-zone'] = rectFrom(stadium);
 
-            function applyCoords(map, boardEl){
-                if (!boardEl || !gameBoard) return;
-                
-                // 背景画像の実際の表示状態をチェック
-                const bgImage = gameBoard.querySelector('.board-bg');
-                const containerRect = gameBoard.getBoundingClientRect();
-                
-                // デバッグモードでのみログ出力
-                const DEBUG_MODE = true; // 座標問題調査のため一時的に有効
-                
-                if (DEBUG_MODE) {
-                    noop('🔍 背景プレイマット状態確認');
-                    noop('📦 game-board container:', {
-                        width: containerRect.width.toFixed(0),
-                        height: containerRect.height.toFixed(0),
-                        left: containerRect.left.toFixed(0),
-                        top: containerRect.top.toFixed(0)
-                    });
-                    noop();
-                }
-                
-                // 完全固定サイズ：679x679px
-                const PLAYMAT_WIDTH = 679;
-                const PLAYMAT_HEIGHT = 679;
-                
-                // 固定サイズのプレイマット：スケーリングなし
-                const scale = 1;
-                const offsetX = 0;
-                const offsetY = 0;
-                
-                // シンプルにプレイマット座標データをそのまま使用
-                
-                // 各カードスロットの座標を変換
+            function buildCoordsCSS(map, scopeSelector){
+                if (!map) return '';
+                const DEBUG_MODE = true;
+                const PLAYMAT_WIDTH = (imgSize && imgSize.width) ? imgSize.width : 679;
+                const PLAYMAT_HEIGHT = (imgSize && imgSize.height) ? imgSize.height : 679;
                 const transformedCoords = [];
+                let css = '';
                 for (const [key, coords] of Object.entries(map)) {
-                    const element = boardEl.querySelector(`.${key}`);
-                    if (!element) {
-                        console.warn(`❌ Element not found: ${key}`);
-                        continue;
+                    const leftPct = (coords.x / PLAYMAT_WIDTH) * 100;
+                    const topPct = (coords.y / PLAYMAT_HEIGHT) * 100;
+                    const widthPct = (coords.width / PLAYMAT_WIDTH) * 100;
+                    const heightPct = (coords.height / PLAYMAT_HEIGHT) * 100;
+                    if (coords.width < 10 || coords.height < 10) {
+                        console.warn(`⚠️ Suspiciously small size for ${key}: ${coords.width.toFixed(1)}x${coords.height.toFixed(1)}`);
                     }
-                    
-                    // 1:1ピクセルマッピング（スケーリングなし）
-                    let htmlX = coords.x;
-                    let htmlY = coords.y;
-                    const htmlWidth = coords.width;
-                    const htmlHeight = coords.height;
-                    
-                    // 変換結果の妥当性チェック
-                    if (htmlWidth < 10 || htmlHeight < 10) {
-                        console.warn(`⚠️ Suspiciously small size for ${key}: ${htmlWidth.toFixed(1)}x${htmlHeight.toFixed(1)}`);
+                    transformedCoords.push({key, leftPct, topPct, widthPct, heightPct});
+                    css += `${scopeSelector} .${key}{position:absolute!important;left:${leftPct}%;top:${topPct}%;width:${widthPct}%;height:${heightPct}%;display:block!important;opacity:1!important;}
+`;
+                    if (key.startsWith('side-left-') || key.startsWith('side-right-')) {
+                        const dxPx = key.startsWith('side-left-') ? -4 : 4;
+                        const dyPx = 3;
+                        const dxPct = (dxPx / PLAYMAT_WIDTH) * 100;
+                        const dyPct = (dyPx / PLAYMAT_HEIGHT) * 100;
+                        css += `${scopeSelector} .${key}-back{position:absolute!important;left:${leftPct + dxPct}%;top:${topPct + dyPct}%;width:${widthPct}%;height:${heightPct}%;display:block!important;opacity:1!important;}
+`;
                     }
-                    // プレイマット固定サイズのため、クランプ処理をスキップ
-                    // 座標はJSONデータの値をそのまま使用
-                    const originalX = htmlX;
-                    const originalY = htmlY;
-                    // htmlX と htmlY はそのまま使用（クランプしない）
-                    
-                    // 1番下の段（bottom-bench、active-bottom）のデバッグ情報
                     if (DEBUG_MODE && (key.includes('bottom-bench') || key.includes('active-bottom'))) {
-                        noop(`📍 ${key} coordinates:`, {
-                            playmat_coords: `(${originalX}, ${originalY})`,
-                            applied: `(${htmlX.toFixed(0)}, ${htmlY.toFixed(0)})`,
-                            size: `${htmlWidth.toFixed(0)}x${htmlHeight.toFixed(0)}`
-                        });
+                        noop(`📍 ${key}: %(${leftPct.toFixed(2)}%,${topPct.toFixed(2)}%, ${widthPct.toFixed(2)}%x${heightPct.toFixed(2)}%) [比例マッピング/CSS]`);
                     }
-                    
-                    transformedCoords.push({key, htmlX, htmlY, htmlWidth, htmlHeight});
-                    
-                    // CSSプロパティを設定（left/topは左上原点基準）
-                    element.style.position = 'absolute';
-                    element.style.left = `${htmlX}px`;
-                    element.style.top = `${htmlY}px`;
-                    element.style.width = `${htmlWidth}px`;
-                    element.style.height = `${htmlHeight}px`;
-                    element.style.display = 'block';
-                    element.style.opacity = '1';
-                    
-                    // 直接マッピングのデバッグ情報
-                    if (DEBUG_MODE) {
-                        noop(`📍 ${key}: (${coords.x},${coords.y}) → (${htmlX},${htmlY}) ${htmlWidth}x${htmlHeight} [直接マッピング]`);
-                    }
-                    
-                    // デバッグ情報は削除（通常のゲーム状態）
                 }
-                
-                noop(`📊 変換完了: ${transformedCoords.length}個のスロット`);
+                noop(`📊 変換完了(CSS): ${transformedCoords.length}個のスロット for ${scopeSelector}`);
+                return css;
             }
 
             function updateDeckHeight(deckElement, cardCount) {
@@ -2638,19 +2485,30 @@
             }
 
             function updateLayout(){
-                applyCoords(coordsSelf, playerBoards.self);
-                applyCoords(coordsOpp, playerBoards.opponent);
-                
-                // Apply shared coordinates (stadium) to the game board directly
-                if (coordsShared && gameBoard) {
-                    applyCoords(coordsShared, gameBoard);
+                // CSS文字列を生成してスタイルタグに適用（完全CSS管理）
+                // 既存のインラインstyleを除去して上書き影響を排除
+                const allSlots = document.querySelectorAll('#game-board .card-slot');
+                allSlots.forEach(el => el.removeAttribute('style'));
+
+                let css = '';
+                css += buildCoordsCSS(coordsSelf, '#game-board .player-board.player-self') || '';
+                css += buildCoordsCSS(coordsOpp, '#game-board .player-board.opponent-board') || '';
+                css += buildCoordsCSS(coordsShared, '#game-board') || '';
+                let styleTag = document.getElementById('slot-style-generated');
+                if (!styleTag) {
+                    styleTag = document.createElement('style');
+                    styleTag.id = 'slot-style-generated';
+                    document.head.appendChild(styleTag);
                 }
+                styleTag.textContent = css;
                 
                 // Update deck heights (placeholder - will be updated when integrated with game state)
                 const playerDeck = playerBoards.self?.querySelector('.deck-container');
                 const opponentDeck = playerBoards.opponent?.querySelector('.deck-container');
                 updateDeckHeight(playerDeck, 40); // Example count
                 updateDeckHeight(opponentDeck, 35); // Example count
+
+                // Debug instrumentation removed
             }
 
             // 初期化処理：背景画像とDOMの準備完了を待つ
@@ -2706,6 +2564,28 @@
                 });
             }
         });
+
+        // ================= Debug helpers =================
+        /* Debug helpers removed */
+        function getStyles(el){
+            const cs = window.getComputedStyle(el);
+            return {
+                position: cs.position,
+                left: cs.left,
+                top: cs.top,
+                width: cs.width,
+                height: cs.height,
+                zIndex: cs.zIndex,
+                display: cs.display,
+                visibility: cs.visibility,
+                opacity: cs.opacity,
+                pointerEvents: cs.pointerEvents,
+                transform: cs.transform,
+                transformStyle: cs.transformStyle,
+                willChange: cs.willChange
+            };
+        }
+        // Debug helpers removed
     </script>
     <!-- Action Modal -->
     <div id="action-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center" style="z-index: var(--z-modals);">

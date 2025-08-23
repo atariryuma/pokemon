@@ -254,6 +254,8 @@ async function handleImageUpload(req, res, pathname) {
     if (!body || typeof body !== 'object') throw createHttpError(400, 'Invalid JSON');
     const inputName = (body.filename || body.name || 'image').toString();
     const data = body.data;
+    const cardType = (body.cardType || 'pokemon').toString().toLowerCase();
+    const cardId = (body.cardId || '').toString();
     if (!data || typeof data !== 'string') throw createHttpError(400, 'data URL or base64 string required');
 
     let mime = null;
@@ -267,15 +269,32 @@ async function handleImageUpload(req, res, pathname) {
     }
     if (!ALLOWED_IMAGE_EXTS.has(ext)) throw createHttpError(415, 'Unsupported image type');
 
-    const base = sanitizeBaseName(inputName);
-    const outPath = await uniquePath(CARD_IMAGES_DIR, base, ext);
+    // カードタイプに応じたサブフォルダを決定
+    const validCardTypes = ['energy', 'pokemon', 'trainer'];
+    const targetCardType = validCardTypes.includes(cardType) ? cardType : 'pokemon';
+    const targetDir = path.join(CARD_IMAGES_DIR, targetCardType);
+    await fsp.mkdir(targetDir, { recursive: true });
+
+    // ファイル名を最適化（cardIdがある場合は含める）
+    let baseName = sanitizeBaseName(inputName);
+    if (cardId && !baseName.startsWith(cardId)) {
+      baseName = `${cardId}_${baseName}`;
+    }
+
+    const outPath = await uniquePath(targetDir, baseName, ext);
     const buf = Buffer.from(b64, 'base64');
     if (buf.length > 20 * 1024 * 1024) throw createHttpError(413, 'Image too large');
     const tmp = outPath + '.tmp';
     await fsp.writeFile(tmp, buf);
     await fsp.rename(tmp, outPath);
     const rel = path.relative(ROOT, outPath).replace(/\\/g, '/');
-    return json(res, 201, { path: '/' + rel, filename: path.basename(outPath), mime: mime || undefined, size: buf.length });
+    return json(res, 201, { 
+      path: '/' + rel, 
+      filename: path.basename(outPath), 
+      cardType: targetCardType,
+      mime: mime || undefined, 
+      size: buf.length 
+    });
   } catch (err) {
     const status = err.status || 500;
     return json(res, status, { error: err.message || 'Upload failed' });
@@ -289,33 +308,100 @@ async function handleImageEndpoints(req, res, pathname, parts) {
     // GET /api/images - List all images
     if (req.method === 'GET' && !filename) {
       await fsp.mkdir(CARD_IMAGES_DIR, { recursive: true });
-      const files = await fsp.readdir(CARD_IMAGES_DIR);
-      const imageFiles = files.filter(f => ALLOWED_IMAGE_EXTS.has(path.extname(f).toLowerCase()));
-      const images = await Promise.all(imageFiles.map(async (file) => {
-        const filePath = path.join(CARD_IMAGES_DIR, file);
-        const stats = await fsp.stat(filePath);
-        return {
-          filename: file,
-          path: `/assets/cards/${file}`,
-          size: stats.size,
-          created: stats.birthtime,
-          modified: stats.mtime
-        };
-      }));
+      const images = [];
+      const cardTypes = ['energy', 'pokemon', 'trainer'];
+      
+      // 各サブフォルダから画像を収集
+      for (const cardType of cardTypes) {
+        const typeDir = path.join(CARD_IMAGES_DIR, cardType);
+        try {
+          await fsp.mkdir(typeDir, { recursive: true });
+          const files = await fsp.readdir(typeDir);
+          const imageFiles = files.filter(f => ALLOWED_IMAGE_EXTS.has(path.extname(f).toLowerCase()));
+          
+          for (const file of imageFiles) {
+            const filePath = path.join(typeDir, file);
+            const stats = await fsp.stat(filePath);
+            images.push({
+              filename: file,
+              path: `/assets/cards/${cardType}/${file}`,
+              cardType: cardType,
+              size: stats.size,
+              created: stats.birthtime,
+              modified: stats.mtime
+            });
+          }
+        } catch (err) {
+          console.warn(`Failed to read ${cardType} directory:`, err.message);
+        }
+      }
+      
+      // 従来の直接配置画像も収集（下位互換性）
+      try {
+        const rootFiles = await fsp.readdir(CARD_IMAGES_DIR);
+        const rootImageFiles = rootFiles.filter(f => 
+          ALLOWED_IMAGE_EXTS.has(path.extname(f).toLowerCase()) && 
+          !['energy', 'pokemon', 'trainer'].includes(f) // フォルダを除外
+        );
+        
+        for (const file of rootImageFiles) {
+          const filePath = path.join(CARD_IMAGES_DIR, file);
+          const stats = await fsp.stat(filePath);
+          images.push({
+            filename: file,
+            path: `/assets/cards/${file}`,
+            cardType: 'legacy',
+            size: stats.size,
+            created: stats.birthtime,
+            modified: stats.mtime
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to read root cards directory:', err.message);
+      }
+      
       return json(res, 200, { images });
     }
     
     // DELETE /api/images/:filename - Delete specific image
     if (req.method === 'DELETE' && filename) {
-      const filePath = path.join(CARD_IMAGES_DIR, filename);
+      const cardTypes = ['energy', 'pokemon', 'trainer'];
+      let filePath = null;
+      let found = false;
+      
+      // サブフォルダから検索
+      for (const cardType of cardTypes) {
+        const typeFilePath = path.join(CARD_IMAGES_DIR, cardType, filename);
+        try {
+          await fsp.access(typeFilePath, fs.constants.F_OK);
+          filePath = typeFilePath;
+          found = true;
+          break;
+        } catch (err) {
+          // ファイルが見つからない場合は継続
+        }
+      }
+      
+      // ルートフォルダからも検索（下位互換性）
+      if (!found) {
+        const rootFilePath = path.join(CARD_IMAGES_DIR, filename);
+        try {
+          await fsp.access(rootFilePath, fs.constants.F_OK);
+          filePath = rootFilePath;
+          found = true;
+        } catch (err) {
+          // ファイルが見つからない
+        }
+      }
+      
+      if (!found) {
+        return json(res, 404, { error: 'Image not found' });
+      }
+      
       try {
-        await fsp.access(filePath, fs.constants.F_OK);
         await fsp.unlink(filePath);
         return json(res, 200, { ok: true, deleted: filename });
       } catch (err) {
-        if (err.code === 'ENOENT') {
-          return json(res, 404, { error: 'Image not found' });
-        }
         throw err;
       }
     }
@@ -340,10 +426,121 @@ async function handleImageEndpoints(req, res, pathname, parts) {
       return handleImageUpload(req, res, pathname);
     }
     
+    // POST /api/images/optimize - Optimize existing image
+    if (req.method === 'POST' && filename === 'optimize') {
+      return handleImageOptimization(req, res, pathname);
+    }
+    
     return notFound(res);
   } catch (err) {
     const status = err.status || 500;
     return json(res, status, { error: err.message || 'Image operation failed' });
+  }
+}
+
+async function handleImageOptimization(req, res, pathname) {
+  try {
+    if (req.method !== 'POST') return notFound(res);
+    const body = await parseBody(req);
+    if (!body || typeof body !== 'object') throw createHttpError(400, 'Invalid JSON');
+    
+    const filename = body.filename;
+    const maxWidth = body.maxWidth || 800;
+    const maxHeight = body.maxHeight || 1200;
+    const quality = body.quality || 85;
+    
+    if (!filename) throw createHttpError(400, 'filename required');
+    
+    // ファイルを検索（サブフォルダも含む）
+    const cardTypes = ['energy', 'pokemon', 'trainer'];
+    let sourceFilePath = null;
+    let sourceCardType = 'pokemon';
+    
+    for (const cardType of cardTypes) {
+      const typeFilePath = path.join(CARD_IMAGES_DIR, cardType, filename);
+      try {
+        await fsp.access(typeFilePath, fs.constants.F_OK);
+        sourceFilePath = typeFilePath;
+        sourceCardType = cardType;
+        break;
+      } catch (err) {
+        // ファイルが見つからない場合は継続
+      }
+    }
+    
+    // ルートフォルダからも検索
+    if (!sourceFilePath) {
+      const rootFilePath = path.join(CARD_IMAGES_DIR, filename);
+      try {
+        await fsp.access(rootFilePath, fs.constants.F_OK);
+        sourceFilePath = rootFilePath;
+        sourceCardType = 'pokemon';
+      } catch (err) {
+        throw createHttpError(404, `Image file not found: ${filename}`);
+      }
+    }
+    
+    // ファイル拡張子確認
+    const currentExt = path.extname(filename).toLowerCase();
+    if (currentExt === '.webp') {
+      throw createHttpError(400, 'Image is already optimized (WebP format)');
+    }
+    
+    // 基本的な最適化（ファイル名変更とWebP推奨メッセージ）
+    const originalStats = await fsp.stat(sourceFilePath);
+    const originalSize = originalStats.size;
+    
+    // 最適化後のファイル名を生成
+    const baseName = path.basename(filename, currentExt);
+    const optimizedFilename = `${baseName}.webp`;
+    const targetDir = path.join(CARD_IMAGES_DIR, sourceCardType);
+    const optimizedPath = await uniquePath(targetDir, baseName, '.webp');
+    
+    let optimizedSize = originalSize;
+    let note = 'Basic copy completed. For true WebP optimization, install sharp or imagemagick.';
+    
+    try {
+      // Try to use sharp for real optimization
+      const sharp = require('sharp');
+      
+      await sharp(sourceFilePath)
+        .resize(maxWidth, maxHeight, { 
+          fit: 'inside',
+          withoutEnlargement: true 
+        })
+        .webp({ quality: quality })
+        .toFile(optimizedPath);
+        
+      note = 'Optimized with Sharp (WebP format with resizing and quality adjustment)';
+      
+    } catch (sharpError) {
+      console.warn('Sharp not available, falling back to simple copy:', sharpError.message);
+      
+      // Fallback: simple copy with extension change
+      await fsp.copyFile(sourceFilePath, optimizedPath);
+      note = 'Basic copy completed (Sharp not installed). Install sharp for true WebP optimization: npm install sharp';
+    }
+    
+    const optimizedStats = await fsp.stat(optimizedPath);
+    optimizedSize = optimizedStats.size;
+    
+    const rel = path.relative(ROOT, optimizedPath).replace(/\\/g, '/');
+    
+    return json(res, 200, {
+      success: true,
+      originalFile: filename,
+      originalSize: originalSize,
+      optimizedPath: '/' + rel,
+      optimizedFile: path.basename(optimizedPath),
+      optimizedSize: optimizedSize,
+      cardType: sourceCardType,
+      compressionRatio: ((originalSize - optimizedSize) / originalSize * 100).toFixed(1),
+      note: note
+    });
+    
+  } catch (err) {
+    const status = err.status || 500;
+    return json(res, status, { error: err.message || 'Optimization failed' });
   }
 }
 

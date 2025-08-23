@@ -35,7 +35,9 @@
       "Bash(cat:*)",
       "Bash(open \"http://localhost:8001/\")",
       "Bash(PORT=3001 node server.js)",
-      "Bash(open:*)"
+      "Bash(open:*)",
+      "Bash(pkill:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": [],

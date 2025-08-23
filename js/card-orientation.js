@@ -46,10 +46,24 @@ export class CardOrientationManager {
     cardElement.dataset.orientation = shouldFlip ? 'flipped' : 'upright';
     
     // CSS競合対策：直接スタイル適用で確実な反転を保証
-    if (shouldFlip && cardElement.querySelector('img')) {
-      const img = cardElement.querySelector('img');
-      img.style.transform = 'rotate(180deg) translateZ(0)';
-      img.style.transformStyle = 'preserve-3d';
+    const img = cardElement.querySelector && cardElement.querySelector('img');
+    if (shouldFlip) {
+      if (img) {
+        img.style.transform = 'rotate(180deg) translateZ(0)';
+        img.style.transformStyle = 'preserve-3d';
+      } else {
+        // 画像タグがない（背景画像やプレースホルダー）場合は要素自体を反転
+        cardElement.style.transform = 'rotate(180deg) translateZ(0)';
+        cardElement.style.transformStyle = 'preserve-3d';
+      }
+    } else {
+      // 正位置に戻す（以前の反転をクリア）
+      if (img) {
+        img.style.transform = '';
+        img.style.transformStyle = '';
+      }
+      cardElement.style.transform = '';
+      cardElement.style.transformStyle = '';
     }
   }
 

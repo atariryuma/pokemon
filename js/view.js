@@ -381,8 +381,7 @@ export class View {
             this.renderRegions.cpuBench.dirty = false;
         }
         
-        // 手札位置調整（プレイヤーのみ）
-        this._updateHandPosition();
+        // レイアウトはCSSに委譲（手札位置調整のJS制御は撤廃）
     }
     
     _clearHandArea(handElement) {
@@ -408,14 +407,7 @@ export class View {
         });
     }
     
-    _updateHandPosition() {
-        if (this.playerHand) {
-            this.playerHand.style.bottom = '10px';
-            const hand = document.getElementById('player-hand');
-            if (hand) hand.style.height = '';
-            this._positionHandAgainstBoard(this._getDesiredHandGap());
-        }
-    }
+    // _updateHandPosition はCSSレイアウトへ委譲のため撤廃
     
     _updateUIElements() {
         this._debugZOrder();
@@ -778,80 +770,20 @@ export class View {
             }
         });
 
-        // Reposition on load and resize
-        window.addEventListener('load', () => this._positionHandAgainstBoard(this._getDesiredHandGap()));
-        window.addEventListener('resize', () => { 
-            this._positionHandAgainstBoard(this._getDesiredHandGap());
-        });
+        // Repositioning removed: CSS handles layout
     }
 
     /**
      * Adjust player's hand so that maximized cards graze the playmat bottom edge.
      * @param {number} desiredOverlapPx - target overlap amount in pixels
      */
-    _positionHandAgainstBoard(desiredOverlapPx = 12) {
-        try {
-            const board = document.getElementById('game-board');
-            const handInner = document.getElementById('player-hand-inner');
-            if (!board || !handInner) return;
-
-            // Find a representative card to measure
-            const sampleCard = handInner.querySelector('.hand-slot.hand-card');
-            if (!sampleCard) return;
-
-            const boardRect = board.getBoundingClientRect();
-
-            // Reset to a known baseline before measurement to avoid cumulative drift
-            handInner.style.marginTop = '0px';
-            handInner.style.transform = 'translateY(0px)';
-            // Force reflow, then measure at baseline
-            // eslint-disable-next-line no-unused-expressions
-            handInner.offsetHeight;
-            const baseRect = sampleCard.getBoundingClientRect();
-
-            // Predict the top position when a card is at maximum magnification.
-            // Use the same constants as the dock behavior.
-            const BASE_SCALE = 1.0;
-            const MAX_SCALE = 1.3;
-            const MAX_LIFT = 34; // px
-
-            // current rect is for BASE_SCALE (collapsed). Extra height at max scale:
-            const scaleRatio = (MAX_SCALE / BASE_SCALE);
-            const extraHeight = baseRect.height * (scaleRatio - 1);
-            const predictedMaxTop = baseRect.top - extraHeight - MAX_LIFT;
-
-            // Target top position of the card at maximum scale.
-            // If desiredOverlapPx < 0 => treat as GAP below board of |value| pixels.
-            // If desiredOverlapPx > 0 => treat as OVERLAP into board of value pixels.
-            const isGap = desiredOverlapPx < 0;
-            const magnitude = Math.abs(desiredOverlapPx);
-            const targetTopAtMax = isGap
-                ? (boardRect.bottom + magnitude)   // gap below board
-                : (boardRect.bottom - magnitude);  // overlap into board
-            const delta = targetTopAtMax - predictedMaxTop; // positive -> push hand downward
-
-            if (Math.abs(delta) > 0.5) {
-                // Use translateY so we can move up (negative) or down (positive)
-                const clamped = Math.max(-480, Math.min(480, delta));
-                handInner.style.transform = `translateY(${clamped.toFixed(1)}px)`;
-            } else {
-                handInner.style.transform = 'translateY(0px)';
-            }
-        } catch (e) {
-            console.warn('Failed to position hand against board:', e);
-        }
-    }
+    // _positionHandAgainstBoard removed: layout handled by CSS only
 
     /**
      * Decide a pleasant default gap between playmat bottom and hand (negative px means gap).
      * Adapts to viewport height: smaller screens use smaller gap.
      */
-    _getDesiredHandGap() {
-        const h = window.innerHeight || 800;
-        if (h < 720) return -4;   // tighter on short viewports
-        if (h < 900) return -6;   // medium
-        return -8;                // roomy
-    }
+    // _getDesiredHandGap removed
 
 
     /**

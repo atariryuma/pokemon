@@ -3021,6 +3021,8 @@ export class Game {
                 if (index < 6) {
                     slot.innerHTML = ''; // 既存内容をクリア
                     const backCard = this._createPrizeBackCard('player', index);
+                    // 向きを確実に適用
+                    try { CardOrientationManager.applyCardOrientation(backCard, 'player', 'prize'); } catch (e) {}
                     slot.appendChild(backCard);
                 }
             });
@@ -3033,6 +3035,8 @@ export class Game {
                 if (index < 6) {
                     slot.innerHTML = ''; // 既存内容をクリア
                     const backCard = this._createPrizeBackCard('cpu', index);
+                    // 向きを確実に適用
+                    try { CardOrientationManager.applyCardOrientation(backCard, 'cpu', 'prize'); } catch (e) {}
                     slot.appendChild(backCard);
                 }
             });

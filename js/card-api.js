@@ -82,9 +82,21 @@
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+    
     const p = (fileOrData && typeof fileOrData !== 'string' && fileOrData.name)
-      ? toDataUrl(fileOrData).then(data => ({ filename: fileOrData.name, data }))
-      : Promise.resolve({ filename: opts.filename || 'image', data: String(fileOrData || '') });
+      ? toDataUrl(fileOrData).then(data => ({ 
+          filename: opts.filename || fileOrData.name, 
+          data,
+          cardType: opts.cardType,
+          cardId: opts.cardId
+        }))
+      : Promise.resolve({ 
+          filename: opts.filename || 'image', 
+          data: String(fileOrData || ''),
+          cardType: opts.cardType,
+          cardId: opts.cardId
+        });
+        
     return p.then(payload => fetch(`${BASE}/api/images`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

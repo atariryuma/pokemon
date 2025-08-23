@@ -426,20 +426,31 @@
           </div>
 
           <div class="section">
-            <h3>画像ファイル</h3>
-            <div class="grid-2">
-              <div class="field"><label for="image_file">画像ファイル名 (任意)</label><input id="image_file" placeholder="例: SV1-001.webp" title="画像ファイル名"/></div>
-              <div class="field"><label for="image_upload">画像アップロード</label><input id="image_upload" type="file" accept="image/*" title="画像ファイルを選択"/></div>
+            <h3>画像</h3>
+            <div class="field">
+              <label for="image_file">画像ファイル名</label>
+              <input id="image_file" placeholder="自動生成されます" title="画像ファイル名" readonly style="background: rgba(0,0,0,0.1);"/>
             </div>
-            <div class="flex-row" style="align-items:center; gap:8px; margin-top:6px;">
-              <button type="button" class="btn" id="btn-pick-image">画像を選ぶ</button>
-              <button type="button" class="btn" id="btn-gallery">ギャラリー</button>
-              <button type="button" class="btn" id="btn-guess-image">英名から推測</button>
-              <button type="button" class="btn" id="btn-optimize-image" style="display:none;">最適化</button>
-              <button type="button" class="btn btn-danger" id="btn-delete-image" style="display:none;">削除</button>
+            
+            <!-- 隠しファイル入力 -->
+            <input type="file" id="image_upload" accept="image/*" style="display: none;" title="画像ファイルを選択"/>
+            
+            <div class="flex-row" style="align-items:center; gap:8px; margin-top:12px; flex-wrap: wrap;">
+              <button type="button" class="btn primary" id="btn-pick-image">🖼️ 画像を選択</button>
+              <button type="button" class="btn" id="btn-gallery">📁 既存画像</button>
+              <button type="button" class="btn" id="btn-guess-image">🔍 名前から推測</button>
             </div>
-            <div style="margin-top:4px;">
-              <span class="hint">画像アップロード → ファイル名自動推測 → Chrome/Edgeでassets/cards/に自動保存</span>
+            
+            <!-- 画像が設定されている場合のみ表示される操作ボタン -->
+            <div id="image-actions" style="margin-top:8px; display:none;">
+              <div class="flex-row" style="gap:8px; flex-wrap: wrap;">
+                <button type="button" class="btn" id="btn-optimize-image">⚡ WebP最適化</button>
+                <button type="button" class="btn btn-danger" id="btn-delete-image">🗑️ 削除</button>
+              </div>
+            </div>
+            
+            <div id="image-upload-status" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; display: none;">
+              <!-- 画像状況を表示 -->
             </div>
           </div>
         </form>
@@ -740,6 +751,7 @@
 
       // Image
       byId('image_file').value = c.image_file || '';
+      updateImageActions();
 
       onTypeChange();
       setStatus('編集: ' + (c.id || '(新規)'));
@@ -1092,14 +1104,30 @@
           const result = await window.CardAPI.uploadImage(file, uploadOptions);
           if (result && result.path) {
             setStatus(`✅ サーバーに画像を保存しました: ${result.path}`);
-            // 画像URLを更新
-            const imageUrl = result.path;
+            
+            // 実際にサーバーが返したファイル名を使用（衝突回避のため変更される可能性がある）
+            const actualFileName = result.filename || fileName;
+            byId('image_file').value = actualFileName;
+            
             const currentCard = cards[activeIndex];
             if (currentCard) {
-              currentCard.image_file = fileName;
-              currentCard.image_url = imageUrl;
+              currentCard.image_file = actualFileName;
+              // 画像パスはサーバーが返した正確なパスを使用
+              currentCard.image_url = result.path;
             }
+            
+            // UIを更新
             updatePreview();
+            markUnsaved(true);
+            
+            console.log(`Image uploaded successfully:`, {
+              originalName: fileName,
+              actualName: actualFileName,
+              path: result.path,
+              cardType: result.cardType,
+              size: result.size
+            });
+            
             return true;
           }
         }
@@ -1213,7 +1241,7 @@
       // Preview controls
       byId('btn-prev').addEventListener('click', goPrev);
       byId('btn-next').addEventListener('click', goNext);
-      byId('image_upload').addEventListener('change', () => { 
+      byId('image_upload').addEventListener('change', async () => { 
         // 画像アップロード時に自動でファイル名を推測
         const input = byId('image_upload');
         if (input.files && input.files[0]) {
@@ -1224,13 +1252,33 @@
               byId('image_file').value = guessedName;
             }
           }
+          
+          // 自動でサーバーに保存
+          const statusDiv = byId('image-upload-status');
+          statusDiv.textContent = '画像をアップロード中...';
+          statusDiv.style.display = 'block';
+          statusDiv.style.color = 'var(--primary)';
+          
+          try {
+            await saveImageIfSelected();
+            statusDiv.textContent = '✅ 画像のアップロードが完了しました';
+            statusDiv.style.color = '#4ade80';
+            updateImageActions();
+            setTimeout(() => {
+              statusDiv.style.display = 'none';
+            }, 3000);
+          } catch (error) {
+            statusDiv.textContent = '❌ 画像のアップロードに失敗しました';
+            statusDiv.style.color = '#ef4444';
+            console.error('Image upload failed:', error);
+          }
         }
         updatePreview(); 
         markUnsaved(true); 
       });
       byId('btn-pick-image').addEventListener('click', openImagePicker);
       byId('btn-gallery').addEventListener('click', openImageGallery);
-      byId('btn-guess-image').addEventListener('click', () => { const guess = guessImageFile(); if (guess){ byId('image_file').value = guess; updatePreview(); markUnsaved(true);} });
+      byId('btn-guess-image').addEventListener('click', () => { const guess = guessImageFile(); if (guess){ byId('image_file').value = guess; updateImageActions(); updatePreview(); markUnsaved(true);} });
       byId('btn-optimize-image').addEventListener('click', optimizeCurrentImage);
       byId('btn-delete-image').addEventListener('click', deleteCurrentImage);
       byId('zoom').addEventListener('input', (e) => { zoomLevel = Number(e.target.value); applyTransform(); });
@@ -1448,11 +1496,7 @@
       };
       img.onload = () => { 
         empty.style.display = 'none'; 
-        // 画像ファイル名が指定されている場合のみボタンを表示
-        const filename = byId('image_file').value.trim();
-        const isOptimizable = filename && !filename.toLowerCase().endsWith('.webp');
-        deleteBtn.style.display = filename ? 'inline-block' : 'none';
-        byId('btn-optimize-image').style.display = isOptimizable ? 'inline-block' : 'none';
+        updateImageActions();
       };
       applyTransform();
       // Reflect current filename into the input (if using assets path)
@@ -1515,6 +1559,33 @@
 
       return `${cardId}${ext}`;
     }
+    function updateImageActions() {
+      const filename = byId('image_file').value.trim();
+      const imageActionsDiv = byId('image-actions');
+      const statusDiv = byId('image-upload-status');
+      const optimizeBtn = byId('btn-optimize-image');
+      
+      if (filename) {
+        // 画像が設定されている場合
+        imageActionsDiv.style.display = 'block';
+        
+        // 最適化ボタンの表示制御
+        const isOptimizable = !filename.toLowerCase().endsWith('.webp');
+        optimizeBtn.style.display = isOptimizable ? 'inline-block' : 'none';
+        
+        // 状況表示
+        if (statusDiv.style.display === 'none') {
+          statusDiv.textContent = `📁 ${filename}`;
+          statusDiv.style.color = 'var(--text-secondary)';
+          statusDiv.style.display = 'block';
+        }
+      } else {
+        // 画像が設定されていない場合
+        imageActionsDiv.style.display = 'none';
+        statusDiv.style.display = 'none';
+      }
+    }
+
     function openImagePicker(){
       // シンプルなファイル選択
       const input = byId('image_upload');
@@ -1535,11 +1606,21 @@
             <h2 style="margin: 0 0 16px 0; color: var(--text); font-size: 20px;">画像ギャラリー (${images.length}件)</h2>
             
             <!-- Search and Filter Controls -->
-            <div style="margin-bottom: 16px; display: flex; gap: 8px; align-items: center;">
+            <div style="margin-bottom: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <input type="text" id="gallery-search" placeholder="ファイル名で検索..." style="
-                flex: 1; padding: 6px 10px; border: 1px solid var(--border); 
+                flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid var(--border); 
                 border-radius: 6px; background: var(--bg-secondary); color: var(--text);
               " />
+              <select id="gallery-filter-type" style="
+                padding: 6px 10px; border: 1px solid var(--border); 
+                border-radius: 6px; background: var(--bg-secondary); color: var(--text);
+              ">
+                <option value="">全タイプ</option>
+                <option value="energy">Energy</option>
+                <option value="pokemon">Pokemon</option>
+                <option value="trainer">Trainer</option>
+                <option value="legacy">Legacy</option>
+              </select>
               <select id="gallery-filter-ext" style="
                 padding: 6px 10px; border: 1px solid var(--border); 
                 border-radius: 6px; background: var(--bg-secondary); color: var(--text);
@@ -1666,6 +1747,7 @@
             item.addEventListener('click', () => {
               const filename = item.dataset.filename;
               byId('image_file').value = filename;
+              updateImageActions();
               updatePreview();
               markUnsaved(true);
               closeModal();
@@ -1773,6 +1855,7 @@
       try {
         await CardAPI.deleteImage(filename);
         byId('image_file').value = '';
+        updateImageActions();
         updatePreview();
         markUnsaved(true);
         alert('画像を削除しました');
@@ -1869,6 +1952,7 @@
           // 最適化されたファイル名を設定
           const optimizedFilename = result.optimizedPath.split('/').pop();
           byId('image_file').value = optimizedFilename;
+          updateImageActions();
           updatePreview();
           markUnsaved(true);
           alert(`画像を最適化しました: ${filename} → ${optimizedFilename}\nサイズ: ${(result.originalSize/1024).toFixed(1)}KB → ${(result.optimizedSize/1024).toFixed(1)}KB`);

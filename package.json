@@ -5,5 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
+  },
+  "dependencies": {
+    "sharp": "^0.34.3"
   }
 }

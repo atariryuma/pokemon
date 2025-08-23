@@ -22,8 +22,8 @@
     "retreat_cost": 1,
     "attacks": [
       {
-        "name_ja": "ひっかく",
         "name_en": "Scratch",
+        "name_ja": "ひっかく",
         "cost": [
           "Lightning",
           "Colorless"
@@ -31,8 +31,8 @@
         "damage": 90
       },
       {
-        "name_ja": "回ふく",
         "name_en": "Recover",
+        "name_ja": "回ふく",
         "cost": [
           "Lightning",
           "Grass",
@@ -40,8 +40,8 @@
           "Colorless"
         ],
         "damage": 0,
-        "text_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。",
-        "text_en": "Fully heal this Pokémon. The opponent's next attack does 70 less damage."
+        "text_en": "Fully heal this Pokémon. The opponent's next attack does 70 less damage.",
+        "text_ja": "自分のHPをすべて回ふく。相手の次の攻撃は70ダメージ小さくなる。"
       }
     ],
     "image_file": "Akamayabato.webp"
@@ -1092,6 +1092,6 @@
     "card_type": "Energy",
     "energy_type": "Metal",
     "is_basic": false,
-    "image_file": "Energy_Metal.jpg"
+    "image_file": "Energy_Metal.webp"
   }
 ]

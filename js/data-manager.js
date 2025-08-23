@@ -254,62 +254,222 @@ export const nameTranslations = {
 function normalizeCardData(rawData) {
     if (!Array.isArray(rawData)) return [];
     
+    // ID重複検出用セット
+    const usedIds = new Set();
+    let nextAutoId = 1;
+    
     return rawData.map((card, index) => {
         const normalized = { ...card };
         
-        
-        // card_type の正規化
-        if (normalized.card_type === 'Pokemon') {
-            normalized.card_type = 'Pokémon';
-        } else if (normalized.card_type === 'Energy') {
-            // is_basic プロパティがない場合は基本エネルギーとして扱う
-            if (normalized.is_basic === false) {
-                normalized.card_type = 'Special Energy';
-            } else {
-                normalized.card_type = 'Basic Energy';
+        // === ID システム標準化 ===
+        // IDが欠落または無効な場合、自動生成
+        if (!normalized.id || typeof normalized.id !== 'string' || normalized.id.trim() === '') {
+            normalized.id = generateUniqueId(usedIds, nextAutoId);
+            console.warn(`⚠️ Missing ID for card at index ${index}, auto-generated: ${normalized.id}`);
+        } else {
+            // IDを3桁ゼロパディング形式に正規化
+            const numericId = parseInt(normalized.id, 10);
+            if (!isNaN(numericId) && numericId > 0) {
+                normalized.id = String(numericId).padStart(3, '0');
+            }
+            
+            // ID重複チェック
+            if (usedIds.has(normalized.id)) {
+                const originalId = normalized.id;
+                normalized.id = generateUniqueId(usedIds, nextAutoId);
+                console.warn(`⚠️ Duplicate ID detected: ${originalId}, reassigned to: ${normalized.id}`);
             }
         }
         
-        // stage の正規化
+        usedIds.add(normalized.id);
+        if (!isNaN(parseInt(normalized.id, 10))) {
+            nextAutoId = Math.max(nextAutoId, parseInt(normalized.id, 10) + 1);
+        }
+        
+        // === カードタイプ正規化 ===
+        normalized.card_type = normalizeCardType(normalized.card_type, normalized);
+        
+        // === 画像フィールド統一 ===
+        normalizeImageFields(normalized);
+        
+        // === stage の正規化 ===
         if (normalized.stage === 'Basic') normalized.stage = 'BASIC';
         if (normalized.stage === 'Stage1') normalized.stage = 'STAGE1';
         if (normalized.stage === 'Stage2') normalized.stage = 'STAGE2';
         
-        // 後方互換性のための type -> types 変換
+        // === 後方互換性のための type -> types 変換 ===
         if (!normalized.types && normalized.type) {
             normalized.types = Array.isArray(normalized.type) ? normalized.type : [normalized.type];
             delete normalized.type;
         }
         
-        // weakness を配列に変換（もし単一オブジェクトの場合）
+        // === weakness を配列に変換（もし単一オブジェクトの場合） ===
         if (normalized.weakness && !Array.isArray(normalized.weakness)) {
             normalized.weakness = [normalized.weakness];
         }
         
-        // retreat_cost を数値に変換（もし配列の場合）
+        // === retreat_cost を数値に変換（もし配列の場合） ===
         if (Array.isArray(normalized.retreat_cost)) {
             normalized.retreat_cost = normalized.retreat_cost.length;
         }
         
-        // 欠落フィールドの補完
+        // === 欠落フィールドの補完 ===
         if (!normalized.name_en && normalized.name_ja) {
             normalized.name_en = normalized.name_ja; // フォールバック
-            console.warn(`⚠️ Missing name_en, using name_ja: ${normalized.name_ja}`);
+            console.warn(`⚠️ Missing name_en, using name_ja: ${normalized.name_ja} (ID: ${normalized.id})`);
         }
         
         if (!normalized.name_ja && normalized.name_en) {
             normalized.name_ja = normalized.name_en; // フォールバック
-            console.warn(`⚠️ Missing name_ja, using name_en: ${normalized.name_en}`);
+            console.warn(`⚠️ Missing name_ja, using name_en: ${normalized.name_en} (ID: ${normalized.id})`);
         }
         
-        // image フィールドを image_file に統一
-        if (!normalized.image_file && normalized.image) {
-            normalized.image_file = normalized.image;
-            delete normalized.image;
-        }
+        // === データ整合性検証 ===
+        validateCardData(normalized);
         
         return normalized;
     });
+}
+
+/**
+ * ユニークなIDを生成
+ * @param {Set} usedIds - 使用済みIDのセット
+ * @param {number} startFrom - 開始番号
+ * @returns {string} 生成されたID
+ */
+function generateUniqueId(usedIds, startFrom) {
+    let id = startFrom;
+    let formattedId;
+    
+    do {
+        formattedId = String(id).padStart(3, '0');
+        id++;
+    } while (usedIds.has(formattedId));
+    
+    return formattedId;
+}
+
+/**
+ * カードタイプを正規化
+ * @param {string} cardType - 元のカードタイプ
+ * @param {object} card - カードオブジェクト
+ * @returns {string} 正規化されたカードタイプ
+ */
+function normalizeCardType(cardType, card) {
+    if (!cardType) return 'Pokémon'; // デフォルト
+    
+    // 正規化マッピング
+    const typeMap = {
+        'Pokemon': 'Pokémon',
+        'pokemon': 'Pokémon',
+        'Energy': () => {
+            // is_basic プロパティで基本/特殊エネルギーを判定
+            if (card.is_basic === false) {
+                return 'Special Energy';
+            } else {
+                return 'Basic Energy';
+            }
+        },
+        'energy': () => card.is_basic === false ? 'Special Energy' : 'Basic Energy',
+        'Basic Energy': 'Basic Energy',
+        'Special Energy': 'Special Energy',
+        'Trainer': 'Trainer',
+        'trainer': 'Trainer'
+    };
+    
+    const normalizer = typeMap[cardType];
+    if (typeof normalizer === 'function') {
+        return normalizer();
+    } else if (normalizer) {
+        return normalizer;
+    }
+    
+    return cardType; // 不明なタイプはそのまま
+}
+
+/**
+ * 画像フィールドを統一
+ * @param {object} card - カードオブジェクト
+ */
+function normalizeImageFields(card) {
+    // image フィールドを image_file に統一
+    if (!card.image_file && card.image) {
+        card.image_file = card.image;
+        delete card.image;
+    }
+    
+    // 空の画像フィールドをクリア
+    if (card.image_file === '' || card.image_file === null) {
+        delete card.image_file;
+    }
+    
+    // IDベースの画像ファイル名を推測（ファイルが存在しない場合）
+    if (!card.image_file && card.id && card.name_en) {
+        const sanitizedName = sanitizeFileName(card.name_en);
+        const cardTypeFolder = getCardTypeFolder(card.card_type);
+        card.image_file = `${card.id}_${cardTypeFolder}_${sanitizedName}.webp`;
+    }
+}
+
+/**
+ * ファイル名に使用できるように文字列をサニタイズ
+ * @param {string} name - 元の名前
+ * @returns {string} サニタイズされた名前
+ */
+function sanitizeFileName(name) {
+    if (!name) return 'unknown';
+    return name
+        .replace(/[^a-zA-Z0-9\s\-_]/g, '') // 特殊文字を除去
+        .replace(/\s+/g, '_') // スペースをアンダースコアに
+        .replace(/_+/g, '_') // 連続するアンダースコアを1つに
+        .replace(/^_|_$/g, '') // 先頭・末尾のアンダースコアを除去
+        .toLowerCase();
+}
+
+/**
+ * カードタイプに対応するフォルダ名を取得
+ * @param {string} cardType - カードタイプ
+ * @returns {string} フォルダ名
+ */
+function getCardTypeFolder(cardType) {
+    const folderMap = {
+        'Pokémon': 'pokemon',
+        'Basic Energy': 'energy',
+        'Special Energy': 'energy',
+        'Trainer': 'trainer'
+    };
+    
+    return folderMap[cardType] || 'pokemon';
+}
+
+/**
+ * カードデータの整合性を検証
+ * @param {object} card - カードオブジェクト
+ */
+function validateCardData(card) {
+    const warnings = [];
+    
+    // 必須フィールドチェック
+    if (!card.id) warnings.push('Missing required field: id');
+    if (!card.name_en) warnings.push('Missing required field: name_en');
+    if (!card.name_ja) warnings.push('Missing required field: name_ja');
+    if (!card.card_type) warnings.push('Missing required field: card_type');
+    
+    // カードタイプ別検証
+    if (card.card_type === 'Pokémon') {
+        if (!card.hp || card.hp <= 0) warnings.push('Pokémon card missing valid HP');
+        if (!card.types || !Array.isArray(card.types) || card.types.length === 0) {
+            warnings.push('Pokémon card missing types');
+        }
+    }
+    
+    if (card.card_type === 'Basic Energy' || card.card_type === 'Special Energy') {
+        if (!card.energy_type) warnings.push('Energy card missing energy_type');
+    }
+    
+    if (warnings.length > 0) {
+        console.warn(`⚠️ Card validation warnings for "${card.name_en}" (ID: ${card.id}):`, warnings);
+    }
 }
 
 /**

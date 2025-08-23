@@ -6,6 +6,7 @@
  */
 
 import { AnimationCore, ANIMATION_TIMING } from './core.js';
+import { CardOrientationManager } from '../card-orientation.js';
 import { findZoneElement, findCardElement, findBenchSlot, areValidElements } from '../dom-utils.js';
 
 export class CardMoveAnimations extends AnimationCore {
@@ -189,37 +190,37 @@ export class CardMoveAnimations extends AnimationCore {
     }
 
     /**
-     * サイド配布アニメーション（高度版）
+     * サイド配布アニメーション（シンプル・座標不変）
+     * 与えられた elements（各スロット内のカード要素）をその場でフェードイン。
+     * 座標・サイズはCSS（%指定）に完全委譲し、JSでは変更しない。
      */
     async dealPrize(elements, playerId, options = {}) {
-        const { staggerDelay = 100 } = options;
-        
+        const { staggerDelay = 80 } = options;
+
         if (!Array.isArray(elements)) {
             console.warn('dealPrize: elements should be an array');
             return;
         }
 
-        // サイドエリアを取得
-        const prizeElement = findZoneElement(playerId, 'prize');
-        if (!prizeElement) {
-            console.warn(`Prize element not found for ${playerId}`);
-            return;
-        }
-
-        // 各サイドカードを順番に配布
-        const promises = elements.map((element, index) => {
+        const promises = elements.map((el, index) => {
             return new Promise(resolve => {
                 setTimeout(async () => {
-                    const cardElement = prizeElement.children[index];
-                    if (cardElement) {
-                        // 裏面からの配布アニメーション
-                        cardElement.style.opacity = '0';
-                        cardElement.style.transform = 'rotateY(90deg) scale(0.9)';
-                        
-                        await this.delay(50);
-                        cardElement.style.transition = 'opacity 250ms ease, transform 250ms ease';
-                        cardElement.style.opacity = '1';
-                        cardElement.style.transform = 'rotateY(0deg) scale(1)';
+                    const target = el; // そのまま使用（子要素やslot自体に対応）
+                    if (target) {
+                        // 向きを適用（CPU/プレイヤー、ゾーン=prize）
+                        CardOrientationManager.applyCardOrientation(target, playerId, 'prize');
+
+                        // 既存の移動系スタイルをクリア（座標ズレ防止）
+                        target.style.transition = '';
+                        target.style.transform = '';
+                        target.style.left = '';
+                        target.style.top = '';
+                        target.style.opacity = '0';
+
+                        await this.delay(20);
+                        // 位置は変えずにフェードインのみ
+                        target.style.transition = 'opacity 220ms ease';
+                        target.style.opacity = '1';
                     }
                     resolve();
                 }, index * staggerDelay);
