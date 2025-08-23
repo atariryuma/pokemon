@@ -224,7 +224,8 @@ export class EffectAnimations extends AnimationCore {
     }
 
     findEnergyCard(cardId) {
-        return document.querySelector(`[data-card-id="${cardId}"]`);
+        return document.querySelector(`[data-runtime-id="${cardId}"]`) ||
+               document.querySelector(`[data-card-id="${cardId}"]`);
     }
 
 
