@@ -1075,35 +1075,107 @@
         byId('image_file').value = fileName; // UI に反映
       }
       
-      // File System Access API を使って保存を試みる
-      if ('showDirectoryPicker' in window) {
-        try {
-          // assets/cards フォルダを選択させる
-          const assetsHandle = await window.showDirectoryPicker({
-            id: 'pokemon-assets-cards',
-            startIn: 'downloads'
+      try {
+        // 優先1: CardAPI経由でサーバーに保存（推奨）
+        if (window.CardAPI && window.CardAPI.uploadImage) {
+          const uploadOptions = {
+            filename: fileName,
+            cardType: cardType,
+            cardId: cardId
+          };
+          const result = await window.CardAPI.uploadImage(file, uploadOptions);
+          if (result && result.path) {
+            setStatus(`✅ サーバーに画像を保存しました: ${result.path}`);
+            // 画像URLを更新
+            const imageUrl = result.path;
+            const currentCard = cards[activeIndex];
+            if (currentCard) {
+              currentCard.image_file = fileName;
+              currentCard.image_url = imageUrl;
+            }
+            updatePreview();
+            return true;
+          }
+        }
+      } catch (error) {
+        console.warn('サーバー経由の保存に失敗:', error);
+      }
+      
+      try {
+        // 優先2: File System Access APIで直接プロジェクト構造に保存
+        if ('showDirectoryPicker' in window) {
+          // プロジェクトのルートディレクトリを選択させる
+          const rootHandle = await window.showDirectoryPicker({
+            id: 'pokemon-project-root',
+            mode: 'readwrite'
           });
           
-          // pokemon/energy/trainer フォルダを取得または作成
-          const typeDir = await assetsHandle.getDirectoryHandle(cardType, { create: true });
+          // assets/cards ディレクトリを確認・作成
+          let assetsHandle;
+          try {
+            assetsHandle = await rootHandle.getDirectoryHandle('assets');
+          } catch {
+            assetsHandle = await rootHandle.getDirectoryHandle('assets', { create: true });
+          }
+          
+          let cardsHandle;
+          try {
+            cardsHandle = await assetsHandle.getDirectoryHandle('cards');
+          } catch {
+            cardsHandle = await assetsHandle.getDirectoryHandle('cards', { create: true });
+          }
+          
+          // カードタイプ別フォルダを作成
+          let typeHandle;
+          try {
+            typeHandle = await cardsHandle.getDirectoryHandle(cardType);
+          } catch {
+            typeHandle = await cardsHandle.getDirectoryHandle(cardType, { create: true });
+          }
           
           // ファイルを保存
-          const fileHandle = await typeDir.getFileHandle(fileName, { create: true });
+          const fileHandle = await typeHandle.getFileHandle(fileName, { create: true });
           const writable = await fileHandle.createWritable();
           await writable.write(file);
           await writable.close();
           
           setStatus(`✅ 画像を保存しました: assets/cards/${cardType}/${fileName}`);
+          
+          // 画像パスを更新
+          const currentCard = cards[activeIndex];
+          if (currentCard) {
+            currentCard.image_file = fileName;
+          }
+          updatePreview();
           return true;
-        } catch (error) {
-          console.warn('File System Access API での保存に失敗:', error);
-          setStatus(`⚠️ 画像の自動保存に失敗しました。ファイル「${fileName}」を手動で assets/cards/${cardType}/ に保存してください。`);
         }
-      } else {
-        setStatus(`⚠️ ブラウザが自動保存に対応していません。ファイル「${fileName}」を手動で assets/cards/${cardType}/ に保存してください。`);
+      } catch (error) {
+        console.warn('File System Access API での保存に失敗:', error);
+        if (error.name === 'AbortError') {
+          setStatus('💡 フォルダ選択がキャンセルされました');
+          return false;
+        }
       }
       
-      return false;
+      // フォールバック: 従来のダウンロード形式で保存
+      try {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        setStatus(`💾 画像をダウンロードフォルダに保存しました: ${fileName}\n手動で assets/cards/${cardType}/ フォルダに移動してください`);
+        return true;
+      } catch (error) {
+        console.error('画像保存に失敗:', error);
+        setStatus(`❌ 画像の保存に失敗しました: ${error.message}`);
+        return false;
+      }
     }
 
     // --------- 初期化

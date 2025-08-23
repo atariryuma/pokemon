@@ -970,6 +970,8 @@
             transform-origin: bottom right; /* 右下基点に変更 */
             animation: fadeInScale 0.4s ease-out;
             max-width: calc(100vw - 3rem); /* 画面幅に応じて調整 */
+            max-height: calc(100vh - 6rem); /* 画面高さに応じて調整 */
+            overflow-y: auto; /* 縦スクロール対応 */
         }
         
         @keyframes fadeInScale {
@@ -1456,6 +1458,12 @@
         .toast-container {
             z-index: var(--z-toast);
             pointer-events: none;
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            max-width: calc(100vw - 2rem);
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
         }
 
         .toast-item {
@@ -1464,6 +1472,10 @@
             backdrop-filter: blur(8px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            min-width: 0; /* flexによる縮小を許可 */
         }
 
         .toast-success {
@@ -1534,17 +1546,20 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            max-width: calc(100vw - 2rem); /* 画面幅を考慮 */
+            min-width: 0; /* flexによる縮小を許可 */
         }
 
         .opponent-card-display {
             position: relative;
-            width: 280px;
-            height: 392px;
+            width: min(280px, 90vw);
+            height: min(392px, 60vh);
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
             border: 2px solid rgba(59, 130, 246, 0.3);
+            aspect-ratio: 5/7; /* カード比率を維持 */
         }
 
         .opponent-card-image {
@@ -1952,10 +1967,87 @@
                 top: 1rem;
                 right: 1rem;
                 left: 1rem;
+                max-width: calc(100vw - 2rem);
             }
             
             .toast-item {
                 margin-bottom: 0.5rem;
+                padding: 0.875rem;
+                font-size: 0.9rem;
+            }
+
+            .pokemon-action-hud {
+                max-width: calc(100vw - 2rem);
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            .pokemon-action-btn {
+                padding: 12px 18px;
+                font-size: 0.85rem;
+                min-width: 130px;
+            }
+
+            .battle-right-panel {
+                flex: 1 1 100%;
+                max-width: 100%;
+                margin-top: 1rem;
+            }
+
+            .battle-left-panel {
+                min-width: 0;
+                flex: 1;
+            }
+
+            .opponent-card-display {
+                width: min(250px, 85vw);
+                height: min(350px, 55vh);
+            }
+
+            .battle-modal-container-enhanced {
+                flex-direction: column;
+                gap: 20px;
+                max-width: calc(100vw - 2rem);
+            }
+        }
+
+        /* 小画面・モバイル対応 */
+        @media (max-width: 480px) {
+            .toast-container {
+                top: 0.5rem;
+                right: 0.5rem;
+                left: 0.5rem;
+                max-width: calc(100vw - 1rem);
+            }
+            
+            .toast-item {
+                margin-bottom: 0.4rem;
+                padding: 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .pokemon-action-hud {
+                max-width: calc(100vw - 1rem);
+                bottom: 0.5rem;
+                right: 0.5rem;
+                max-height: calc(100vh - 8rem);
+            }
+
+            .pokemon-action-btn {
+                padding: 10px 14px;
+                font-size: 0.8rem;
+                min-width: 110px;
+            }
+
+            .opponent-card-display {
+                width: min(200px, 75vw);
+                height: min(280px, 45vh);
+            }
+
+            .battle-modal-container-enhanced {
+                gap: 12px;
+                max-width: calc(100vw - 1rem);
+                margin: 0.5rem;
             }
         }
 
@@ -2343,8 +2435,8 @@
 
         </div>
     </div>
-<!-- Floating Action HUD (Bottom-left) -->
-<div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud);">
+<!-- Floating Action HUD (Bottom-right) -->
+<div id="floating-action-hud" class="fixed bottom-6 right-6 flex flex-col gap-3 pokemon-action-hud" style="z-index: var(--z-floating-hud); max-width: calc(100vw - 3rem); max-height: calc(100vh - 6rem); overflow-y: auto;">
     <button type="button" id="start-game-button-float" class="pokemon-action-btn">
         <span class="pokemon-btn-icon">🎴</span>
         <span class="pokemon-btn-text">手札を7枚引く</span>
