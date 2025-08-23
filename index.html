@@ -198,16 +198,6 @@
             pointer-events: none;   /* クリックイベントを通過させる */
         }
 
-        .card-slot {
-            border-radius: 6px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-            position: absolute;
-            /* z-index統合: 上の.card-slotルールで制御 */
-            min-width: 20px; /* 最小サイズを確保 */
-            min-height: 28px;
-            overflow: visible; /* Explicitly set overflow to visible */
-        }
 
 
         /* ボード基盤 */
@@ -222,11 +212,18 @@
             bottom: 130px;
         }
         
-        /* カードスロット */
+        /* カードスロット - 統合設定 */
         .card-slot {
+            border-radius: 6px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            position: absolute;
             z-index: var(--z-slots);
             pointer-events: auto;
-            position: relative;
+            min-width: 20px;
+            min-height: 28px;
+            overflow: visible;
+            transform-style: preserve-3d;
         }
         
         /* 手札エリア */
@@ -347,12 +344,23 @@
             transform: translateZ(1px);
         }
 
+        /* CPU手札要素を完全無効化 */
+        #cpu-hand {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
+        }
+        
+        /* カードスロットホバー効果の復旧 */
         .card-slot:hover {
             transform: translateY(-8px) scale(1.08);
             border-color: #4dd0fd;
-            box-shadow: 0 0 25px #4dd0fd80;
+            box-shadow: 0 0 25px rgba(77, 208, 253, 0.5);
             z-index: var(--z-card-hover);
         }
+        
 
         /* JSで制御するホバーエフェクト用クラス */
         .slot-hover-effect {
@@ -362,17 +370,16 @@
             z-index: var(--z-hand-hover);
         }
 
-        /* --- 全体の transform-style を設定 --- */
-        .card-slot {
-            transform-style: preserve-3d;
-        }
 
         
 
-        /* --- カードの向きとホバー問題の解決 --- */
+        /* --- カード画像の基本スタイル --- */
         .card-image {
-            /* transformは個別のクラスで管理 */
-            transition: transform 0.2s ease-out;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            object-fit: cover;
+            transition: transform 0.2s ease-out, opacity 0.3s ease;
         }
 
         /* プレイヤーカードの向き（通常時） */
@@ -397,12 +404,15 @@
             transform: rotateX(180deg) translateZ(20px);
         }
 
-        /* CPU側の空スロット - 統合ルールで制御 */
-
+        /* サイドカード（プライズ）専用のホバー効果 */
         .side-cards-container .card-slot:hover {
-            transform: translateY(-12px) scale(1.15);
-            z-index: var(--z-deck-hover);
+            transform: translateY(-8px) scale(1.08);
+            border-color: #4dd0fd;
+            box-shadow: 0 0 25px #4dd0fd80;
+            z-index: var(--z-card-hover);
         }
+
+        
 
         .deck-container:hover {
             transform: translateY(-6px) scale(1.05);
@@ -724,15 +734,7 @@
             z-index: var(--z-board-bg);
         }
         
-        .card-image {
-            width: 100%;
-            height: 100%;
-            border-radius: 8px;
-            object-fit: cover;
-        }
-
-        /* Card image visibility control */
-        img.card-image { opacity: 1; transition: opacity 0.3s ease; }
+        /* 重複削除済み - 統合された.card-imageルールを使用 */
         .is-hidden { opacity: 0; pointer-events: none; }
 
         .card-placeholder {
@@ -943,13 +945,6 @@
             z-index: var(--z-highlight);
         }
 
-        /* CPU手札も前面に */
-        #cpu-hand {
-            z-index: var(--z-hand);
-            pointer-events: none;
-            transform: none;
-            will-change: auto;
-        }
 
         button {
             /* background-color: rgba(255, 255, 255, 0.1); */ /* Base color from Tailwind classes */

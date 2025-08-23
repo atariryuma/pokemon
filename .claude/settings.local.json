@@ -32,7 +32,8 @@
       "Bash(rg:*)",
       "Bash(powershell:*)",
       "Bash(dir:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(open \"http://localhost:8001/\")"
     ],
     "deny": [],
     "ask": [],
