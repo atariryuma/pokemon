@@ -1,3 +1,4 @@
+import { ZIndexManager } from './z-index-constants.js';
 /**
  * CARD-ORIENTATION.JS - 統一カード向き制御システム
  *
@@ -49,11 +50,11 @@ export class CardOrientationManager {
     const img = cardElement.querySelector && cardElement.querySelector('img');
     if (shouldFlip) {
       if (img) {
-        img.style.transform = 'rotate(180deg) translateZ(0)';
+        ZIndexManager.applyTranslateZ(img, 'TZ_CARD_IMAGE_BASE', 'rotate(180deg)');
         img.style.transformStyle = 'preserve-3d';
       } else {
         // 画像タグがない（背景画像やプレースホルダー）場合は要素自体を反転
-        cardElement.style.transform = 'rotate(180deg) translateZ(0)';
+        ZIndexManager.applyTranslateZ(cardElement, 'TZ_CARD_IMAGE_BASE', 'rotate(180deg)');
         cardElement.style.transformStyle = 'preserve-3d';
       }
     } else {

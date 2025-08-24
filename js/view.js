@@ -1037,7 +1037,7 @@ export class View {
             damageCounter.textContent = card.damage;
             damageCounter.style.pointerEvents = 'none';
             // Z-indexに頼らず、3D空間で手前に配置
-            damageCounter.style.transform = 'translateZ(1px)';
+            ZIndexManager.applyTranslateZ(damageCounter, 'TZ_DAMAGE_COUNTER');
             container.appendChild(damageCounter);
         }
 

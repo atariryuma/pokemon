@@ -44,7 +44,14 @@ export const Z_INDEX = {
     FLOATING_HUD: 420,     // --z-floating-hud
     TOAST: 430,            // --z-toast
     MODALS: 500,           // --z-modals
-    CRITICAL: 600          // --z-critical (致命的エラー・アニメーション)
+    CRITICAL: 600,         // --z-critical (致命的エラー・アニメーション)
+
+    // === 3D Transform Z-Depth (translateZ) ===
+    TZ_PLAYER_HAND: 100,
+    TZ_CPU_HAND: -60,
+    TZ_CARD_SLOT: 1,
+    TZ_DAMAGE_COUNTER: 1,
+    TZ_CARD_IMAGE_BASE: 0,
 };
 
 /**
@@ -75,7 +82,14 @@ export const Z_CSS_VARS = {
     FLOATING_HUD: 'var(--z-floating-hud)',
     TOAST: 'var(--z-toast)',
     MODALS: 'var(--z-modals)',
-    CRITICAL: 'var(--z-critical)'
+    CRITICAL: 'var(--z-critical)',
+
+    // === 3D Transform Z-Depth (translateZ) ===
+    TZ_PLAYER_HAND: 'var(--tz-player-hand)',
+    TZ_CPU_HAND: 'var(--tz-cpu-hand)',
+    TZ_CARD_SLOT: 'var(--tz-card-slot)',
+    TZ_DAMAGE_COUNTER: 'var(--tz-damage-counter)',
+    TZ_CARD_IMAGE_BASE: 'var(--tz-card-image-base)',
 };
 
 /**
@@ -189,6 +203,24 @@ export class ZIndexManager {
      */
     static sendBelowPlaymat(element) {
         this.apply(element, 'BOARD_BG');
+    }
+
+    /**
+     * 要素にtranslateZを適用（CSS変数使用）
+     * @param {Element} element - 対象要素
+     * @param {string} level - Z_CSS_VARSのTZ_キー
+     * @param {string} [additionalTransform=''] - 追加のtransformプロパティ（例: 'rotateX(10deg) scale(0.98)'）
+     */
+    static applyTranslateZ(element, level, additionalTransform = '') {
+        if (!element || !Z_CSS_VARS[level]) {
+            console.warn(`Invalid element or translateZ level: ${level}`);
+            return;
+        }
+
+        const cssVar = Z_CSS_VARS[level];
+        element.style.transform = `translateZ(${cssVar})${additionalTransform ? ' ' + additionalTransform : ''}`;
+
+        // フォールバックは不要（CSS変数が解決されない場合はtransform全体が無効になるため）
     }
 }
 
