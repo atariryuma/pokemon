@@ -47,11 +47,10 @@ export const Z_INDEX = {
     CRITICAL: 600,         // --z-critical (致命的エラー・アニメーション)
 
     // === 3D Transform Z-Depth (translateZ) ===
-    TZ_PLAYER_HAND: 100,
-    TZ_CPU_HAND: -60,
     TZ_CARD_SLOT: 1,
     TZ_DAMAGE_COUNTER: 1,
     TZ_CARD_IMAGE_BASE: 0,
+    TZ_GAME_BOARD: 0,
 };
 
 /**
@@ -85,11 +84,10 @@ export const Z_CSS_VARS = {
     CRITICAL: 'var(--z-critical)',
 
     // === 3D Transform Z-Depth (translateZ) ===
-    TZ_PLAYER_HAND: 'var(--tz-player-hand)',
-    TZ_CPU_HAND: 'var(--tz-cpu-hand)',
     TZ_CARD_SLOT: 'var(--tz-card-slot)',
     TZ_DAMAGE_COUNTER: 'var(--tz-damage-counter)',
     TZ_CARD_IMAGE_BASE: 'var(--tz-card-image-base)',
+    TZ_GAME_BOARD: 'var(--tz-game-board)',
 };
 
 /**
