@@ -59,12 +59,8 @@ export class CardOrientationManager {
       }
     } else {
       // 正位置に戻す（以前の反転をクリア）
-      if (img) {
-        img.style.transform = '';
-        img.style.transformStyle = '';
-      }
-      cardElement.style.transform = '';
-      cardElement.style.transformStyle = '';
+      // CSSのdata-orientation属性に任せるため、直接transformはクリアしない
+      // ZIndexManager.applyTranslateZがtranslateZを管理
     }
   }
 

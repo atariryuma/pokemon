@@ -998,10 +998,8 @@ export class View {
         }
 
         // --- 向き・所有者は data-* で管理 ---
-        if (zone === 'deck') {
-            // デッキカードは通常のカードレイヤーに配置
-            ZIndexManager.ensureAbovePlaymat(container); // --z-card 相当
-        }
+        // Z-indexに頼らず、3D空間で手前に配置
+        ZIndexManager.applyTranslateZ(container, 'TZ_CARD_SLOT');
 
         // DOM識別は runtimeId を優先（重複回避）。マスターIDも保持（カード種別の参照用）。
         container.dataset.runtimeId = card.runtimeId || card.id;
