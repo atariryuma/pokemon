@@ -103,7 +103,7 @@
             justify-content: center;
             align-items: flex-start;
             position: relative;
-            z-index: var(--z-500);
+            z-index: var(--z-hand-area);
             margin-bottom: 15px; /* プレースホルダーアクセス用余白調整 */
             overflow: visible; /* カードが容器外に出ることを許可 */
             /* カード部分のみクリック可能、空白部分は下の要素に透過 */
@@ -125,7 +125,7 @@
             right: 20px !important;
             width: auto !important;
             max-width: 400px;
-            z-index: var(--z-1000);
+            z-index: var(--z-floating-hud);
             transform-origin: bottom right;
             animation: fadeInScale var(--anim-normal) ease-out;
             /* Tailwindクラスを上書き */
@@ -306,24 +306,24 @@
         /* プレイヤーフィールド（下部） - 優先レイヤー */
         .player-board.player-self {
             pointer-events: auto !important;
-            z-index: var(--z-player-board) !important;
+            z-index: var(--z-board) !important;
         }
         
         .player-board.player-self .card-slot {
             pointer-events: auto !important;
-            z-index: var(--z-player-board) !important;
+            z-index: var(--z-board) !important;
             position: relative !important;
         }
         
         /* 相手フィールド（上部） - 分離レイヤー */
         .player-board.opponent-board {
             pointer-events: auto !important;
-            z-index: var(--z-opponent-board) !important;
+            z-index: var(--z-board) !important;
         }
         
         .player-board.opponent-board .card-slot {
             pointer-events: auto !important;
-            z-index: var(--z-opponent-board) !important;
+            z-index: var(--z-board) !important;
             position: relative !important;
         }
         
@@ -371,7 +371,7 @@
             pointer-events: auto;
             transform: translateZ(150px); /* 3D空間でボードより手前に配置 */
             transform-style: var(--preserve-3d);
-            z-index: var(--z-500); /* プレイヤー手札レイヤー */
+            z-index: var(--z-hand); /* プレイヤー手札レイヤー */
         }
 
         /* 手札カード - クリック確実性保証とアクティブ化 */
@@ -395,7 +395,7 @@
             transform: translateZ(150px) translateY(-15px) scale(1.05);
             box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
             border: 2px solid #ffd700;
-            z-index: calc(var(--z-500) + 10); /* アクティブカードを前面に */
+            z-index: calc(var(--z-hand) + 10); /* アクティブカードを前面に */
         }
         
         /* CPU手札 - 一旦シンプルな配置で可視性確保 */
@@ -613,7 +613,7 @@
 
         .deck-container:hover {
             transform: var(--gpu-layer) translateY(-6px) scale(1.05);
-            z-index: var(--z-31);
+            z-index: var(--z-deck-hover);
             will-change: var(--performance-will-change);
         }
 
@@ -889,7 +889,7 @@
             box-shadow: 0 0 20px #4dd0fd80;
             border: 2px solid #4dd0fd;
             transform: var(--gpu-layer) translateY(-5px) scale(1.05);
-            z-index: var(--z-32);
+            z-index: var(--z-selected);
             will-change: var(--performance-will-change);
         }
 
@@ -991,7 +991,7 @@
             position: fixed;
             top: 20px; /* 右上に配置 */
             right: 20px; /* 右上に配置 */
-            z-index: var(--z-1000); /* 他UIと同じ最前面レベル */
+            z-index: var(--z-panels); /* 他UIと同じ最前面レベル */
             overflow-y: auto; /* スクロール可能 */
         }
 
@@ -1109,7 +1109,7 @@
             contain: layout paint;
             overflow: visible;
             pointer-events: auto;
-            z-index: var(--z-500);
+            z-index: var(--z-hand);
             transform: none;
             will-change: auto;
             /* ウィンドウ下部に柔軟配置 */
@@ -1549,7 +1549,7 @@
 
         /* 通知トースト - 右上自動消失 */
         .toast-container {
-            z-index: var(--z-1000);
+            z-index: var(--z-toast);
             pointer-events: none;
             position: fixed;
             bottom: 180px;
@@ -1642,7 +1642,7 @@
             justify-content: center;
             max-width: calc(100vw - 2rem); /* 画面幅を考慮 */
             min-width: 0; /* flexによる縮小を許可 */
-            z-index: var(--z-1000); /* 最前面に設定 */
+            z-index: var(--z-panels); /* 最前面に設定 */
         }
 
         .opponent-card-display {
@@ -2673,8 +2673,8 @@
                     }
                     transformedCoords.push({key, leftPct, topPct, widthPct, heightPct});
                     // Determine z-index based on scope
-                    const zIndex = scopeSelector.includes('player-self') ? 'var(--z-player-board)' : 
-                                  scopeSelector.includes('opponent-board') ? 'var(--z-opponent-board)' : 
+                    const zIndex = scopeSelector.includes('player-self') ? 'var(--z-board)' : 
+                                  scopeSelector.includes('opponent-board') ? 'var(--z-board)' : 
                                   'var(--z-placeholder)';
                     css += `${scopeSelector} .${key}{position:absolute!important;left:${leftPct}%;top:${topPct}%;width:${widthPct}%;height:${heightPct}%;display:block!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important;z-index:${zIndex}!important;}
 `;
