@@ -115,7 +115,7 @@ export class ZIndexManager {
             const fallbackValue = Z_INDEX[level];
             if (fallbackValue) {
                 element.style.zIndex = fallbackValue.toString();
-                console.log(`🔧 CSS variable fallback applied: ${level} → ${fallbackValue}`);
+                // console.log(`🔧 CSS variable fallback applied: ${level} → ${fallbackValue}`);  // Debug only
             }
         }
         
@@ -123,7 +123,7 @@ export class ZIndexManager {
         if (level.includes('HAND') || element.closest('#player-hand')) {
             const computedZIndex = window.getComputedStyle(element).zIndex;
             if (!computedZIndex || computedZIndex === 'auto' || parseInt(computedZIndex) < 200) {
-                console.warn(`⚠️ Hand z-index PROBLEM: ${level} → ${computedZIndex} (${element.tagName}${element.id ? '#' + element.id : ''})`);
+                // console.warn(`⚠️ Hand z-index PROBLEM: ${level} → ${computedZIndex} (${element.tagName}${element.id ? '#' + element.id : ''})`);  // Debug only
             }
         }
     }

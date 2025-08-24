@@ -358,11 +358,17 @@ export class View {
     }
     
     _performRegionalRender(state) {
+        console.log('🐛 DEBUG: _performRegionalRender called, state:', state);
+        console.log('🐛 DEBUG: renderRegions:', this.renderRegions);
+        
         // 部分的なクリアとレンダリング
         if (this.renderRegions.playerHand.dirty) {
+            console.log('🐛 DEBUG: Player hand is dirty, rendering...');
             this._clearHandArea(this.playerHand);
             this._renderHand(this.playerHand, state.players.player.hand, 'player');
             this.renderRegions.playerHand.dirty = false;
+        } else {
+            console.log('🐛 DEBUG: Player hand not dirty, skipping render');
         }
         
         if (this.renderRegions.cpuHand.dirty) {
@@ -550,8 +556,13 @@ export class View {
     }
 
     _renderHand(handElement, hand, playerType) {
-        if (!handElement) return;
+        console.log(`🐛 DEBUG: _renderHand called - playerType: ${playerType}, hand:`, hand);
+        if (!handElement) {
+            console.log('🐛 DEBUG: handElement is null');
+            return;
+        }
         const arr = Array.isArray(hand) ? hand : [];
+        console.log(`🐛 DEBUG: Processing ${arr.length} cards for ${playerType}`);
         
         // 既存のアクティブ状態をクリア
         this._clearHandActiveStates();
@@ -672,7 +683,7 @@ export class View {
         
         // 簡潔な初期化ログ
         const containerStyle = window.getComputedStyle(container);
-        console.log(`🃏 Hand container z-index: ${containerStyle.zIndex}`);
+        // console.log(`🃏 Hand container z-index: ${containerStyle.zIndex}`);  // Debug only
 
         // 画面サイズに応じて動的に調整（より大きく、ダイナミックに）
         const screenWidth = window.innerWidth || 800;
@@ -700,7 +711,7 @@ export class View {
                 if (index === 0 && cards.length > 0) {
                     const zIndex = window.getComputedStyle(el).zIndex;
                     if (zIndex === 'auto' || parseInt(zIndex) < 200) {
-                        console.warn(`⚠️ Hand card z-index issue: ${zIndex}`);
+                        // console.warn(`⚠️ Hand card z-index issue: ${zIndex}`);  // Debug only
                     }
                 }
             });
@@ -847,20 +858,20 @@ export class View {
         const boardZIndex = gameBoard ? window.getComputedStyle(gameBoard).zIndex : 'N/A';
         const cardZIndex = handCards.length > 0 ? window.getComputedStyle(handCards[0]).zIndex : 'N/A';
         
-        console.log(`Hand Container: ${handZIndex}, Board: ${boardZIndex}, Card: ${cardZIndex}`);
+        // console.log(`Hand Container: ${handZIndex}, Board: ${boardZIndex}, Card: ${cardZIndex}`);  // Debug only
         
         // 問題検出
         if (handZIndex === 'auto' || parseInt(handZIndex) <= parseInt(boardZIndex)) {
             console.error('❌ PROBLEM: Hand z-index is too low!');
         } else {
-            console.log('✅ Hand z-index appears correct');
+            // console.log('✅ Hand z-index appears correct');  // Debug only
         }
         
         // CSS変数確認
         const root = document.documentElement;
         const handVar = root.style.getPropertyValue('--z-hand') || 
                        window.getComputedStyle(root).getPropertyValue('--z-hand');
-        console.log(`CSS Variable --z-hand: ${handVar}`);
+        // console.log(`CSS Variable --z-hand: ${handVar}`);  // Debug only
         
         console.groupEnd();
     }
@@ -1603,6 +1614,7 @@ export class View {
 
         // シンプルなクリック処理（プレイヤー側の操作 + CPU側の情報表示）
         slotElement.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             
             const cardInSlot = slotElement.querySelector('[data-card-id]');

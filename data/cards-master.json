@@ -1063,9 +1063,12 @@
     "id": "031",
     "name_en": "Metal Energy",
     "name_ja": "はがね エネルギー",
-    "card_type": "Special Energy",
+    "card_type": "Energy",
     "energy_type": "Metal",
-    "is_basic": false,
-    "image_file": "031_energy_metal.webp"
+    "effect_en": "Provides 1 Metal Energy.",
+    "effect_ja": "Metalのエネルギーを1個ぶん供給する。",
+    "rules_en": "You can attach 1 Energy from your hand per turn unless stated otherwise.",
+    "rules_ja": "カードの効果がないかぎり、手札から1ターンに1枚だけエネルギーをつけられる。",
+    "image_file": "031_energy_metal_energy.webp"
   }
 ]

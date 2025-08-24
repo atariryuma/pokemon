@@ -40,7 +40,13 @@
       "Bash(npm install:*)",
       "Bash(start http://localhost:3001)",
       "Bash(start http://localhost:8080)",
-      "Bash(identify:*)"
+      "Bash(identify:*)",
+      "Bash(PORT=8080 node server.js)",
+      "Bash(PORT=9090 node server.js)",
+      "Bash(start http://localhost:9090)",
+      "Bash(start http://localhost:3000)",
+      "Bash(start http://localhost:3000/card_viewer.html)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": [],

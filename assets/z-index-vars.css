@@ -31,7 +31,7 @@
     /* === レイヤー5: UI・HUD系 (400-600) === */
     --z-hud-base: 400;      /* HUD基本 */
     --z-panels: 410;        /* パネル */
-    --z-floating-hud: 420;  /* フローティングHUD */
+    --z-floating-hud: 410;  /* フローティングHUD */
     --z-toast: 430;         /* トースト通知 */
     --z-modals: 500;        /* 中央モーダル */
     --z-critical: 600;      /* 致命的エラー */

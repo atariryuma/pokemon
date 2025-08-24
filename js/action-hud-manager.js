@@ -78,6 +78,8 @@ export class ActionHUDManager {
      * @param {Object} options - 追加オプション (text, icon, enabled)
      */
     showButton(buttonId, callback = null, options = {}) {
+        console.log(`🔘 Showing button: ${buttonId}`, options);
+        
         if (!this.isInitialized) {
             console.warn('⚠️ ActionHUDManager not initialized');
             return;
@@ -88,6 +90,9 @@ export class ActionHUDManager {
             console.warn(`⚠️ Button not found: ${buttonId}`);
             return;
         }
+        
+        console.log(`🔍 Button ${buttonId} found:`, button);
+        console.log(`🔍 Button ${buttonId} current classes:`, button.className);
 
         // 既存のハンドラーをクリア
         this._clearButtonHandler(buttonId);
@@ -101,7 +106,9 @@ export class ActionHUDManager {
         this._updateButtonContent(button, options);
 
         // ボタンを表示
+        console.log(`🔍 Removing hidden class from ${buttonId}. CSS_CLASSES.HIDDEN:`, CSS_CLASSES.HIDDEN);
         button.classList.remove(CSS_CLASSES.HIDDEN);
+        console.log(`🔍 Button ${buttonId} classes after removing hidden:`, button.className);
         
         // 状態を更新
         this.buttonStates.set(buttonId, {
@@ -112,7 +119,7 @@ export class ActionHUDManager {
             callback: callback
         });
 
-        noop(`👀 Button shown: ${buttonId}`, options);
+        console.log(`✅ Button ${buttonId} shown successfully. Final state:`, this.buttonStates.get(buttonId));
     }
 
     /**
@@ -251,12 +258,15 @@ export class ActionHUDManager {
      * @param {Object} callbacks - ボタンIDとコールバックの対応
      */
     showPhaseButtons(phase, callbacks = {}) {
+        console.log(`🎯 Showing phase buttons: ${phase}`, callbacks);
+        
         // 既存のボタンをすべて非表示
         this.hideAllButtons();
 
         switch (phase) {
             case 'initial':
                 // 初期状態: ゲーム開始ボタンとカードエディタボタン
+                console.log('🎮 Setting up initial phase buttons');
                 this.showButton('start-game-button-float', callbacks.startGame, {
                     text: '手札を7枚引く',
                     icon: '🎴'
@@ -265,6 +275,7 @@ export class ActionHUDManager {
                     text: 'カードエディタ',
                     icon: '🎴'
                 });
+                console.log('🎮 Initial buttons configured');
                 break;
 
             case 'setup':

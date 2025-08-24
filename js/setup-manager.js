@@ -144,7 +144,11 @@ export class SetupManager {
    * 初期手札ドロー（7枚ずつ）
    */
   async drawInitialHands(state) {
+    console.log('🐛 DEBUG: drawInitialHands called, state:', state);
     let newState = cloneGameState(state);
+    
+    console.log('🐛 DEBUG: Before draw - Player deck:', newState.players.player.deck.length, 'CPU deck:', newState.players.cpu.deck.length);
+    console.log('🐛 DEBUG: Before draw - Player hand:', newState.players.player.hand.length, 'CPU hand:', newState.players.cpu.hand.length);
 
     // プレイヤーとCPUの初期手札をドロー
     for (let i = 0; i < 7; i++) {
@@ -160,6 +164,8 @@ export class SetupManager {
         newState.players.cpu.hand.push(cpuCard);
       }
     }
+    
+    console.log('🐛 DEBUG: After draw - Player hand:', newState.players.player.hand.length, 'CPU hand:', newState.players.cpu.hand.length);
 
     newState = addLogEntry(newState, {
       type: 'initial_draw',

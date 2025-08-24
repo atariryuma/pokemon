@@ -133,6 +133,10 @@
               --playmat-3d-compensation: 1.2;
               --playmat-size: calc(var(--playmat-base-size) * var(--playmat-3d-compensation));
               --board-rotation-x: 35deg;
+              
+              /* GPUアクセラレーション最適化 */
+              --gpu-acceleration: translateZ(0);
+              --will-change: transform, opacity;
           }
 
         /* 🎬 ゲームフローアニメーション */
@@ -228,9 +232,22 @@
             aspect-ratio: 1 / 1;
             margin: var(--board-margin-y) auto;
             overflow: visible;
-            /* Improve image rendering quality */
+            /* Improve image rendering quality with proper fallback */
             image-rendering: -webkit-optimize-contrast;
+            image-rendering: -webkit-crisp-edges;
             image-rendering: crisp-edges;
+            /* GPU acceleration optimization */
+            will-change: var(--will-change);
+            /* Ensure click events work properly on zoomed elements */
+            pointer-events: auto;
+        }
+        
+        /* Ensure card slots are clickable at all zoom levels */
+        #game-board .card-slot {
+            pointer-events: auto;
+            position: absolute;
+            /* Fix zoom-related click issues */
+            transform-style: flat;
         }
 
         /* 背景画像用のレイヤー */
@@ -240,12 +257,13 @@
             left: 0;
             width: 100% !important;
             height: 100% !important;
-            object-fit: cover; /* Changed from contain to cover for better image quality */
+            object-fit: cover;
             object-position: center;
             z-index: var(--z-board-bg);
             pointer-events: none;
-            /* Improve image rendering quality */
+            /* Improve image rendering quality with proper fallback */
             image-rendering: -webkit-optimize-contrast;
+            image-rendering: -webkit-crisp-edges;
             image-rendering: crisp-edges;
             filter: contrast(1.05) brightness(1.02);
         }
@@ -806,6 +824,7 @@
         
         /* 重複削除済み - 統合された.card-imageルールを使用 */
         .is-hidden { opacity: 0; pointer-events: none; }
+        .hidden { display: none !important; }
 
         .card-placeholder {
             background-color: rgba(255, 255, 255, 0.05);
@@ -2040,8 +2059,8 @@
         /* ===== Result Modal Styles ===== */
         .game-result-overlay {
             background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
         }
         .game-result-container {
             position: relative;
@@ -2730,10 +2749,102 @@
         }
     </script>
     <script type="module">
+        // ゲーム初期化のメイン処理
+        console.log('🔥 HTML: Starting main.js import...');
+        
         try {
-            await import('./js/main.js');
+            const module = await import('./js/main.js');
+            console.log('✅ HTML: main.js imported successfully', module);
+            
+            // 初期化完了を待機
+            if (!window.game) {
+                console.log('⏳ HTML: Waiting for game initialization...');
+                window.addEventListener('gameInitialized', (event) => {
+                    const { success, game, error } = event.detail;
+                    if (success) {
+                        console.log('🎉 HTML: Game initialized successfully!');
+                    } else {
+                        console.error('💥 HTML: Game initialization failed:', error);
+                        showInitializationError(error);
+                    }
+                });
+            }
+            
         } catch (e) {
-            console.warn('⚠️ Main module not available:', e.message);
+            console.error('❌ HTML: Failed to import main.js:', e);
+            showInitializationError(e);
+        }
+        
+        // エラー表示機能
+        function showInitializationError(error) {
+            console.log('🚨 HTML: Showing initialization error to user');
+            
+            // エラーメッセージを表示するモーダルを作成
+            const errorModal = document.createElement('div');
+            errorModal.id = 'initialization-error-modal';
+            errorModal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+                font-family: system-ui, sans-serif;
+            `;
+            
+            errorModal.innerHTML = `
+                <div style="
+                    background: #1a1a1a;
+                    color: #fff;
+                    padding: 30px;
+                    border-radius: 10px;
+                    max-width: 500px;
+                    text-align: center;
+                    border: 2px solid #ff6b6b;
+                ">
+                    <h2 style="color: #ff6b6b; margin-bottom: 15px;">⚠️ 初期化エラー</h2>
+                    <p style="margin-bottom: 20px; line-height: 1.5;">
+                        ゲームの初期化中にエラーが発生しました。<br>
+                        ページを再読み込みしてください。
+                    </p>
+                    <details style="text-align: left; margin-bottom: 20px; font-size: 12px;">
+                        <summary style="cursor: pointer; color: #ccc;">詳細なエラー情報</summary>
+                        <pre style="
+                            background: #333;
+                            padding: 10px;
+                            border-radius: 5px;
+                            overflow: auto;
+                            margin-top: 10px;
+                            white-space: pre-wrap;
+                        ">${error.message || error}</pre>
+                    </details>
+                    <button onclick="location.reload()" style="
+                        background: #4caf50;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        margin-right: 10px;
+                    ">ページを再読み込み</button>
+                    <button onclick="this.parentElement.parentElement.remove()" style="
+                        background: #666;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 14px;
+                    ">閉じる</button>
+                </div>
+            `;
+            
+            document.body.appendChild(errorModal);
         }
     </script>
 </body>
