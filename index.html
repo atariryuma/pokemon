@@ -70,6 +70,8 @@
             display: flex;
             justify-content: center;
             align-items: flex-end;
+            position: relative;
+            z-index: var(--z-hand);
         }
 
         #game-stage {
@@ -329,17 +331,14 @@
         
         /* CPU手札エリア（上部） */
         #cpu-hand {
-            position: absolute;
-            top: calc(var(--board-margin-y) * 0.5);
             width: 100%;
-            height: calc(var(--hand-height) * 0.7);
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
             pointer-events: none;
             transform: rotateX(10deg) scale(0.98);
             transform-origin: center bottom;
-            z-index: var(--z-hand);
         }
         
         #cpu-hand .hand-slot {

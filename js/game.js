@@ -883,11 +883,11 @@ export class Game {
      * ゲーム開始ボタンのハンドラー
      */
     async _handleStartGame() {
-        console.log('🐛 DEBUG: _handleStartGame called');
+        // Game start initiated
         noop('🎮 Start Game button clicked');
         try {
             // 既存のゲーム開始メソッドを呼び出し
-            console.log('🐛 DEBUG: Calling _startNewGame');
+            // Starting new game setup
             await this._startNewGame();
             
             // ActionHUDManagerでセットアップフェーズのボタンに切り替え
@@ -1430,7 +1430,7 @@ export class Game {
                 if (newState.turnPlayer === 'player') {
                     newState.phase = GAME_PHASES.PLAYER_MAIN;
                 } else {
-                    newState.phase = GAME_PHASES.CPU_TURN;
+                    newState.phase = GAME_PHASES.CPU_MAIN;
                 }
             }
         }
@@ -2493,7 +2493,7 @@ export class Game {
      * 新しいゲーム開始
      */
     async _startNewGame() {
-        console.log('🐛 DEBUG: _startNewGame called');
+        // New game initialization
         noop('🎮 Starting new game...');
         
         // モーダルを閉じる
@@ -2504,7 +2504,7 @@ export class Game {
         this.view.hideActionButtons();
         
         // 新しいゲーム初期化 - init()は既に初期化されているので_startGameSetupを直接呼ぶ
-        console.log('🐛 DEBUG: Calling _startGameSetup instead of init');
+        // Proceeding with game setup
         await this._startGameSetup();
     }
 

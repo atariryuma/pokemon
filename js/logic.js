@@ -697,7 +697,7 @@ export function processNewActiveAfterKnockout(state) {
     if (!hasBenchPokemon) {
         // No bench pokemon, game might be over
         newState = checkForWinner(newState);
-        newState.knockoutContext = null;
+        newState = clearKnockoutContext(newState);
         return newState;
     }
 
@@ -717,6 +717,22 @@ export function processNewActiveAfterKnockout(state) {
     }
 
     return newState;
+}
+
+/**
+ * Clears knockout context and related flags
+ * @param {object} state - The current game state.
+ * @returns {object} The new state with knockout context cleared.
+ */
+export function clearKnockoutContext(state) {
+    return {
+        ...state,
+        knockoutContext: null,
+        attackCausedKnockout: false,
+        knockoutAttacker: null,
+        needsCpuAutoSelect: false,
+        playerToAct: null
+    };
 }
 
 /**
@@ -749,7 +765,6 @@ export function cpuAutoSelectNewActive(state) {
                 bench: newBench,
             }
         },
-        knockoutContext: null,
         needsCpuAutoSelect: false,
         playerToAct: null
     };

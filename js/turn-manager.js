@@ -409,6 +409,10 @@ export class TurnManager {
       // Process knockout logic (sets up prize selection phase)
       newState = Logic.checkForKnockout(newState, defender);
       
+      // Store that this attack caused a knockout for later turn management
+      newState.attackCausedKnockout = true;
+      newState.knockoutAttacker = attacker;
+      
       // Clear pending action and return - prize selection phase will handle next steps
       newState.pendingAction = null;
       return newState;
@@ -1129,20 +1133,31 @@ export class TurnManager {
       }
       
       // Clear knockout context and reset phase
-      newState.knockoutContext = null;
-      newState.playerToAct = null;
+      newState = Logic.clearKnockoutContext(newState);
       
       // Check for winner
       newState = Logic.checkForWinner(newState);
       
       if (newState.phase !== GAME_PHASES.GAME_OVER) {
-        // Return to appropriate turn phase
-        if (newState.turnPlayer === 'player') {
-          newState.phase = GAME_PHASES.PLAYER_MAIN;
-          newState.prompt.message = 'あなたのターンです。行動を選んでください。';
+        // Check if this was caused by an attack that should end the turn
+        if (newState.attackCausedKnockout && newState.knockoutAttacker) {
+          const attacker = newState.knockoutAttacker;
+          
+          // End the attacker's turn
+          if (attacker === 'player') {
+            newState = this.endPlayerTurn(newState);
+          } else {
+            newState = await this.endCpuTurn(newState);
+          }
         } else {
-          newState.phase = GAME_PHASES.CPU_MAIN;
-          newState.prompt.message = '相手のターンです...';
+          // Return to appropriate turn phase
+          if (newState.turnPlayer === 'player') {
+            newState.phase = GAME_PHASES.PLAYER_MAIN;
+            newState.prompt.message = 'あなたのターンです。行動を選んでください。';
+          } else {
+            newState.phase = GAME_PHASES.CPU_MAIN;
+            newState.prompt.message = '相手のターンです...';
+          }
         }
       }
       
@@ -1183,12 +1198,24 @@ export class TurnManager {
     
     // Set appropriate phase after CPU selection
     if (newState.phase !== GAME_PHASES.GAME_OVER) {
-      if (newState.turnPlayer === 'cpu') {
-        newState.phase = GAME_PHASES.CPU_MAIN;
-        newState.prompt.message = '相手のターンです...';
+      // Check if this was caused by an attack that should end the turn
+      if (newState.attackCausedKnockout && newState.knockoutAttacker) {
+        const attacker = newState.knockoutAttacker;
+        
+        // End the attacker's turn
+        if (attacker === 'player') {
+          newState = this.endPlayerTurn(newState);
+        } else {
+          newState = await this.endCpuTurn(newState);
+        }
       } else {
-        newState.phase = GAME_PHASES.PLAYER_MAIN;
-        newState.prompt.message = 'あなたのターンです。行動を選んでください。';
+        if (newState.turnPlayer === 'cpu') {
+          newState.phase = GAME_PHASES.CPU_MAIN;
+          newState.prompt.message = '相手のターンです...';
+        } else {
+          newState.phase = GAME_PHASES.PLAYER_MAIN;
+          newState.prompt.message = 'あなたのターンです。行動を選んでください。';
+        }
       }
     }
     

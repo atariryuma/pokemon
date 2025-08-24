@@ -46,7 +46,8 @@
       "Bash(start http://localhost:9090)",
       "Bash(start http://localhost:3000)",
       "Bash(start http://localhost:3000/card_viewer.html)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(PORT=3000 node server.js)"
     ],
     "deny": [],
     "ask": [],

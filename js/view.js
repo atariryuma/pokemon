@@ -358,17 +358,16 @@ export class View {
     }
     
     _performRegionalRender(state) {
-        console.log('🐛 DEBUG: _performRegionalRender called, state:', state);
-        console.log('🐛 DEBUG: renderRegions:', this.renderRegions);
+        // Debug logs removed for production
         
         // 部分的なクリアとレンダリング
         if (this.renderRegions.playerHand.dirty) {
-            console.log('🐛 DEBUG: Player hand is dirty, rendering...');
+            // Player hand rendering...
             this._clearHandArea(this.playerHand);
             this._renderHand(this.playerHand, state.players.player.hand, 'player');
             this.renderRegions.playerHand.dirty = false;
         } else {
-            console.log('🐛 DEBUG: Player hand not dirty, skipping render');
+            // Player hand up to date, skipping render
         }
         
         if (this.renderRegions.cpuHand.dirty) {
@@ -556,13 +555,10 @@ export class View {
     }
 
     _renderHand(handElement, hand, playerType) {
-        console.log(`🐛 DEBUG: _renderHand called - playerType: ${playerType}, hand:`, hand);
         if (!handElement) {
-            console.log('🐛 DEBUG: handElement is null');
             return;
         }
         const arr = Array.isArray(hand) ? hand : [];
-        console.log(`🐛 DEBUG: Processing ${arr.length} cards for ${playerType}`);
         
         // 既存のアクティブ状態をクリア
         this._clearHandActiveStates();
