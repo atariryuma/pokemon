@@ -75,7 +75,7 @@
         #game-stage {
             grid-area: game-board;
             position: relative;
-            perspective: 1200px;
+            perspective: var(--scene-perspective);
             transform-style: preserve-3d;
             display: flex;
             align-items: center;
@@ -119,7 +119,7 @@
               --footer-height: 80px; /* New variable for HUD area */
               --board-margin-y: 0.5vh; /* Reduced vertical margin for the board */
               /* 遠近感（ボード専用） */
-              --scene-perspective: 1800px;
+              --scene-perspective: 2200px;
               
               /* 動的手札サイズ（ディスプレイ対応） */
               --card-width: clamp(60px, min(8vw, 6vh), 96px);
@@ -220,6 +220,7 @@
         #game-board {
             transform-style: preserve-3d;
             /* Allow dynamic Z positioning via CSS variable */
+            will-change: transform;
             transform: translateZ(var(--tz-game-board)) rotateX(var(--board-rotation-x, 35deg));
             position: relative;
             /* Simplified playmat size calculation */
@@ -231,6 +232,7 @@
             /* Improve image rendering quality */
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
+            image-rendering: pixelated;
         }
 
         /* 背景画像用のレイヤー */
@@ -247,6 +249,7 @@
             /* Improve image rendering quality */
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
+            image-rendering: pixelated;
             filter: contrast(1.05) brightness(1.02);
         }
 
