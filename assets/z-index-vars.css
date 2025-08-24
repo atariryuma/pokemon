@@ -37,8 +37,6 @@
     --z-critical: 600;      /* 致命的エラー */
 
     /* === 3D Transform Z-Depth (translateZ) === */
-    --tz-player-hand: 200px;    /* プレイヤー手札のZ位置 */
-    --tz-cpu-hand: -60px;       /* CPU手札のZ位置 */
     --tz-card-slot: 1px;        /* カードスロットのZ位置 */
     --tz-damage-counter: 1px;   /* ダメージカウンターのZ位置 */
     --tz-card-image-base: 0px;  /* カード画像の基本Z位置 */

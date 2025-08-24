@@ -184,7 +184,8 @@
 
         #game-board {
             transform-style: preserve-3d;
-            transform: rotateX(45deg); /* More dramatic tilt for better perspective */
+            /* Allow dynamic Z positioning via CSS variable */
+            transform: translateZ(var(--tz-game-board)) rotateX(45deg); /* More dramatic tilt for better perspective */
             position: relative;
             /* Adjust height to fit between hands and footer */
             height: min(
@@ -345,7 +346,7 @@
             align-items: center;
             justify-content: center;
             pointer-events: none;
-            transform: translateZ(var(--tz-cpu-hand)) rotateX(10deg) scale(0.98);
+            transform: rotateX(10deg) scale(0.98);
             transform-style: preserve-3d;
             z-index: var(--z-hand);
         }
@@ -2164,16 +2165,15 @@
     <!-- Z-Position Slider -->
     <div id="z-slider-container" style="position: fixed; left: 10px; top: 50%; transform: translateY(-50%); z-index: 9999; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
         <label for="z-slider" style="color: white; font-size: 12px;">Playmat Z</label>
-        <input type="range" id="z-slider" min="-500" max="500" value="0" step="10" style="width: 100px; transform: rotate(270deg); transform-origin: center; margin: 50px 0;">
+        <input type="range" id="z-slider" min="-2000" max="2000" value="0" step="10" style="width: 100px; transform: rotate(270deg); transform-origin: center; margin: 50px 0;">
         <span id="z-slider-value" style="color: white; font-size: 12px;">0px</span>
     </div>
 
-    <div id="game-stage" class="game-stage w-full flex flex-col items-center" style="gap: calc(var(--vertical-gap)/2);">
-        <!-- CPU Hand (scene child) -->
-        <div id="cpu-hand" class="w-full flex justify-center items-center p-2 gap-x-1">
-            <!-- CPUの手札はここに動的に追加されます -->
-        </div>
+    <div id="cpu-hand" class="w-full flex justify-center items-center p-2 gap-x-1">
+        <!-- CPUの手札はここに動的に追加されます -->
+    </div>
 
+    <div id="game-stage" class="game-stage w-full flex flex-col items-center" style="gap: calc(var(--vertical-gap)/2);">
         <div id="game-board">
         <img class="board-bg" src="assets/playmat/playmat.jpg" alt="Playmat" onerror="this.style.display='none'"/>
         
@@ -2249,12 +2249,12 @@
             </div>
             <div class="card-slot bottom-right-trash" data-zone="Trash"></div>
         </div>
-        </div>
+    </div>
+    </div>
 
-        <!-- Player Hand (scene child) -->
-        <div id="player-hand" class="w-full flex justify-center items-end p-2 gap-x-1" style="overflow: visible; position: absolute; bottom: var(--player-hand-bottom-offset); width: 100%; transform: translateZ(var(--tz-player-hand)); z-index: var(--z-hand);">
+    <!-- Player Hand -->
+    <div id="player-hand" class="w-full flex justify-center items-end p-2 gap-x-1" style="overflow: visible; position: absolute; bottom: var(--player-hand-bottom-offset); width: 100%; z-index: var(--z-hand);">
             <!-- プレイヤーの手札はここに動的に追加されます -->
-        </div>
     </div>
 
 
@@ -2350,15 +2350,14 @@
     </button>
 </div>
 
-<!-- Player Hand moved inside #game-stage -->
-
 <!-- Card Info Panel -->
 <div id="card-info-panel" class="hidden fixed" style="z-index: var(--z-panels);"></div>
 
 
 
     <script>
-        const noop = () => {};
+        // Expose noop globally so modules can reuse it without errors
+        window.noop = () => {};
         document.addEventListener('DOMContentLoaded', async () => {
             const gameBoard = document.getElementById('game-board');
             const bgImage = document.querySelector('.board-bg');
@@ -2556,11 +2555,18 @@
             // Z-Position Slider Control
             const zSlider = document.getElementById('z-slider');
             const zSliderValueDisplay = document.getElementById('z-slider-value');
-            const gameBoard = document.getElementById('game-board'); // Already defined, but good to be explicit
 
             if (zSlider && zSliderValueDisplay && gameBoard) {
+                const SLIDER_MIN = -2000;
+                const SLIDER_MAX = 2000;
+
+                zSlider.min = SLIDER_MIN;
+                zSlider.max = SLIDER_MAX;
+
                 // Set initial value display
-                zSliderValueDisplay.textContent = `${zSlider.value}px`;
+                const initialZ = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tz-game-board')) || zSlider.value;
+                zSlider.value = initialZ;
+                zSliderValueDisplay.textContent = `${initialZ}px`;
 
                 // Update slider value and game board transform on input
                 zSlider.addEventListener('input', () => {
@@ -2601,7 +2607,8 @@
     <script type="module">
         // Modal Manager の初期化
         import { modalManager } from './js/modal-manager.js';
-        
+        const noop = window.noop || (() => {});
+
         // DOM準備完了後にModal Managerを初期化
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
