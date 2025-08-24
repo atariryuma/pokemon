@@ -184,8 +184,7 @@
 
         #game-board {
             transform-style: preserve-3d;
-            /* Allow dynamic Z positioning via CSS variable */
-            transform: translateZ(var(--tz-game-board)) rotateX(45deg); /* More dramatic tilt for better perspective */
+            transform: rotateX(45deg); /* More dramatic tilt for better perspective */
             position: relative;
             /* Adjust height to fit between hands and footer */
             height: min(
@@ -2359,8 +2358,7 @@
 
 
     <script>
-        // Expose noop globally so modules can reuse it without errors
-        window.noop = () => {};
+        const noop = () => {};
         document.addEventListener('DOMContentLoaded', async () => {
             const gameBoard = document.getElementById('game-board');
             const bgImage = document.querySelector('.board-bg');
@@ -2558,20 +2556,11 @@
             // Z-Position Slider Control
             const zSlider = document.getElementById('z-slider');
             const zSliderValueDisplay = document.getElementById('z-slider-value');
+            const gameBoard = document.getElementById('game-board'); // Already defined, but good to be explicit
 
             if (zSlider && zSliderValueDisplay && gameBoard) {
-                const rootStyles = getComputedStyle(document.documentElement);
-                const cpuHandZ = parseInt(rootStyles.getPropertyValue('--tz-cpu-hand')) || -60;
-                const playerHandZ = parseInt(rootStyles.getPropertyValue('--tz-player-hand')) || 200;
-
-                // Restrict slider so the board stays between CPU and player hands
-                zSlider.min = cpuHandZ + 1;
-                zSlider.max = playerHandZ - 1;
-
                 // Set initial value display
-                const initialZ = parseInt(rootStyles.getPropertyValue('--tz-game-board')) || zSlider.value;
-                zSlider.value = initialZ;
-                zSliderValueDisplay.textContent = `${initialZ}px`;
+                zSliderValueDisplay.textContent = `${zSlider.value}px`;
 
                 // Update slider value and game board transform on input
                 zSlider.addEventListener('input', () => {
@@ -2612,8 +2601,7 @@
     <script type="module">
         // Modal Manager の初期化
         import { modalManager } from './js/modal-manager.js';
-        const noop = window.noop || (() => {});
-
+        
         // DOM準備完了後にModal Managerを初期化
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
