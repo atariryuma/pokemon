@@ -42,6 +42,8 @@
     --tz-card-image-base: 0px;  /* カード画像の基本Z位置 */
     --tz-game-board: 0px;       /* ゲームボードのZ位置 */
 
-    /* === 3D Positioning Offsets === */
-    --player-hand-bottom-offset: 50px; /* プレイヤー手札の底部オフセット */
+    /* === レスポンシブレイアウト変数 === */
+    --viewport-padding: clamp(8px, 1vw, 16px);
+    --hand-height: clamp(100px, 18vh, 160px);
+    --card-size-ratio: clamp(0.6, 1.2vw, 1.0);
 }

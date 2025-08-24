@@ -813,12 +813,101 @@ export class Game {
     }
 
     /**
-     * 従来のイベントハンドラー設定（レガシーサポート用）
+     * アクションボタンのイベントハンドラーを設定
      */
-    _setupActionButtonHandlers() {
-        noop('🔧 Legacy action button handlers setup completed');
-        // ActionHUDManagerに移行したため、この関数は空にする
-        // 必要に応じて個別ハンドラーのバインドがある場合はここに記述
+    async _setupActionButtonHandlers() {
+        noop('🔧 Setting up action button handlers');
+        
+        // ActionHUDManagerを動的にインポートして使用
+        try {
+            const { actionHUDManager } = await import('./action-hud-manager.js');
+            
+            // HUDマネージャーを初期化
+            actionHUDManager.init();
+            
+            // 初期フェーズのボタンを表示
+            actionHUDManager.showPhaseButtons('initial', {
+                startGame: () => this._handleStartGame(),
+                cardEditor: () => this._handleCardEditor()
+            });
+            
+            noop('✅ Action button handlers configured');
+        } catch (error) {
+            console.error('❌ Failed to setup action button handlers:', error);
+        }
+    }
+
+    /**
+     * ゲーム開始ボタンのハンドラー
+     */
+    async _handleStartGame() {
+        noop('🎮 Start Game button clicked');
+        try {
+            // 既存のゲーム開始メソッドを呼び出し
+            await this._startNewGame();
+            
+            // ActionHUDManagerでセットアップフェーズのボタンに切り替え
+            const { actionHUDManager } = await import('./action-hud-manager.js');
+            actionHUDManager.showPhaseButtons('setup', {
+                confirmSetup: () => this._handleConfirmSetup()
+            });
+        } catch (error) {
+            console.error('❌ Failed to start game:', error);
+        }
+    }
+
+    /**
+     * カードエディタボタンのハンドラー
+     */
+    async _handleCardEditor() {
+        noop('🎴 Card Editor button clicked');
+        // カードエディタページへのリダイレクト
+        window.location.href = 'card_viewer.html';
+    }
+
+    /**
+     * セットアップ確定ボタンのハンドラー
+     */
+    async _handleConfirmSetup() {
+        noop('✅ Confirm Setup button clicked');
+        try {
+            // 既存のセットアップ完了メソッドを呼び出し
+            await this.completeSetup();
+            
+            // ActionHUDManagerでメインゲームフェーズのボタンに切り替え
+            const { actionHUDManager } = await import('./action-hud-manager.js');
+            actionHUDManager.showPhaseButtons('playerMain', {
+                retreat: () => this._handleRetreat(),
+                attack: () => this._handleAttack(),
+                endTurn: () => this._handleEndTurn()
+            });
+        } catch (error) {
+            console.error('❌ Failed to confirm setup:', error);
+        }
+    }
+
+    /**
+     * にげるボタンのハンドラー
+     */
+    async _handleRetreat() {
+        noop('🏃 Retreat button clicked');
+        // にげる処理の実装
+    }
+
+    /**
+     * 攻撃ボタンのハンドラー
+     */
+    async _handleAttack() {
+        noop('⚔️ Attack button clicked');
+        // 攻撃処理の実装
+    }
+
+    /**
+     * ターン終了ボタンのハンドラー
+     */
+    async _handleEndTurn() {
+        noop('🔄 End Turn button clicked');
+        // ターン終了処理の実装
     }
 
     async _handleCardClick(dataset) {

@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ポケモンカードバトルフィールド</title>
     <!-- Tailwind: load via CDN only in development (suppress CDN warning) -->
     <script>
@@ -50,31 +50,53 @@
         }
 
         .game-wrapper {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-rows: auto 1fr auto auto;
+            grid-template-areas: 
+                "cpu-hand"
+                "game-board"
+                "player-hand"
+                "hud";
             height: 100vh;
             width: 100vw;
-            padding: 0 var(--side-padding);
+            padding: var(--viewport-padding);
             box-sizing: border-box;
+            gap: var(--viewport-padding);
+        }
+
+        #cpu-hand-container {
+            grid-area: cpu-hand;
+            height: calc(var(--hand-height) * 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
         }
 
         #game-stage {
-            flex-grow: 1;
+            grid-area: game-board;
             position: relative;
-            perspective: var(--scene-perspective);
+            perspective: 1200px;
             transform-style: preserve-3d;
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 0; /* 重要：grid子要素のサイズ制約を回避 */
+        }
+
+        #player-hand-container {
+            grid-area: player-hand;
+            height: var(--hand-height);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
         
         .game-footer {
-            flex-shrink: 0;
-            height: var(--footer-height);
+            grid-area: hud;
+            height: clamp(60px, 8vh, 100px);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding-bottom: 1rem;
         }
 
         #floating-action-hud {
@@ -98,6 +120,19 @@
               --board-margin-y: 0.5vh; /* Reduced vertical margin for the board */
               /* 遠近感（ボード専用） */
               --scene-perspective: 1800px;
+              
+              /* 動的手札サイズ（ディスプレイ対応） */
+              --card-width: clamp(60px, min(8vw, 6vh), 96px);
+              --hand-card-width: clamp(60px, min(12vw, 9vh), 120px);
+              --hand-card-height: clamp(84px, min(16.8vw, 12.6vh), 168px);
+              /* 手札間隔もレスポンシブに */
+              --hand-gap: clamp(2px, 0.5vw, 8px);
+              
+              /* プレイマット表示品質改善用変数 */
+              --playmat-base-size: min(85vh, 85vw);
+              --playmat-3d-compensation: 1.2;
+              --playmat-size: calc(var(--playmat-base-size) * var(--playmat-3d-compensation));
+              --board-rotation-x: 35deg;
           }
 
         /* 🎬 ゲームフローアニメーション */
@@ -185,16 +220,17 @@
         #game-board {
             transform-style: preserve-3d;
             /* Allow dynamic Z positioning via CSS variable */
-            transform: translateZ(var(--tz-game-board)) rotateX(45deg); /* More dramatic tilt for better perspective */
+            transform: translateZ(var(--tz-game-board)) rotateX(var(--board-rotation-x, 35deg));
             position: relative;
-            /* Adjust height to fit between hands and footer */
-            height: min(
-                calc(100vh - var(--hand-height) - var(--footer-height) - var(--board-margin-y) * 2),
-                calc(100vw - var(--side-padding) * 2)
-            );
+            /* Simplified playmat size calculation */
+            width: var(--playmat-size);
+            height: var(--playmat-size);
             aspect-ratio: 1 / 1;
-            width: auto;
             margin: var(--board-margin-y) auto;
+            overflow: visible;
+            /* Improve image rendering quality */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
 
         /* 背景画像用のレイヤー */
@@ -202,11 +238,16 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100% !important;   /* コンテナにフィット */
-            height: 100% !important;  /* コンテナにフィット */
-            object-fit: contain;       /* 歪みなくフィット（正方形のため等倍） */
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover; /* Changed from contain to cover for better image quality */
+            object-position: center;
             z-index: var(--z-board-bg);
-            pointer-events: none;   /* クリックイベントを通過させる */
+            pointer-events: none;
+            /* Improve image rendering quality */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            filter: contrast(1.05) brightness(1.02);
         }
 
 
@@ -253,15 +294,66 @@
             transform-style: preserve-3d;
             z-index: var(--z-hand); /* !important を削除 */
         }
-        
+
         /* 手札カード */
         #player-hand .hand-slot {
             pointer-events: auto;
             z-index: var(--z-hand); /* !important を削除 */
             /* 手札カードを確実に3D前面へ（ボード面より手前） */
-            transform: translateZ(2px);
+            transform: translateZ(150px);
             transform-style: preserve-3d;
             backface-visibility: hidden;
+            /* 動的サイズ調整 */
+            width: var(--hand-card-width);
+            height: var(--hand-card-height);
+            margin: 0 var(--hand-gap);
+        }
+        
+        /* CPU手札エリア（上部） */
+        #cpu-hand {
+            position: absolute;
+            top: calc(var(--board-margin-y) * 0.5);
+            width: 100%;
+            height: calc(var(--hand-height) * 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            transform: rotateX(10deg) scale(0.98);
+            transform-origin: center bottom;
+            z-index: var(--z-hand);
+        }
+        
+        #cpu-hand .hand-slot {
+            width: calc(var(--hand-card-width) * 0.8);
+            height: calc(var(--hand-card-height) * 0.8);
+            transform: translateZ(100px);
+            margin: 0 calc(var(--hand-gap) * 0.7);
+        }
+
+        /* 画面サイズに応じた手札の自動調整 */
+        @media (max-width: 768px) {
+            :root {
+                --hand-card-width: clamp(50px, 15vw, 90px);
+                --hand-card-height: clamp(70px, 21vw, 126px);
+                --hand-gap: clamp(1px, 0.3vw, 4px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            :root {
+                --hand-card-width: clamp(45px, 18vw, 75px);
+                --hand-card-height: clamp(63px, 25.2vw, 105px);
+                --hand-gap: clamp(1px, 0.2vw, 3px);
+            }
+        }
+
+        @media (min-width: 1920px) {
+            :root {
+                --hand-card-width: clamp(90px, 8vw, 140px);
+                --hand-card-height: clamp(126px, 11.2vw, 196px);
+                --hand-gap: clamp(4px, 0.8vw, 12px);
+            }
         }
 
         /* 手札カードの表示を強制 */
@@ -336,24 +428,10 @@
             transform: translateZ(1px);
         }
 
-        /* CPU手札エリア（上部） */
-        #cpu-hand {
-            position: absolute;
-            top: calc(var(--board-margin-y) * 0.5);
-            width: 100%;
-            height: var(--hand-height);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
-            transform: rotateX(10deg) scale(0.98);
-            transform-style: preserve-3d;
-            z-index: var(--z-hand);
-        }
         
         /* カードスロットホバー効果の復旧 */
         .card-slot:hover {
-            transform: translateY(-8px) scale(1.08);
+            transform: translateZ(5px) translateY(-8px) scale(1.08);
             border-color: #4dd0fd;
             box-shadow: 0 0 25px rgba(77, 208, 253, 0.5);
             z-index: var(--z-card-hover);
@@ -730,20 +808,33 @@
         .is-hidden { opacity: 0; pointer-events: none; }
 
         .card-placeholder {
-            background-color: rgba(255, 255, 255, 0.05); /* Light grey, semi-transparent */
-            border: 1px dashed rgba(255, 255, 255, 0.2); /* Dashed white border */
-            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            border-radius: clamp(4px, 0.8vw, 8px);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: clamp(0.5rem, 1.5vw, 0.7rem);
             text-align: center;
-            padding: 5px;
+            padding: clamp(2px, 0.5vw, 4px);
             box-sizing: border-box;
-            pointer-events: auto;  /* CPU側プレースホルダーのクリック確保 */
+            pointer-events: auto;
             position: relative;
             z-index: var(--z-placeholder);
+            transform-origin: center center;
+            white-space: nowrap;
+            line-height: 1.1;
+            min-height: 1.5em;
+            font-weight: 300;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 手札プレースホルダーのスケール時の特別対応 */
+        .hand-slot.has-placeholder .card-placeholder {
+            /* スケール変形時でも文字サイズを相対的に保持 */
+            font-size: max(0.6rem, min(0.8rem, calc(1.2rem / var(--current-scale, 1))));
         }
 
         .player-board {
@@ -763,16 +854,13 @@
 
         #game-status-panel {
             color: #fff;
-            padding: 1rem 1.25rem;
-            font-size: clamp(0.95rem, 1.2vw, 1.1rem);
-            width: min(360px, calc(100vw - 40px)) !important;
-            position: fixed !important;
-            top: 16px !important;
-            right: 16px !important;
-            transform: none !important;
+            padding: clamp(0.5rem, 2vw, 1rem);
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            width: clamp(280px, 30vw, 360px);
+            position: fixed;
+            top: var(--viewport-padding);
+            right: var(--viewport-padding);
             z-index: var(--z-panels);
-            will-change: auto !important;
-            perspective: none !important;
         }
 
         .status-panel-content {
@@ -947,8 +1035,9 @@
         
         /* Pokemon-style Floating Action HUD */
         .pokemon-action-hud {
-            transform-origin: bottom right; /* 右下基点に変更 */
+            transform-origin: center bottom;
             animation: fadeInScale 0.4s ease-out;
+            z-index: var(--z-floating-hud);
         }
         
         @keyframes fadeInScale {
@@ -1854,11 +1943,6 @@
                 font-size: 0.9rem;
             }
 
-            .pokemon-action-hud {
-                bottom: 1rem;
-                right: 1rem;
-            }
-
             .pokemon-action-btn {
                 padding: 12px 18px;
                 font-size: 0.85rem;
@@ -1901,11 +1985,6 @@
                 margin-bottom: 0.4rem;
                 padding: 0.75rem;
                 font-size: 0.8rem;
-            }
-
-            .pokemon-action-hud {
-                bottom: 0.5rem;
-                right: 0.5rem;
             }
 
             .pokemon-action-btn {
@@ -2161,17 +2240,21 @@
 
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-stretch text-white p-4">
-    <!-- Z-Position Slider -->
+<body class="min-h-screen text-white">
+    <!-- Z-Position Slider (グリッド外の固定位置) -->
     <div id="z-slider-container" style="position: fixed; left: 10px; top: 50%; transform: translateY(-50%); z-index: 9999; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
         <label for="z-slider" style="color: white; font-size: 12px;">Playmat Z</label>
         <input type="range" id="z-slider" min="-2000" max="2000" value="0" step="10" style="width: 100px; transform: rotate(270deg); transform-origin: center; margin: 50px 0;">
         <span id="z-slider-value" style="color: white; font-size: 12px;">0px</span>
     </div>
 
-    <div id="cpu-hand" class="w-full flex justify-center items-center p-2 gap-x-1">
-        <!-- CPUの手札はここに動的に追加されます -->
-    </div>
+    <div class="game-wrapper">
+        <!-- CPU Hand Container -->
+        <div id="cpu-hand-container">
+            <div id="cpu-hand">
+                <!-- CPUの手札はここに動的に追加されます -->
+            </div>
+        </div>
 
     <div id="game-stage" class="game-stage w-full flex flex-col items-center" style="gap: calc(var(--vertical-gap)/2);">
         <div id="game-board">
@@ -2252,13 +2335,45 @@
     </div>
     </div>
 
-    <!-- Player Hand -->
-    <div id="player-hand" class="w-full flex justify-center items-end p-2 gap-x-1" style="overflow: visible; position: absolute; bottom: var(--player-hand-bottom-offset); width: 100%; z-index: var(--z-hand);">
-            <!-- プレイヤーの手札はここに動的に追加されます -->
+        <!-- Player Hand Container -->
+        <div id="player-hand-container">
+            <div id="player-hand">
+                <!-- プレイヤーの手札はここに動的に追加されます -->
+            </div>
+        </div>
+
+        <!-- Game Footer with HUD -->
+        <div class="game-footer">
+            <div id="floating-action-hud" class="w-full flex flex-wrap gap-3 justify-center pokemon-action-hud">
+                <button type="button" id="start-game-button-float" class="pokemon-action-btn">
+                    <span class="pokemon-btn-icon">🎴</span>
+                    <span class="pokemon-btn-text">手札を7枚引く</span>
+                </button>
+                <button type="button" id="card-editor-button-float" class="pokemon-action-btn">
+                    <span class="pokemon-btn-icon">🎴</span>
+                    <span class="pokemon-btn-text">カードエディタ</span>
+                </button>
+                <button type="button" id="confirm-setup-button-float" class="pokemon-action-btn hidden">
+                    <span class="pokemon-btn-icon">✅</span>
+                    <span class="pokemon-btn-text">ポケモン配置を確定</span>
+                </button>
+                <button type="button" id="retreat-button-float" class="pokemon-action-btn hidden">
+                    <span class="pokemon-btn-icon">🏃</span>
+                    <span class="pokemon-btn-text">にげる</span>
+                </button>
+                <button type="button" id="attack-button-float" class="pokemon-action-btn hidden">
+                    <span class="pokemon-btn-icon">⚔️</span>
+                    <span class="pokemon-btn-text">攻撃</span>
+                </button>
+                <button type="button" id="end-turn-button-float" class="pokemon-action-btn hidden">
+                    <span class="pokemon-btn-icon">🔄</span>
+                    <span class="pokemon-btn-text">ターン終了</span>
+                </button>
+            </div>
+        </div>
     </div>
 
-
-    <!-- Game Status Panel (右上固定) -->
+    <!-- Game Status Panel (グリッド外の固定位置) -->
     <div id="game-status-panel" class="">
         <div class="status-panel-content">
             <!-- Header Section -->
@@ -2322,33 +2437,6 @@
 
         </div>
     </div>
-<!-- Floating Action HUD (Responsive position) -->
-<div id="floating-action-hud" class="w-full flex flex-wrap gap-3 justify-center pokemon-action-hud" style="z-index: var(--z-floating-hud); margin-top: 8px;">
-    <button type="button" id="start-game-button-float" class="pokemon-action-btn">
-        <span class="pokemon-btn-icon">🎴</span>
-        <span class="pokemon-btn-text">手札を7枚引く</span>
-    </button>
-    <button type="button" id="card-editor-button-float" class="pokemon-action-btn">
-        <span class="pokemon-btn-icon">🎴</span>
-        <span class="pokemon-btn-text">カードエディタ</span>
-    </button>
-    <button type="button" id="confirm-setup-button-float" class="pokemon-action-btn hidden">
-        <span class="pokemon-btn-icon">✅</span>
-        <span class="pokemon-btn-text">ポケモン配置を確定</span>
-    </button>
-    <button type="button" id="retreat-button-float" class="pokemon-action-btn hidden">
-        <span class="pokemon-btn-icon">🏃</span>
-        <span class="pokemon-btn-text">にげる</span>
-    </button>
-    <button type="button" id="attack-button-float" class="pokemon-action-btn hidden">
-        <span class="pokemon-btn-icon">⚔️</span>
-        <span class="pokemon-btn-text">攻撃</span>
-    </button>
-    <button type="button" id="end-turn-button-float" class="pokemon-action-btn hidden">
-        <span class="pokemon-btn-icon">🔄</span>
-        <span class="pokemon-btn-text">ターン終了</span>
-    </button>
-</div>
 
 <!-- Card Info Panel -->
 <div id="card-info-panel" class="hidden fixed" style="z-index: var(--z-panels);"></div>
@@ -2357,7 +2445,15 @@
 
     <script>
         // Expose noop globally so modules can reuse it without errors
-        window.noop = () => {};
+        // GitHub Pages環境では静的ホスティングのためデバッグログを最小化
+        window.noop = console.log ? console.log.bind(console) : () => {};
+        
+        // パフォーマンス最適化：不要なログを制限
+        if (window.location.hostname.includes('github.io')) {
+            console.log = () => {};
+            console.debug = () => {};
+            window.noop = () => {};
+        }
         document.addEventListener('DOMContentLoaded', async () => {
             const gameBoard = document.getElementById('game-board');
             const bgImage = document.querySelector('.board-bg');
@@ -2369,13 +2465,22 @@
             // JSONからプレイマットのスロット情報を読み込み
             let data = null;
             try {
-                const res = await fetch('assets/playmat/playmat_slots_named.json');
+                const res = await fetch('./assets/playmat/playmat_slots_named.json');
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
                 data = await res.json();
                 window.playmatSlotsData = data; // Make it globally accessible
+                console.log('✅ Playmat slot data loaded successfully');
             } catch (e) {
-                console.error('Failed to load playmat slot data:', e);
+                console.error('❌ Failed to load playmat slot data:', e);
+                console.warn('⚠️ Using fallback layout without slot positioning');
+                return; // GitHub Pages環境での動作を継続
             }
-            if (!data) return;
+            if (!data) {
+                console.warn('⚠️ No playmat data available, using default layout');
+                return;
+            }
 
             const imgSize = data.image_size || { width: 679, height: 679 };
             const cardSize = (data.card_median_size) || { width: 74, height: 103 };
@@ -2606,20 +2711,30 @@
 
     <script type="module">
         // Modal Manager の初期化
-        import { modalManager } from './js/modal-manager.js';
-        const noop = window.noop || (() => {});
+        try {
+            const { modalManager } = await import('./js/modal-manager.js');
+            const noop = window.noop || (() => {});
 
-        // DOM準備完了後にModal Managerを初期化
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
+            // DOM準備完了後にModal Managerを初期化
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    modalManager.init();
+                    noop('🎭 Modal Manager initialized on DOMContentLoaded');
+                });
+            } else {
                 modalManager.init();
-                noop('🎭 Modal Manager initialized on DOMContentLoaded');
-            });
-        } else {
-            modalManager.init();
-            noop('🎭 Modal Manager initialized immediately');
+                noop('🎭 Modal Manager initialized immediately');
+            }
+        } catch (e) {
+            console.warn('⚠️ Modal Manager module not available:', e.message);
         }
     </script>
-    <script src="js/main.js" type="module"></script>
+    <script type="module">
+        try {
+            await import('./js/main.js');
+        } catch (e) {
+            console.warn('⚠️ Main module not available:', e.message);
+        }
+    </script>
 </body>
 </html>

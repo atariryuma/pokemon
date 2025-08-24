@@ -570,12 +570,12 @@ export class View {
             // カード要素を作成
             const cardEl = this._createCardElement(card, playerType, 'hand', index, isFaceDown);
             
-            // プレイヤーとCPUで異なるカードサイズを設定
+            // プレイヤーとCPUで異なる動的カードサイズを設定
             if (playerType === 'player') {
-                handSlot.classList.add('w-24', 'h-32', 'flex-shrink-0'); // プレイヤーは大きめ
+                handSlot.classList.add('flex-shrink-0'); // プレイヤーは動的サイズ（CSS変数）
                 cardEl.classList.add('w-full', 'h-full');
             } else {
-                handSlot.classList.add('w-20', 'h-28', 'flex-shrink-0'); // CPUは元のサイズ
+                handSlot.classList.add('flex-shrink-0'); // CPUも動的サイズ（CSS変数）
                 cardEl.classList.add('w-full', 'h-full');
             }
             
@@ -626,10 +626,14 @@ export class View {
     _applyHandDockEffect(handElement) {
         if (!handElement) return;
         
-        // 手札スロットにhand-cardクラスを追加
+        // 手札スロットにhand-cardクラスを追加（プレースホルダーを含む全スロット）
         const handSlots = handElement.querySelectorAll('.hand-slot');
         handSlots.forEach(slot => {
             slot.classList.add('hand-card');
+            // プレースホルダーのみのスロットも手札として認識させる
+            if (slot.querySelector('.card-placeholder')) {
+                slot.classList.add('has-placeholder');
+            }
         });
         
         // 手札コンテナにhand-dockクラスを追加
@@ -683,7 +687,8 @@ export class View {
         let pendingX = null;
 
         const resetAll = () => {
-            const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active)');
+            // 手札カードとプレースホルダー両方を対象に
+            const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active), .hand-slot .card-placeholder');
             cards.forEach((el, index) => {
                 // リセット時は最小限の変形のみ適用
                 el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
@@ -708,11 +713,14 @@ export class View {
         };
 
         const applyAt = (x) => {
-            const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active)');
+            // 手札カードとプレースホルダー両方を対象に
+            const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active), .hand-slot .card-placeholder');
             let maxScale = 0;
             let maxEl = null;
             cards.forEach(el => {
-                const rect = el.getBoundingClientRect();
+                // プレースホルダーの場合、親要素（hand-slot）の位置を使用
+                const targetEl = el.classList.contains('card-placeholder') ? el.parentElement : el;
+                const rect = targetEl.getBoundingClientRect();
                 const centerX = rect.left + rect.width / 2;
                 const d = Math.abs(centerX - x);
                 const t = Math.max(0, 1 - d / RADIUS); // 0..1
@@ -721,16 +729,26 @@ export class View {
                 const gap = BASE_GAP + (MAX_GAP - BASE_GAP) * (t * t);
                 if (scale > 0) {
                     // マックブック風効果のみ適用（コンテナの3D transformに影響しない）
-                    el.style.transform = `translateY(${lift}px) scale(${scale.toFixed(3)})`;
+                    // プレースホルダーの場合は親要素に適用
+                    if (el.classList.contains('card-placeholder')) {
+                        targetEl.style.transform = `translateY(${lift}px) scale(${scale.toFixed(3)})`;
+                        targetEl.style.marginLeft = `${gap}px`;
+                        targetEl.style.marginRight = `${gap}px`;
+                    } else {
+                        el.style.transform = `translateY(${lift}px) scale(${scale.toFixed(3)})`;
+                        el.style.marginLeft = `${gap}px`;
+                        el.style.marginRight = `${gap}px`;
+                    }
                 }
-                el.style.marginLeft = `${gap}px`;
-                el.style.marginRight = `${gap}px`;
                 if (scale > maxScale) {
                     maxScale = scale;
-                    maxEl = el;
+                    maxEl = targetEl;
                 }
             });
-            cards.forEach(el => ZIndexManager.setHandNormal(el));
+            cards.forEach(el => {
+                const targetEl = el.classList.contains('card-placeholder') ? el.parentElement : el;
+                ZIndexManager.setHandNormal(targetEl);
+            });
             if (maxEl) ZIndexManager.setHandHover(maxEl);
         };
 
@@ -743,11 +761,12 @@ export class View {
             });
         };
 
-        // マウス検出を手札カード要素のみに厳密に制限
+        // マウス検出を手札カードとプレースホルダー要素に拡張
         container.addEventListener('mousemove', (e) => {
-            // カード要素またはその子要素の上にいる場合のみ Mac Dock 効果を適用
-            const cardElement = e.target.closest('.hand-slot.hand-card');
-            const isOnCard = cardElement && container.contains(e.target);
+            // カード要素、プレースホルダー、またはその子要素の上にいる場合のみ Mac Dock 効果を適用
+            const cardElement = e.target.closest('.hand-slot.hand-card, .hand-slot');
+            const placeholderElement = e.target.closest('.card-placeholder');
+            const isOnCard = (cardElement || placeholderElement) && container.contains(e.target);
             if (isOnCard) {
                 onMove(e);
             } else {
