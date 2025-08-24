@@ -5,8 +5,7 @@
  * 4つのモーダルタイプを管理：中央モーダル、通知トースト、アクションHUD、状況パネル
  */
 
-import { animationManager } from './animation-manager.js';
-import { Z_INDEX, Z_CSS_VARS } from './z-index-constants.js';
+import { ZIndexManager } from './z-index-constants.js';
 import { getCardImagePath } from './data-manager.js';
 
 const noop = () => {};
@@ -24,17 +23,17 @@ export const MODAL_TYPES = {
 
 /**
  * モーダル優先度（Z-Index管理用）
- * CSS変数と統合された定数値
+ * ZIndexManagerに渡すキーを定義
  */
 export const MODAL_PRIORITY = {
-    BACKGROUND: Z_INDEX.BOARD,        // --z-board (ゲームボード)
-    CARDS: Z_INDEX.SELECTED,          // --z-selected (カード・手札選択状態)
-    HUD: Z_INDEX.HUD_BASE,            // --z-hud-base (HUD要素)
-    ACTION_HUD: Z_INDEX.FLOATING_HUD, // --z-floating-hud (廃止予定)
-    FLOATING_HUD: Z_INDEX.FLOATING_HUD, // --z-floating-hud (フローティングアクションHUD)
-    TOAST: Z_INDEX.TOAST,             // --z-toast (通知)
-    CENTRAL: Z_INDEX.MODALS,          // --z-modals (中央モーダル)
-    CRITICAL: Z_INDEX.CRITICAL        // --z-critical (致命的エラー)
+    BACKGROUND: 'BOARD',
+    CARDS: 'SELECTED',
+    HUD: 'HUD_BASE',
+    ACTION_HUD: 'FLOATING_HUD',
+    FLOATING_HUD: 'FLOATING_HUD',
+    TOAST: 'TOAST',
+    CENTRAL: 'MODALS',
+    CRITICAL: 'CRITICAL'
 };
 
 /**
@@ -86,15 +85,15 @@ export class ModalManager {
         const modal = document.createElement('div');
         modal.id = 'central-modal';
         modal.className = 'hidden fixed inset-0 central-modal flex items-center justify-center';
-        modal.style.zIndex = MODAL_PRIORITY.CENTRAL;
-        
+
         const content = document.createElement('div');
         // widen modal for rich card details layout (image + info)
         content.className = 'central-modal-content rounded-lg shadow-2xl p-6 w-fit max-w-5xl m-4 transform transition-all duration-300 ease-out scale-95 opacity-0';
-        
+
         modal.appendChild(content);
         document.body.appendChild(modal);
-        
+        ZIndexManager.apply(modal, MODAL_PRIORITY.CENTRAL);
+
         return modal;
     }
 
@@ -112,13 +111,13 @@ export class ModalManager {
         container.style.bottom = '180px'; // 手札エリア（bottom: 10px + 約170px高さ）の上
         container.style.left = '50%'; // 水平中央
         container.style.transform = 'translateX(-50%)'; // 中央揃え
-        container.style.zIndex = MODAL_PRIORITY.TOAST; // 95 - 中央モーダル(100)より背面
         container.style.willChange = 'auto';
         container.style.perspective = 'none';
         container.style.maxWidth = '400px'; // 最大幅制限
         container.style.width = 'fit-content';
-        
+
         document.body.appendChild(container);
+        ZIndexManager.apply(container, MODAL_PRIORITY.TOAST);
         return container;
     }
 
@@ -129,9 +128,9 @@ export class ModalManager {
         const hud = document.createElement('div');
         hud.id = 'action-hud';
         hud.className = 'hidden fixed pointer-events-none';
-        hud.style.zIndex = MODAL_PRIORITY.ACTION_HUD;
-        
+
         document.body.appendChild(hud);
+        ZIndexManager.apply(hud, MODAL_PRIORITY.ACTION_HUD);
         return hud;
     }
 
@@ -214,7 +213,7 @@ export class ModalManager {
         }
 
         // 表示
-        this.centralModal.style.zIndex = priority;
+        ZIndexManager.apply(this.centralModal, priority);
         this.centralModal.classList.remove('hidden');
         this.centralModal.style.display = 'flex';
         

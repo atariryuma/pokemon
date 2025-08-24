@@ -9,6 +9,7 @@
 
 import { animate } from '../animation-manager.js';
 import { normalizePlayerId, findZoneElement, findBenchSlot } from '../dom-utils.js';
+import { ZIndexManager } from '../z-index-constants.js';
 
 function resolveHandCardElement(playerId, runtimeOrMasterId) {
   const pid = normalizePlayerId(playerId);
@@ -120,8 +121,8 @@ async function cloneMoveFromRectToTarget(initialRect, targetElement, duration = 
   clone.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)';
   clone.style.transform = 'scale(0.9)';
   clone.style.transition = 'none';
-  // 高いz-indexで常に前面に表示（CSS変数に依存しない）
-  clone.style.zIndex = '9999';
+  // 中央管理のZIndexManagerで最前面に表示
+  ZIndexManager.setAnimating(clone);
   document.body.appendChild(clone);
 
   // 強制reflow

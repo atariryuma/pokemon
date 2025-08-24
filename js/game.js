@@ -11,6 +11,7 @@ import { turnManager } from './turn-manager.js';
 import { getCardImagePath, loadCardsFromJSON, getCardMasterList } from './data-manager.js';
 import { addLogEntry } from './state.js';
 import { modalManager } from './modal-manager.js';
+import { ZIndexManager } from './z-index-constants.js';
 import { memoryManager } from './memory-manager.js';
 import { actionHUDManager } from './action-hud-manager.js';
 
@@ -1903,7 +1904,6 @@ export class Game {
         const resultModal = document.createElement('div');
         resultModal.id = 'game-result-modal';
         resultModal.className = 'fixed inset-0 flex items-center justify-center game-result-overlay';
-        resultModal.style.zIndex = 'var(--z-modals)';
         
         const modalContent = `
             <div class="game-result-container ${isVictory ? 'victory-result' : 'defeat-result'}">
@@ -1973,6 +1973,7 @@ export class Game {
         
         resultModal.innerHTML = modalContent;
         document.body.appendChild(resultModal);
+        ZIndexManager.apply(resultModal, 'MODALS');
         
         // アニメーション開始
         requestAnimationFrame(() => {
@@ -2063,7 +2064,7 @@ export class Game {
                 card.style.boxShadow = '0 0 30px rgba(252, 211, 77, 0.8), 0 0 60px rgba(252, 211, 77, 0.4)';
                 card.style.transform = 'scale(1.1)';
                 card.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                card.style.zIndex = 'var(--z-animations)';
+                ZIndexManager.apply(card, 'ANIMATIONS');
             }, index * 150);
         });
 
@@ -2077,7 +2078,7 @@ export class Game {
             card.classList.remove('victory-celebration');
             card.style.transform = '';
             card.style.boxShadow = '';
-            card.style.zIndex = '';
+            ZIndexManager.reset(card);
         });
         
         if (gameBoard) {
@@ -2115,7 +2116,7 @@ export class Game {
                 card.style.boxShadow = '0 0 25px rgba(239, 68, 68, 0.6), 0 0 50px rgba(239, 68, 68, 0.3)';
                 card.style.transform = 'scale(1.08)';
                 card.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                card.style.zIndex = 'var(--z-animations)';
+                ZIndexManager.apply(card, 'ANIMATIONS');
             }, index * 120);
         });
 
@@ -2128,7 +2129,7 @@ export class Game {
         cpuCards.forEach(card => {
             card.style.transform = '';
             card.style.boxShadow = '';
-            card.style.zIndex = '';
+            ZIndexManager.reset(card);
         });
     }
 
@@ -2146,7 +2147,7 @@ export class Game {
             particle.style.left = Math.random() * 100 + '%';
             particle.style.top = Math.random() * 100 + '%';
             particle.style.fontSize = (0.8 + Math.random() * 1.2) + 'rem';
-            particle.style.zIndex = 'var(--z-animations)';
+            ZIndexManager.apply(particle, 'ANIMATIONS');
             particle.style.pointerEvents = 'none';
             particle.innerHTML = ['⭐', '✨', '🎊', '🎉', '💫', '🌟'][Math.floor(Math.random() * 6)];
             particle.style.animation = `boardVictoryFloat ${2 + Math.random() * 3}s ease-out ${Math.random() * 1}s forwards`;
@@ -2177,7 +2178,7 @@ export class Game {
             particle.style.height = '15px';
             particle.style.background = 'rgba(156, 163, 175, 0.6)';
             particle.style.borderRadius = '2px';
-            particle.style.zIndex = 'var(--z-animations)';
+            ZIndexManager.apply(particle, 'ANIMATIONS');
             particle.style.pointerEvents = 'none';
             particle.style.animation = `boardDefeatFall ${3 + Math.random() * 2}s linear ${Math.random() * 0.5}s forwards`;
 
