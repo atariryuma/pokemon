@@ -235,7 +235,7 @@
             overflow: visible;
             transform-style: preserve-3d;
             /* Stadiumと同等の3D位置（背景より前） */
-            transform: translateZ(1px);
+            transform: translateZ(var(--tz-card-slot));
         }
         
         /* 手札エリア（下部、フロー内） */
@@ -345,7 +345,7 @@
             align-items: center;
             justify-content: center;
             pointer-events: none;
-            transform: translateZ(-60px) rotateX(10deg) scale(0.98);
+            transform: translateZ(var(--tz-cpu-hand)) rotateX(10deg) scale(0.98);
             transform-style: preserve-3d;
             z-index: var(--z-hand);
         }
@@ -893,13 +893,7 @@
             will-change: auto;
         }
         
-        /* プレイヤー手札のシンプルなスタイル */
-        #player-hand {
-            z-index: var(--z-hand);
-            pointer-events: auto;
-            transform: none;
-            will-change: auto;
-        }
+        /* プレイヤー手札のシンプルなスタイル (競合のため削除) */
         
         /* 手札スロット基本スタイル */
         .hand-slot {
@@ -2167,6 +2161,12 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-stretch text-white p-4">
+    <!-- Z-Position Slider -->
+    <div id="z-slider-container" style="position: fixed; left: 10px; top: 50%; transform: translateY(-50%); z-index: 9999; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+        <label for="z-slider" style="color: white; font-size: 12px;">Playmat Z</label>
+        <input type="range" id="z-slider" min="-500" max="500" value="0" step="10" style="width: 100px; transform: rotate(270deg); transform-origin: center; margin: 50px 0;">
+        <span id="z-slider-value" style="color: white; font-size: 12px;">0px</span>
+    </div>
 
     <div id="game-stage" class="game-stage w-full flex flex-col items-center" style="gap: calc(var(--vertical-gap)/2);">
         <!-- CPU Hand (scene child) -->
@@ -2252,7 +2252,7 @@
         </div>
 
         <!-- Player Hand (scene child) -->
-        <div id="player-hand" class="w-full flex justify-center items-end p-2 gap-x-1" style="overflow: visible;">
+        <div id="player-hand" class="w-full flex justify-center items-end p-2 gap-x-1" style="overflow: visible; position: absolute; bottom: var(--player-hand-bottom-offset); width: 100%; transform: translateZ(var(--tz-player-hand)); z-index: var(--z-hand);">
             <!-- プレイヤーの手札はここに動的に追加されます -->
         </div>
     </div>
@@ -2551,6 +2551,25 @@
                 cardEditorButton.addEventListener('click', () => {
                     window.location.href = 'card_viewer.html';
                 });
+            }
+
+            // Z-Position Slider Control
+            const zSlider = document.getElementById('z-slider');
+            const zSliderValueDisplay = document.getElementById('z-slider-value');
+            const gameBoard = document.getElementById('game-board'); // Already defined, but good to be explicit
+
+            if (zSlider && zSliderValueDisplay && gameBoard) {
+                // Set initial value display
+                zSliderValueDisplay.textContent = `${zSlider.value}px`;
+
+                // Update slider value and game board transform on input
+                zSlider.addEventListener('input', () => {
+                    const sliderValue = zSlider.value;
+                    zSliderValueDisplay.textContent = `${sliderValue}px`;
+                    document.documentElement.style.setProperty('--tz-game-board', `${sliderValue}px`);
+                });
+            } else {
+                console.warn('⚠️ Z-Position slider elements not found.');
             }
         });
 
