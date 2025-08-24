@@ -674,7 +674,7 @@ export class View {
         const screenWidth = window.innerWidth || 800;
         const RADIUS = Math.min(220, screenWidth * 0.25);        // 画面幅の25%、最大220px（拡張）
         const BASE_SCALE = 1.1;    // より大きなベースサイズ
-        const MAX_SCALE = screenWidth < 768 ? 1.6 : 2.0;        // より大きな拡大効果
+        const MAX_SCALE = screenWidth < 768 ? 1.2 : 1.4;        // より大きな拡大効果
         const MAX_LIFT = Math.min(50, screenWidth * 0.06);      // 画面幅の6%、最大50px（より高い浮上）
         const BASE_GAP = 2;        // px default spacing per side
         const MAX_GAP = Math.min(8, screenWidth * 0.01);       // 画面幅の1%、最大8px（より大きなギャップ）

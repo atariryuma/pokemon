@@ -127,7 +127,7 @@ export class ModalManager {
     createActionHUD() {
         const hud = document.createElement('div');
         hud.id = 'action-hud';
-        hud.className = 'hidden fixed pointer-events-none';
+        hud.className = 'fixed pointer-events-none';
 
         document.body.appendChild(hud);
         ZIndexManager.apply(hud, MODAL_PRIORITY.ACTION_HUD);
@@ -393,7 +393,8 @@ export class ModalManager {
         }
 
         // Make it visible
-        hudContainer.classList.remove('hidden');
+        hudContainer.style.opacity = '1';
+        hudContainer.style.pointerEvents = 'auto';
         hudContainer.style.display = 'block';
         this.activeModals.set(MODAL_TYPES.ACTION_HUD, { element: hudContainer });
     }
@@ -404,7 +405,8 @@ export class ModalManager {
      */
     hideActionHUD() {
         const hud = this.actionHUD;
-        hud.classList.add('hidden');
+        hud.style.opacity = '0';
+        hud.style.pointerEvents = 'none';
         hud.innerHTML = '';
     }
 

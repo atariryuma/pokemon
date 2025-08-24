@@ -41,7 +41,7 @@ export const Z_INDEX = {
     // === レイヤー5: UI・HUD系 (400-600) ===
     HUD_BASE: 400,         // --z-hud-base
     PANELS: 410,           // --z-panels
-    FLOATING_HUD: 420,     // --z-floating-hud
+    FLOATING_HUD: 410,     // --z-floating-hud
     TOAST: 430,            // --z-toast
     MODALS: 500,           // --z-modals
     CRITICAL: 600,         // --z-critical (致命的エラー・アニメーション)
