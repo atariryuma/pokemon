@@ -85,6 +85,8 @@ export function placeCardInActive(state, player, cardId) {
     const newHand = [...playerState.hand];
     newHand.splice(index, 1);
 
+    const cardToPlace = { ...card, turnPlayed: state.turn };
+
     return {
         ...state,
         players: {
@@ -92,7 +94,7 @@ export function placeCardInActive(state, player, cardId) {
             [player]: {
                 ...playerState,
                 hand: newHand,
-                active: card,
+                active: cardToPlace,
             },
         },
     };
@@ -119,7 +121,7 @@ export function placeCardOnBench(state, player, cardId, benchIndex) {
     newHand.splice(index, 1);
 
     const newBench = [...playerState.bench];
-    newBench[benchIndex] = card;
+    newBench[benchIndex] = { ...card, turnPlayed: state.turn };
 
     return {
         ...state,
@@ -253,6 +255,81 @@ export function attachEnergy(state, player, energyId, pokemonId) {
     };
     newState = addLogEntry(newState, { message: `${player === 'player' ? 'あなた' : '相手'}は${targetInfo.pokemon.name_ja}に${energyInfo.card.name_ja}を付けた。` });
     return newState;
+}
+
+/**
+ * Evolves a pokemon on the board.
+ * @param {object} state - The current game state.
+ * @param {string} player - 'player' or 'cpu'.
+ * @param {string} evolutionCardId - The ID of the evolution card in hand.
+ * @param {string} targetPokemonId - The ID of the pokemon on the board to evolve.
+ * @returns {object} The new game state.
+ */
+export function evolvePokemon(state, player, evolutionCardId, targetPokemonId) {
+  const playerState = state.players[player];
+  const evolutionCardInfo = findCardInHand(playerState, evolutionCardId);
+  if (!evolutionCardInfo) return state; // Evolution card not in hand
+
+  const targetPokemonInfo = findPokemonById(playerState, targetPokemonId);
+  if (!targetPokemonInfo) return state; // Target pokemon not on board
+
+  const { card: evolutionCard, index: handIndex } = evolutionCardInfo;
+  const { pokemon: targetPokemon, zone, index: boardIndex } = targetPokemonInfo;
+
+  // --- Evolution validation ---
+  // 1. Check if the evolution card's 'evolves_from' matches the target's name
+  if (evolutionCard.evolves_from !== targetPokemon.name_en) {
+    console.warn(`Evolution failed: ${evolutionCard.name_en} does not evolve from ${targetPokemon.name_en}`);
+    return state;
+  }
+
+  // 2. Check if the target pokemon was played this turn
+  if (targetPokemon.turnPlayed === state.turn) {
+    console.warn(`Evolution failed: Cannot evolve a Pokémon that was played this turn.`);
+    return state;
+  }
+  
+  // 3. Check first turn rule (no evolutions on the first turn of the game for either player)
+  if (state.turn === 1) {
+      console.warn(`Evolution failed: Cannot evolve on the first turn of the game.`);
+      return state;
+  }
+
+  // --- Perform evolution ---
+  const newHand = [...playerState.hand];
+  newHand.splice(handIndex, 1);
+
+  const evolvedPokemon = {
+    ...evolutionCard,
+    damage: targetPokemon.damage || 0,
+    attached_energy: [...(targetPokemon.attached_energy || [])],
+    turnPlayed: targetPokemon.turnPlayed, // Keep original turn played
+  };
+
+  let newActive = playerState.active;
+  let newBench = [...playerState.bench];
+
+  if (zone === 'active') {
+    newActive = evolvedPokemon;
+  } else {
+    newBench[boardIndex] = evolvedPokemon;
+  }
+
+  let newState = {
+    ...state,
+    players: {
+      ...state.players,
+      [player]: {
+        ...playerState,
+        hand: newHand,
+        active: newActive,
+        bench: newBench,
+      },
+    },
+  };
+
+  newState = addLogEntry(newState, { message: `${player === 'player' ? 'あなた' : '相手'}は${targetPokemon.name_ja}を${evolutionCard.name_ja}に進化させた！` });
+  return newState;
 }
 
 /**

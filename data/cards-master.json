@@ -139,10 +139,10 @@
   },
   {
     "id": "004",
-    "name_en": "Glasswing Butterfly Larva",
-    "name_ja": "イシガケチョウ 幼虫",
-    "card_type": "Pokemon",
-    "stage": "Stage1",
+    "name_en": "Glasswing Butterfly Larva 2",
+    "name_ja": "イシガケチョウ 幼虫 2",
+    "card_type": "Pokémon",
+    "stage": "STAGE1",
     "hp": 50,
     "types": [
       "Grass"
@@ -160,20 +160,20 @@
     "retreat_cost": 1,
     "attacks": [
       {
-        "name_en": "Leaf Munch",
         "name_ja": "葉を食べる",
+        "name_en": "Leaf Munch",
         "cost": [
           "Grass",
           "Fire",
           "Water"
         ],
         "damage": 40,
-        "text_en": "If used, this attack does 50 more damage.",
-        "text_ja": "このワザを使ったなら、＋50ダメージ。"
+        "text_ja": "このワザを使ったなら、＋50ダメージ。",
+        "text_en": "If used, this attack does 50 more damage."
       },
       {
-        "name_en": "Charge",
         "name_ja": "突撃",
+        "name_en": "Charge",
         "cost": [
           "Lightning",
           "Lightning"
@@ -181,7 +181,7 @@
         "damage": 50
       }
     ],
-    "image_file": "004_pokemon_glasswing_butterfly_larva.webp"
+    "image_file": "004_pokemon_glasswing_butterfly_larva_2.webp"
   },
   {
     "id": "005",

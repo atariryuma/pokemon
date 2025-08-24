@@ -562,15 +562,21 @@ export class TurnManager {
     await this.animateCardDraw('cpu');
     await this.simulateCpuThinking(300);
 
-    // 3. たねポケモンをベンチに出す（可能なら）
+    // 3. にげるを検討
+    newState = await this.cpuConsiderRetreat(newState);
+
+    // 4. たねポケモンをベンチに出す（可能なら）
     newState = await this.cpuPlayBasicPokemon(newState);
     await this.simulateCpuThinking(500);
 
-    // 4. エネルギーを付ける（可能なら）
+    // 5. 進化（可能なら）
+    newState = await this.cpuEvolvePokemon(newState);
+
+    // 6. エネルギーを付ける（可能なら）
     newState = await this.cpuAttachEnergy(newState);
     await this.simulateCpuThinking(400);
 
-    // 5. 攻撃（可能なら）
+    // 7. 攻撃（可能なら）
     const canAttack = this.cpuCanAttack(newState);
     if (canAttack) {
       newState = await this.cpuPerformAttack(newState);
@@ -583,14 +589,41 @@ export class TurnManager {
   }
 
   /**
-   * CPU: ベンチからバトル場に昇格
+   * CPU: ベンチからバトル場に昇格（戦略的AI）
    */
   async cpuPromoteToActive(state) {
     let newState = cloneGameState(state);
-    const benchPokemon = newState.players.cpu.bench.filter(p => p !== null);
+    const benchPokemon = newState.players.cpu.bench.map((p, index) => ({ pokemon: p, originalIndex: index })).filter(item => item.pokemon !== null);
     
     if (benchPokemon.length > 0) {
-      const selectedIndex = newState.players.cpu.bench.findIndex(p => p && p.id === benchPokemon[0].id);
+      let bestCandidate = null;
+      let maxScore = -1;
+
+      for (const candidate of benchPokemon) {
+        const p = candidate.pokemon;
+        let score = 0;
+
+        // 1. すぐに攻撃できるか
+        if (p.attacks && p.attacks.some(attack => Logic.hasEnoughEnergy(p, attack))) {
+          score += 100;
+        }
+
+        // 2. HPの高さ
+        score += p.hp || 0;
+
+        // 3. にげるコストの低さ（コストが高いほど減点）
+        score -= (p.retreat_cost || 0) * 20;
+        
+        // 4. エネルギーがついているか
+        score += (p.attached_energy?.length || 0) * 10;
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestCandidate = candidate;
+        }
+      }
+
+      const selectedIndex = bestCandidate.originalIndex;
       newState = Logic.promoteToActive(newState, 'cpu', selectedIndex);
       
       await this.simulateCpuThinking();
@@ -610,14 +643,13 @@ export class TurnManager {
       newState = addLogEntry(newState, {
         type: 'pokemon_promoted',
         player: 'cpu',
-        message: 'CPUがベンチポケモンをバトル場に出しました'
+        message: `CPUが${newState.players.cpu.active.name_ja}をバトル場に出しました`
       });
     } else {
       // ベンチにポケモンがいない場合、CPUはポケモンを出せないためゲーム終了
-      newState = Logic.checkForWinner(newState); // 相手の場にポケモンがいない勝利条件をチェック
+      newState = Logic.checkForWinner(newState);
       if (newState.phase !== GAME_PHASES.GAME_OVER) {
-          // もし勝敗が決まらないなら、CPUは行動できないのでターン終了
-          newState = await this.endCpuTurn(newState); // CPUターンを終了させる
+          newState = await this.endCpuTurn(newState);
       }
     }
 
@@ -625,31 +657,51 @@ export class TurnManager {
   }
 
   /**
-   * CPU: たねポケモンをベンチに出す
+   * CPU: たねポケモンをベンチに出す（戦略的AI）
    */
   async cpuPlayBasicPokemon(state) {
     let newState = cloneGameState(state);
     const cpuState = newState.players.cpu;
     
-    const basicPokemon = cpuState.hand.filter(card => 
+    const emptyBenchIndex = cpuState.bench.findIndex(slot => slot === null);
+    if (emptyBenchIndex === -1) {
+      return newState; // ベンチに空きがない
+    }
+
+    const basicPokemonInHand = cpuState.hand.filter(card => 
       card.card_type === 'Pokémon' && card.stage === 'BASIC'
     );
 
-    if (basicPokemon.length > 0) {
-      const emptyBenchIndex = cpuState.bench.findIndex(slot => slot === null);
-      if (emptyBenchIndex !== -1) {
-        const selectedPokemon = basicPokemon[0];
+    if (basicPokemonInHand.length > 0) {
+      let bestPokemonToPlay = null;
+      let maxScore = -1;
+
+      for (const pokemon of basicPokemonInHand) {
+        let score = 0;
+        // 1. HP
+        score += pokemon.hp || 0;
+        // 2. 最大攻撃力
+        if (pokemon.attacks && pokemon.attacks.length > 0) {
+          const maxDamage = Math.max(...pokemon.attacks.map(a => a.damage || 0));
+          score += maxDamage;
+        }
+        // 3. 特性の有無
+        if (pokemon.ability) {
+          score += 30; // 特性持ちを評価
+        }
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestPokemonToPlay = pokemon;
+        }
+      }
+      
+      if (bestPokemonToPlay) {
+        newState = Logic.placeCardOnBench(newState, 'cpu', bestPokemonToPlay.id, emptyBenchIndex);
         
-        // キャプチャソース位置（状態更新前）
-        const sourceElement = document.querySelector(`[data-card-id="${selectedPokemon.id}"]`);
-        const initialSourceRect = sourceElement ? sourceElement.getBoundingClientRect() : null;
-        
-        newState = Logic.placeCardOnBench(newState, 'cpu', selectedPokemon.id, emptyBenchIndex);
-        
-        // 統一アニメーション実行（既存のマネージャーを使用）
         try {
           const { animateFlow } = await import('./animations/flow.js');
-          await animateFlow.handToBench('cpu', selectedPokemon.runtimeId || selectedPokemon.id, emptyBenchIndex, { isSetupPhase: false });
+          await animateFlow.handToBench('cpu', bestPokemonToPlay.runtimeId || bestPokemonToPlay.id, emptyBenchIndex, { isSetupPhase: false });
         } catch (e) {
           console.warn('CPU bench place animation failed:', e);
         }
@@ -657,7 +709,7 @@ export class TurnManager {
         newState = addLogEntry(newState, {
           type: 'pokemon_played',
           player: 'cpu',
-          message: 'CPUがたねポケモンをベンチに出しました'
+          message: `CPUが${bestPokemonToPlay.name_ja}をベンチに出しました`
         });
       }
     }
@@ -666,27 +718,140 @@ export class TurnManager {
   }
 
   /**
-   * CPU: エネルギー付与
+   * CPU: ポケモンを進化させる（戦略的AI）
+   */
+  async cpuEvolvePokemon(state) {
+    let newState = cloneGameState(state);
+    const cpuState = newState.players.cpu;
+
+    // ターン1と、先攻プレイヤーの最初の番は進化できないルール
+    if (newState.turn === 1) {
+      return newState;
+    }
+
+    let evolutionPerformed = false;
+
+    // 複数回進化できるようにループ
+    for (let i = 0; i < 5; i++) { // 念のため無限ループを避ける
+      let bestEvolution = null;
+      let maxScore = -1;
+
+      const pokemonOnBoard = [cpuState.active, ...cpuState.bench].filter(p => p);
+      const cardsInHand = cpuState.hand;
+
+      // 進化可能な組み合わせを探す
+      for (const pokemon of pokemonOnBoard) {
+        if (pokemon.turnPlayed === newState.turn) continue; // このターンに出したポケモンは進化不可
+
+        for (const card of cardsInHand) {
+          if (card.evolves_from === pokemon.name_en) {
+            // 進化後の強さを評価
+            let score = (card.hp || 0) + Math.max(...(card.attacks || []).map(a => a.damage || 0));
+            if (pokemon.id === cpuState.active?.id) {
+              score += 20; // バトル場のポケモンを優先
+            }
+
+            if (score > maxScore) {
+              maxScore = score;
+              bestEvolution = { evolutionCard: card, targetPokemon: pokemon };
+            }
+          }
+        }
+      }
+
+      if (bestEvolution) {
+        newState = Logic.evolvePokemon(newState, 'cpu', bestEvolution.evolutionCard.id, bestEvolution.targetPokemon.id);
+        evolutionPerformed = true;
+        // 1回進化したら、次の進化を探すために手札と場の状況を再評価
+        // （ループの次のイテレーションで自動的に行われる）
+      } else {
+        break; // 進化できるポケモンがもういない
+      }
+    }
+    
+    if(evolutionPerformed){
+        await this.simulateCpuThinking(800);
+    }
+
+    return newState;
+  }
+
+  /**
+   * CPU: エネルギー付与（戦略的AI）
    */
   async cpuAttachEnergy(state) {
     let newState = cloneGameState(state);
-    
     if (newState.hasAttachedEnergyThisTurn) {
       return newState;
     }
 
     const cpuState = newState.players.cpu;
-    const energyCards = cpuState.hand.filter(card => card.card_type === 'Basic Energy');
-    
-    if (energyCards.length > 0 && cpuState.active) {
-      const selectedEnergy = energyCards[0];
-      
-      newState = Logic.attachEnergy(newState, 'cpu', selectedEnergy.id, cpuState.active.id);
-      
-      if (newState !== state) {
-        // Use energy attach animation
-        await animate.energyAttach(selectedEnergy.id, cpuState.active.id, newState);
+    const energyCards = cpuState.hand.filter(card => card.card_type === 'Basic Energy' || card.card_type === 'Special Energy');
+    if (energyCards.length === 0) {
+      return newState; // No energy to attach
+    }
+
+    const allPokemon = [cpuState.active, ...cpuState.bench].filter(p => p);
+    if (allPokemon.length === 0) {
+      return newState; // No pokemon to attach to
+    }
+
+    let bestAttachment = null;
+    let bestAttackDamage = -1;
+
+    // Find the best pokemon and energy combination
+    for (const pokemon of allPokemon) {
+      if (!pokemon.attacks) continue;
+
+      for (const energy of energyCards) {
+        // Simulate attaching this energy
+        const tempPokemon = { ...pokemon, attached_energy: [...(pokemon.attached_energy || []), energy] };
+        
+        // Check if any new attacks become usable
+        for (const attack of tempPokemon.attacks) {
+          const canUseNow = Logic.hasEnoughEnergy(tempPokemon, attack);
+          const couldUseBefore = Logic.hasEnoughEnergy(pokemon, attack);
+
+          if (canUseNow && !couldUseBefore) {
+            // This attachment enables an attack. Is it the best one so far?
+            const currentDamage = attack.damage || 0;
+            if (currentDamage > bestAttackDamage) {
+              bestAttackDamage = currentDamage;
+              bestAttachment = { pokemon, energy };
+            }
+          }
+        }
       }
+    }
+
+    // If we found a good candidate, attach the energy
+    if (bestAttachment) {
+      const { pokemon, energy } = bestAttachment;
+      newState = Logic.attachEnergy(newState, 'cpu', energy.id, pokemon.id);
+      if (newState !== state) {
+        await animate.energyAttach(energy.id, pokemon.id, newState);
+      }
+      return newState;
+    }
+
+    // FALLBACK: If no pokemon is close to attacking, attach to the active pokemon
+    if (cpuState.active) {
+      const energyToAttach = energyCards[0];
+      newState = Logic.attachEnergy(newState, 'cpu', energyToAttach.id, cpuState.active.id);
+      if (newState !== state) {
+        await animate.energyAttach(energyToAttach.id, cpuState.active.id, newState);
+      }
+      return newState;
+    }
+    
+    // FINAL FALLBACK: If no active pokemon, attach to the first pokemon on bench
+    if(allPokemon.length > 0){
+        const energyToAttach = energyCards[0];
+        const targetPokemon = allPokemon[0];
+        newState = Logic.attachEnergy(newState, 'cpu', energyToAttach.id, targetPokemon.id);
+        if (newState !== state) {
+            await animate.energyAttach(energyToAttach.id, targetPokemon.id, newState);
+        }
     }
 
     return newState;
@@ -778,6 +943,46 @@ export class TurnManager {
     );
     
     return topAttacks[Math.floor(Math.random() * topAttacks.length)];
+  }
+
+  /**
+   * CPU: にげるを検討する（戦略的AI）
+   */
+  async cpuConsiderRetreat(state) {
+    let newState = cloneGameState(state);
+    const { active, bench } = newState.players.cpu;
+
+    if (!active || !newState.canRetreat) {
+      return newState;
+    }
+
+    const damagePercentage = (active.damage || 0) / active.hp;
+    const hasEnoughEnergyForRetreat = (active.attached_energy?.length || 0) >= (active.retreat_cost || 0);
+
+    // HPが60%以上削られていて、にげるエネルギーがある場合
+    if (damagePercentage >= 0.6 && hasEnoughEnergyForRetreat) {
+      // ベンチに交代できるポケモンがいるか探す
+      const healthyBenchPokemon = bench
+        .map((p, index) => ({ pokemon: p, originalIndex: index }))
+        .filter(item => item.pokemon && ((item.pokemon.damage || 0) / item.pokemon.hp) < 0.5);
+
+      if (healthyBenchPokemon.length > 0) {
+        // 最もHPが高いポケモンを交代先として選ぶ
+        healthyBenchPokemon.sort((a, b) => b.pokemon.hp - a.pokemon.hp);
+        const bestCandidateIndex = healthyBenchPokemon[0].originalIndex;
+
+        const { newState: retreatedState, discardedEnergy } = Logic.retreat(newState, 'cpu', active.id, bestCandidateIndex);
+        
+        if (retreatedState !== newState) {
+          // アニメーションなどをここに追加可能
+          await this.simulateCpuThinking(600);
+          retreatedState.canRetreat = false; // にげるは1ターンに1回
+          return retreatedState;
+        }
+      }
+    }
+
+    return newState;
   }
 
   /**
