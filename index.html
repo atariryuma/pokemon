@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ポケモンカードバトルフィールド</title>
     <!-- Tailwind: load via CDN only in development (suppress CDN warning) -->
     <script>
@@ -127,7 +127,7 @@
             max-width: 400px;
             z-index: var(--z-1000);
             transform-origin: bottom right;
-            animation: fadeInScale 0.4s ease-out;
+            animation: fadeInScale var(--anim-normal) ease-out;
             /* Tailwindクラスを上書き */
             display: flex !important;
             flex-direction: column !important;
@@ -173,7 +173,7 @@
 
         /* 🎬 ゲームフローアニメーション */
         .game-start-flash {
-            animation: gameStartFlash 1s ease-out;
+            animation: gameStartFlash var(--anim-slow) ease-out;
         }
         
         @keyframes gameStartFlash {
@@ -183,7 +183,7 @@
         }
         
         .turn-ending {
-            animation: turnEnding 0.5s ease-out;
+            animation: turnEnding var(--anim-normal) ease-out;
             opacity: 0.7;
         }
         
@@ -193,7 +193,7 @@
         }
         
         .turn-starting {
-            animation: turnStarting 0.5s ease-out;
+            animation: turnStarting var(--anim-normal) ease-out;
         }
         
         @keyframes turnStarting {
@@ -202,7 +202,7 @@
         }
         
         .attacking {
-            animation: attackingPulse 0.8s ease-in-out;
+            animation: attackingPulse var(--anim-slow) ease-in-out;
         }
         
         @keyframes attackingPulse {
@@ -211,7 +211,7 @@
         }
         
         .highlight-available {
-            animation: availableHighlight 2s infinite;
+            animation: availableHighlight calc(var(--anim-slow) * 2.5) infinite;
         }
         
         @keyframes availableHighlight {
@@ -221,7 +221,7 @@
         
         /* 🏆 勝利演出 */
         .victory-celebration {
-            animation: victoryCelebration 2s ease-out;
+            animation: victoryCelebration calc(var(--anim-slow) * 2.5) ease-out;
         }
         
         @keyframes victoryCelebration {
@@ -234,7 +234,7 @@
         
         /* ⚡ フェーズ遷移 */
         .phase-transition {
-            animation: phaseTransition 0.3s ease-out;
+            animation: phaseTransition var(--anim-fast) ease-out;
         }
         
         @keyframes phaseTransition {
@@ -244,7 +244,7 @@
         
         /* 💫 エラー表示 */
         .error-shake {
-            animation: errorShake 0.5s ease-in-out;
+            animation: errorShake var(--anim-normal) ease-in-out;
         }
         
         @keyframes errorShake {
@@ -264,10 +264,6 @@
             aspect-ratio: 1 / 1;
             margin: calc(var(--board-margin-y) + 15vh) auto var(--board-margin-y) auto;
             overflow: visible;
-            /* Improve image rendering quality with proper fallback */
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: -webkit-crisp-edges;
-            image-rendering: crisp-edges;
             /* GPU acceleration optimization */
             will-change: var(--will-change);
             /* Ensure click events work properly on zoomed elements */
@@ -289,14 +285,10 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain; /* 画像の縦横比を維持し、正方形コンテナに収める */
             object-position: center;
             z-index: var(--z-board-bg);
             pointer-events: none !important; /* 背景画像のクリック干渉を完全防止 */
-            /* Improve image rendering quality with proper fallback */
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: -webkit-crisp-edges;
-            image-rendering: crisp-edges;
             filter: contrast(1.05) brightness(1.02);
         }
 
@@ -815,85 +807,82 @@
         }
 
         .deck-card-element.is-drawing {
-            animation: deckLift 0.3s ease-out forwards; /* Apply the lift animation */
+            animation: deckLift var(--anim-fast) ease-out forwards; /* Apply the lift animation */
         }
 
         /* レイヤー5: アニメーションクラス */
         .animate-deal-card {
-            animation: dealCard 0.6s ease-out;
+            animation: dealCard var(--anim-combat) ease-out;
             z-index: var(--z-animations);
         }
 
         .animate-deal-player-hand-card {
-            animation: dealPlayerHandCard 0.6s ease-out forwards;
+            animation: dealPlayerHandCard var(--anim-combat) ease-out forwards;
             z-index: var(--z-animations);
         }
 
         .animate-deal-card-nofade {
-            animation: dealCardNoFade 0.6s ease-out forwards;
+            animation: dealCardNoFade var(--anim-combat) ease-out forwards;
             z-index: var(--z-animations);
         }
 
         .animate-prize-deal-left {
-            animation: prizeDealLeft 0.5s ease-out;
+            animation: prizeDealLeft var(--anim-normal) ease-out;
             z-index: var(--z-animations);
         }
 
         .animate-prize-deal-right {
-            animation: prizeDealRight 0.5s ease-out;
+            animation: prizeDealRight var(--anim-normal) ease-out;
             z-index: var(--z-animations);
         }
 
         .animate-draw-card {
-            animation: drawCard 0.4s ease-out;
+            animation: drawCard var(--anim-normal) ease-out;
             z-index: var(--z-animations);
         }
 
         .animate-play-card {
-            animation: playCard 0.5s ease-out;
+            animation: playCard var(--anim-normal) ease-out;
             z-index: var(--z-animations);
         }
 
         .animate-attack {
-            animation: attackForward 0.8s ease-out;
+            animation: attackForward var(--anim-slow) ease-out;
             z-index: var(--z-animations);
         }
 
         .animate-damage {
-            animation: damageShake 0.6s ease-out;
+            animation: damageShake var(--anim-combat) ease-out;
             z-index: var(--z-animations);
         }
 
         .animate-hp-damage {
-            animation: hpFlash 0.6s ease-out;
+            animation: hpFlash var(--anim-combat) ease-out;
             z-index: var(--z-animations);
         }
 
         .animate-knockout {
-            animation: knockout 1.2s ease-out forwards;
+            animation: knockout calc(var(--anim-slow) * 1.5) ease-out forwards;
             z-index: var(--z-animations);
         }
 
         .animate-energy-attach {
-            animation: energyAttach 0.7s ease-out forwards;
+            animation: energyAttach var(--anim-combat) ease-out forwards;
             z-index: var(--z-animations);
         }
 
         .animate-fade-in {
-            animation: fadeIn 0.3s ease-out;
+            animation: fadeIn var(--anim-fast) ease-out;
         }
 
         .animate-slide-in-bottom {
-            animation: slideInBottom 0.5s ease-out;
+            animation: slideInBottom var(--anim-normal) ease-out;
         }
 
         .animate-evolution {
-            animation: knockout 1.2s ease-out;
+            animation: knockout calc(var(--anim-slow) * 1.5) ease-out;
         }
 
-        .animate-evolution-placement {
-            animation: fadeIn 0.5s ease-out;
-        }
 
         /* レイヤー6: ハイライト効果 */
         .card-selected {
@@ -921,7 +910,7 @@
         }
 
         .error-message {
-            animation: damageShake 0.6s ease-out;
+            animation: damageShake var(--anim-combat) ease-out;
             color: #ef4444;
             background-color: rgba(239, 68, 68, 0.1);
         }
@@ -967,6 +956,7 @@
             font-weight: 300;
             width: 100%;
             height: 100%;
+            object-fit: contain;
         }
 
         /* 手札プレースホルダーのスケール時の特別対応 */
@@ -1182,10 +1172,7 @@
         
         #action-modal { z-index: var(--z-modals); }
         
-        /* Pokemon-style Floating Action HUD - 統合済み */
-        .pokemon-action-hud {
-            /* #floating-action-hudで統合管理済み */
-        }
+        /* Pokemon-style Floating Action HUD - 統合済み (#floating-action-hudで統合管理済み) */
         
         @keyframes fadeInScale {
             from { 
@@ -1255,11 +1242,11 @@
         
         /* Show/hide animation for buttons */
         .pokemon-action-btn.show {
-            animation: slideInRight 0.3s ease-out forwards; /* 右からに変更 */
+            animation: slideInRight var(--anim-fast) ease-out forwards; /* 右からに変更 */
         }
         
         .pokemon-action-btn.hide {
-            animation: slideOutRight 0.2s ease-in forwards; /* 右へに変更 */
+            animation: slideOutRight var(--anim-fast) ease-in forwards; /* 右へに変更 */
         }
         
         @keyframes slideInRight { /* 新しいキーフレーム */
@@ -1295,17 +1282,7 @@
             will-change: var(--performance-will-change);
         }
         
-        /* Battle Modal Styles */
-        .battle-modal-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(37, 99, 235, 0.1));
-            border: 2px solid rgba(252, 211, 77, 0.3);
-            border-radius: 15px;
-        }
+        /* Battle Modal Styles - 統合済み (.battle-modal-container に統合) */
         
         .battle-pokemon {
             flex: 1;
@@ -1505,11 +1482,11 @@
         }
 
         /* ハイライトアニメーション定義 */
-        .anim-highlight-show {
+        .animate-highlight-show {
             animation: highlight-show 0.3s ease-out forwards;
         }
 
-        .anim-highlight-hide {
+        .animate-highlight-hide {
             animation: highlight-hide 0.3s ease-out forwards;
         }
 
@@ -1644,8 +1621,8 @@
             opacity: 1;
         }
 
-        /* Enhanced Battle Modal Layout */
-        .battle-modal-container-enhanced {
+        /* Battle Modal Layout - 統合版 */
+        .battle-modal-container {
             display: flex;
             gap: 24px;
             width: 100%;
@@ -1766,26 +1743,9 @@
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
-        @keyframes deckLift {
-            0% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-            100% { transform: translateY(0); }
-        }
 
         /* ⚔️ 戦闘アニメーション */
-        @keyframes attackForward {
-            0% { transform: translateX(0) scale(1); }
-            40% { transform: translateX(30px) scale(1.1); }
-            100% { transform: translateX(0) scale(1); }
-        }
 
-        @keyframes damageShake {
-            0%, 100% { transform: translate(0, 0); }
-            20% { transform: translate(-3px, -2px); }
-            40% { transform: translate(3px, 2px); }
-            60% { transform: translate(-2px, 1px); }
-            80% { transform: translate(2px, -1px); }
-        }
 
         @keyframes screenShake {
             0%, 100% { transform: translate(0, 0); }
@@ -1798,11 +1758,6 @@
             0% { filter: brightness(1); }
             50% { filter: brightness(1.5) contrast(1.2); }
             100% { filter: brightness(1); }
-        }
-
-        @keyframes hpFlash {
-            0%, 100% { background-color: initial; }
-            50% { background-color: #ef4444; }
         }
 
         /* 🌟 エフェクトアニメーション */
@@ -1917,67 +1872,67 @@
         }
 
         /* 🎯 新統一アニメーションクラス */
-        .anim-card-to-active { animation: cardToActive var(--anim-normal) var(--anim-ease-default); }
-        .anim-card-to-bench { animation: cardToBench var(--anim-normal) var(--anim-ease-default); }
-        .anim-card-knockout { animation: cardKnockout var(--anim-slow) var(--anim-ease-default) forwards; }
-        .anim-card-promote { animation: cardPromote var(--anim-normal) var(--anim-ease-bounce); }
-        .anim-card-move { animation: cardMove var(--anim-normal) var(--anim-ease-default); }
-        .anim-card-draw { animation: cardDraw var(--anim-normal) var(--anim-ease-default); }
-        .anim-deck-lift { animation: deckLift var(--anim-fast) var(--anim-ease-default); }
+        .animate-card-to-active { animation: cardToActive var(--anim-normal) var(--anim-ease-default); }
+        .animate-card-to-bench { animation: cardToBench var(--anim-normal) var(--anim-ease-default); }
+        .animate-card-knockout { animation: cardKnockout var(--anim-slow) var(--anim-ease-default) forwards; }
+        .animate-card-promote { animation: cardPromote var(--anim-normal) var(--anim-ease-bounce); }
+        .animate-card-move { animation: cardMove var(--anim-normal) var(--anim-ease-default); }
+        .animate-card-draw { animation: cardDraw var(--anim-normal) var(--anim-ease-default); }
+        .animate-deck-lift { animation: deckLift var(--anim-fast) var(--anim-ease-default); }
 
-        .anim-attack-forward { animation: attackForward var(--anim-combat) var(--anim-ease-default); }
-        .anim-damage-shake { animation: damageShake var(--anim-combat) var(--anim-ease-default); }
-        .anim-screen-shake { animation: screenShake var(--anim-combat) var(--anim-ease-default); }
-        .anim-screen-flash { animation: screenFlash var(--anim-fast) var(--anim-ease-default); }
-        .anim-hp-flash { animation: hpFlash var(--anim-combat) var(--anim-ease-default); }
+        .animate-attack-forward { animation: attackForward var(--anim-combat) var(--anim-ease-default); }
+        .animate-damage-shake { animation: damageShake var(--anim-combat) var(--anim-ease-default); }
+        .animate-screen-shake { animation: screenShake var(--anim-combat) var(--anim-ease-default); }
+        .animate-screen-flash { animation: screenFlash var(--anim-fast) var(--anim-ease-default); }
+        .animate-hp-flash { animation: hpFlash var(--anim-combat) var(--anim-ease-default); }
 
-        .anim-energy-shrink { animation: energyShrink var(--anim-fast) var(--anim-ease-default); }
-        .anim-energy-integrate { animation: energyIntegrate var(--anim-normal) var(--anim-ease-default); }
-        .anim-evolution-glow { animation: evolutionGlow var(--anim-slow) var(--anim-ease-default); }
-        .anim-evolution-emerge { animation: evolutionEmerge var(--anim-slow) var(--anim-ease-default); }
-        .anim-heal-glow { animation: healGlow var(--anim-normal) var(--anim-ease-default); }
-        .anim-prize-glow { animation: prizeGlow var(--anim-normal) var(--anim-ease-default); }
-        .anim-prize-take { animation: prizeTake var(--anim-normal) var(--anim-ease-default); }
+        .animate-energy-shrink { animation: energyShrink var(--anim-fast) var(--anim-ease-default); }
+        .animate-energy-integrate { animation: energyIntegrate var(--anim-normal) var(--anim-ease-default); }
+        .animate-evolution-glow { animation: evolutionGlow var(--anim-slow) var(--anim-ease-default); }
+        .animate-evolution-emerge { animation: evolutionEmerge var(--anim-slow) var(--anim-ease-default); }
+        .animate-heal-glow { animation: healGlow var(--anim-normal) var(--anim-ease-default); }
+        .animate-prize-glow { animation: prizeGlow var(--anim-normal) var(--anim-ease-default); }
+        .animate-prize-take { animation: prizeTake var(--anim-normal) var(--anim-ease-default); }
 
-        .anim-game-start { animation: gameStart var(--anim-slow) var(--anim-ease-default); }
-        .anim-attack-ready { animation: attackReady 2s var(--anim-ease-default) infinite; }
-        .anim-turn-end { animation: turnEnd var(--anim-normal) var(--anim-ease-default); }
-        .anim-turn-start { animation: turnStart var(--anim-normal) var(--anim-ease-default); }
-        .anim-notification-show { animation: notificationShow var(--anim-normal) var(--anim-ease-bounce); }
-        .anim-notification-hide { animation: notificationHide var(--anim-normal) var(--anim-ease-default); }
-        .anim-modal-show { animation: modalShow var(--anim-normal) var(--anim-ease-bounce); }
-        .anim-modal-hide { animation: modalHide var(--anim-normal) var(--anim-ease-default); }
-        .anim-loading-show { animation: loadingShow var(--anim-fast) var(--anim-ease-default); }
-        .anim-loading-hide { animation: loadingHide var(--anim-fast) var(--anim-ease-default); }
+        .animate-game-start { animation: gameStart var(--anim-slow) var(--anim-ease-default); }
+        .animate-attack-ready { animation: attackReady 2s var(--anim-ease-default) infinite; }
+        .animate-turn-end { animation: turnEnd var(--anim-normal) var(--anim-ease-default); }
+        .animate-turn-start { animation: turnStart var(--anim-normal) var(--anim-ease-default); }
+        .animate-notification-show { animation: notificationShow var(--anim-normal) var(--anim-ease-bounce); }
+        .animate-notification-hide { animation: notificationHide var(--anim-normal) var(--anim-ease-default); }
+        .animate-modal-show { animation: modalShow var(--anim-normal) var(--anim-ease-bounce); }
+        .animate-modal-hide { animation: modalHide var(--anim-normal) var(--anim-ease-default); }
+        .animate-loading-show { animation: loadingShow var(--anim-fast) var(--anim-ease-default); }
+        .animate-loading-hide { animation: loadingHide var(--anim-fast) var(--anim-ease-default); }
 
-        .anim-type-fire { animation: typeFire var(--anim-combat) var(--anim-ease-default); }
-        .anim-type-water { animation: typeWater var(--anim-combat) var(--anim-ease-default); }
-        .anim-type-grass { animation: typeGrass var(--anim-combat) var(--anim-ease-default); }
-        .anim-type-lightning { animation: typeLightning var(--anim-combat) var(--anim-ease-default); }
+        .animate-type-fire { animation: typeFire var(--anim-combat) var(--anim-ease-default); }
+        .animate-type-water { animation: typeWater var(--anim-combat) var(--anim-ease-default); }
+        .animate-type-grass { animation: typeGrass var(--anim-combat) var(--anim-ease-default); }
+        .animate-type-lightning { animation: typeLightning var(--anim-combat) var(--anim-ease-default); }
 
         /* エネルギーグロー効果（タイプ別） */
-        .anim-energy-glow-fire { 
+        .animate-energy-glow-fire { 
             animation: typeFire var(--anim-normal) var(--anim-ease-default);
             z-index: var(--z-card-effects);
         }
-        .anim-energy-glow-water { 
+        .animate-energy-glow-water { 
             animation: typeWater var(--anim-normal) var(--anim-ease-default);
             z-index: var(--z-card-effects);
         }
-        .anim-energy-glow-grass { 
+        .animate-energy-glow-grass { 
             animation: typeGrass var(--anim-normal) var(--anim-ease-default);
             z-index: var(--z-card-effects);
         }
-        .anim-energy-glow-lightning { 
+        .animate-energy-glow-lightning { 
             animation: typeLightning var(--anim-normal) var(--anim-ease-default);
             z-index: var(--z-card-effects);
         }
 
         /* 通知スタイリング */
-        .anim-notification-success { background: linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(21, 128, 61, 0.9)); }
-        .anim-notification-error { background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(185, 28, 28, 0.9)); }
-        .anim-notification-warning { background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9)); }
-        .anim-notification-info { background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(29, 78, 216, 0.9)); }
+        .animate-notification-success { background: linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(21, 128, 61, 0.9)); }
+        .animate-notification-error { background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(185, 28, 28, 0.9)); }
+        .animate-notification-warning { background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9)); }
+        .animate-notification-info { background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(29, 78, 216, 0.9)); }
 
         /* パフォーマンス最適化 - 低品質モード */
         @media (prefers-reduced-motion: reduce) {
@@ -1997,19 +1952,8 @@
             }
         }
 
-        /* モーダルアニメーション */
-        @keyframes modalFadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95) translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
-        }
-
-        @keyframes modalFadeOut {
+        /* フェードアウト専用 - modalFadeInは統合済みfadeInを使用 */
+        @keyframes fadeOut {
             from {
                 opacity: 1;
                 transform: scale(1) translateY(0);
@@ -2055,11 +1999,11 @@
 
         /* モーダルアニメーションクラス */
         .modal-enter {
-            animation: modalFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: fadeIn var(--anim-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .modal-exit {
-            animation: modalFadeOut 0.3s ease-out forwards;
+            animation: fadeOut 0.3s ease-out forwards;
         }
 
         .toast-enter {
@@ -2116,7 +2060,7 @@
                 height: min(350px, 55vh);
             }
 
-            .battle-modal-container-enhanced {
+            .battle-modal-container {
                 flex-direction: column;
                 gap: 20px;
                 max-width: calc(100vw - 2rem);
@@ -2149,7 +2093,7 @@
                 height: min(280px, 45vh);
             }
 
-            .battle-modal-container-enhanced {
+            .battle-modal-container {
                 gap: 12px;
                 max-width: calc(100vw - 1rem);
                 margin: 0.5rem;
@@ -2393,7 +2337,7 @@
 </head>
 <body class="min-h-screen text-white">
     <!-- Z-Position Slider (グリッド外の固定位置) -->
-    <div id="z-slider-container" style="position: fixed; left: 10px; top: 50%; transform: translateY(-50%); z-index: 9999; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+    <div id="z-slider-container" style="position: fixed; left: 10px; top: 50%; transform: translateY(-50%); z-index: var(--z-critical); background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
         <label for="z-slider" style="color: white; font-size: 12px;">Playmat Z</label>
         <input type="range" id="z-slider" min="-2000" max="2000" value="0" step="10" style="width: 100px; transform: rotate(270deg); transform-origin: center; margin: 50px 0;">
         <span id="z-slider-value" style="color: white; font-size: 12px;">0px</span>
@@ -2496,7 +2440,7 @@
 
         <!-- Game Footer with HUD -->
         <div class="game-footer">
-            <div id="floating-action-hud" class="w-full flex flex-wrap gap-3 justify-center pokemon-action-hud">
+            <div id="floating-action-hud" class="w-full flex flex-wrap gap-3 justify-center">
                 <button type="button" id="start-game-button-float" class="pokemon-action-btn">
                     <span class="pokemon-btn-icon">🎴</span>
                     <span class="pokemon-btn-text">手札を7枚引く</span>
@@ -2984,7 +2928,7 @@
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                z-index: 10000;
+                z-index: var(--z-critical);
                 font-family: system-ui, sans-serif;
             `;
             
