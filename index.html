@@ -27,7 +27,10 @@
                 s.onload = () => {
                     // Restore original warn after Tailwind initializes
                     console.warn = __origWarn;
-                    console.info('✅ Tailwind CSS development environment ready');
+                    // デバッグモードでのみログ出力
+                    if (window.location.search.includes('debug=true')) {
+                        console.info('✅ Tailwind CSS development environment ready');
+                    }
                 };
                 document.head.appendChild(s);
             } else {
@@ -51,12 +54,11 @@
 
         .game-wrapper {
             display: grid;
-            grid-template-rows: auto 1fr auto auto;
+            grid-template-rows: 1fr auto auto;
             grid-template-areas: 
-                "cpu-hand"
                 "game-board"
-                "player-hand"
-                "hud";
+                "hud"
+                "player-hand";
             height: 100vh;
             width: 100vw;
             padding: var(--viewport-padding);
@@ -64,33 +66,48 @@
             gap: var(--viewport-padding);
         }
 
-        #cpu-hand-container {
-            grid-area: cpu-hand;
-            height: calc(var(--hand-height) * 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            position: relative;
-            z-index: var(--z-hand);
+        /* CPU手札エリア - プレイマット上辺より外側に配置 */
+        #cpu-hand-area.cpu-hand-playmat {
+            position: absolute;
+            top: -15%; /* プレイマット上辺より外に飛び出し */
+            left: 50%;
+            transform: translateX(-50%) rotateX(-30deg) rotateY(180deg); /* プレイヤー側に正対 */
+            width: 400px;
+            height: 120px; /* 3D角度対応で高さ拡大 */
+            z-index: var(--z-board);
+            pointer-events: none;
+            overflow: visible !important;
+            /* Z-スライダー連動変数 */
+            --cpu-hand-scale: calc(1 + (var(--tz-game-board, 0px) / 1000px) * 0.1);
+            perspective: 1500px; /* 3D効果強化 */
         }
 
         #game-stage {
             grid-area: game-board;
             position: relative;
-            perspective: 1200px;
-            transform-style: preserve-3d;
+            perspective: var(--scene-perspective);
+            transform-style: var(--preserve-3d);
             display: flex;
-            align-items: center;
+            align-items: flex-start; /* ボードを上から配置 */
             justify-content: center;
             min-height: 0; /* 重要：grid子要素のサイズ制約を回避 */
+            z-index: var(--z-board); /* ゲームボード基盤レイヤー */
+            padding-top: 5vh; /* 上部余白を追加してボードを真ん中に */
         }
 
         #player-hand-container {
             grid-area: player-hand;
-            height: var(--hand-height);
+            height: clamp(180px, 25vh, 250px); /* 150%拡大対応の高さに増加 */
+            max-height: 250px; /* 最大高さ制限拡大 */
             display: flex;
             justify-content: center;
             align-items: flex-start;
+            position: relative;
+            z-index: var(--z-500);
+            margin-bottom: 15px; /* プレースホルダーアクセス用余白調整 */
+            overflow: visible; /* カードが容器外に出ることを許可 */
+            /* カード部分のみクリック可能、空白部分は下の要素に透過 */
+            pointer-events: none;
         }
         
         .game-footer {
@@ -101,9 +118,22 @@
             justify-content: center;
         }
 
+        /* 統合されたFloating Action HUD - 右下固定配置 */
         #floating-action-hud {
-            position: relative;
-            z-index: var(--z-floating-hud);
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            width: auto !important;
+            max-width: 400px;
+            z-index: var(--z-1000);
+            transform-origin: bottom right;
+            animation: fadeInScale 0.4s ease-out;
+            /* Tailwindクラスを上書き */
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            justify-content: flex-end !important;
+            align-items: flex-end !important;
         }
 
         /* ==========================================
@@ -120,8 +150,6 @@
               --overlap-player: clamp(16px, 4vh, 36px);
               --footer-height: 80px; /* New variable for HUD area */
               --board-margin-y: 0.5vh; /* Reduced vertical margin for the board */
-              /* 遠近感（ボード専用） */
-              --scene-perspective: 1800px;
               
               /* 動的手札サイズ（ディスプレイ対応） */
               --card-width: clamp(60px, min(8vw, 6vh), 96px);
@@ -135,6 +163,8 @@
               --playmat-3d-compensation: 1.2;
               --playmat-size: calc(var(--playmat-base-size) * var(--playmat-3d-compensation));
               --board-rotation-x: 35deg;
+              /* 初期3D設定 */
+              --tz-game-board: -380px;
               
               /* GPUアクセラレーション最適化 */
               --gpu-acceleration: translateZ(0);
@@ -224,7 +254,7 @@
         }
 
         #game-board {
-            transform-style: preserve-3d;
+            transform-style: var(--preserve-3d);
             /* Allow dynamic Z positioning via CSS variable */
             transform: translateZ(var(--tz-game-board)) rotateX(var(--board-rotation-x, 35deg));
             position: relative;
@@ -232,7 +262,7 @@
             width: var(--playmat-size);
             height: var(--playmat-size);
             aspect-ratio: 1 / 1;
-            margin: var(--board-margin-y) auto;
+            margin: calc(var(--board-margin-y) + 15vh) auto var(--board-margin-y) auto;
             overflow: visible;
             /* Improve image rendering quality with proper fallback */
             image-rendering: -webkit-optimize-contrast;
@@ -249,20 +279,20 @@
             pointer-events: auto;
             position: absolute;
             /* Fix zoom-related click issues */
-            transform-style: flat;
+            transform-style: var(--transform-flat);
         }
 
-        /* 背景画像用のレイヤー */
+        /* 背景画像用のレイヤー - クリックを完全に通す */
         .board-bg {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100% !important;
-            height: 100% !important;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
             object-position: center;
             z-index: var(--z-board-bg);
-            pointer-events: none;
+            pointer-events: none !important; /* 背景画像のクリック干渉を完全防止 */
             /* Improve image rendering quality with proper fallback */
             image-rendering: -webkit-optimize-contrast;
             image-rendering: -webkit-crisp-edges;
@@ -272,11 +302,50 @@
 
 
 
-        /* ボード基盤 - スタジアムと同等のレイヤーに統一 */
+        /* ===== インタラクション統一ルール ===== */
+        
+        /* ボード基盤 - 全てのプレースホルダーでクリック可能 */
         .player-board.player-self,
         .player-board.opponent-board {
             z-index: var(--z-board);
-            pointer-events: auto; /* プレースホルダーのクリックを有効化 */
+            pointer-events: auto; /* プレースホルダーのクリックを確実に有効化 */
+        }
+        
+        /* プレイヤーフィールド（下部） - 優先レイヤー */
+        .player-board.player-self {
+            pointer-events: auto !important;
+            z-index: var(--z-player-board) !important;
+        }
+        
+        .player-board.player-self .card-slot {
+            pointer-events: auto !important;
+            z-index: var(--z-player-board) !important;
+            position: relative !important;
+        }
+        
+        /* 相手フィールド（上部） - 分離レイヤー */
+        .player-board.opponent-board {
+            pointer-events: auto !important;
+            z-index: var(--z-opponent-board) !important;
+        }
+        
+        .player-board.opponent-board .card-slot {
+            pointer-events: auto !important;
+            z-index: var(--z-opponent-board) !important;
+            position: relative !important;
+        }
+        
+        /* カードプレースホルダー - 常にクリック可能 */
+        .card-slot {
+            pointer-events: auto; /* 他の干渉を受けない */
+        }
+        
+        /* 装飾要素 - クリックを通す */
+        .card-slot::before,
+        .card-slot::after,
+        .card-image::before,
+        .card-image::after {
+            pointer-events: none;
         }
         
         /* プレイマットとプレースホルダーの座標整合を優先（下部オフセットを撤廃） */
@@ -295,57 +364,79 @@
             min-width: 20px;
             min-height: 28px;
             overflow: visible;
-            transform-style: preserve-3d;
+            transform-style: var(--preserve-3d);
             /* Stadiumと同等の3D位置（背景より前） */
             transform: translateZ(var(--tz-card-slot));
         }
         
         /* 手札エリア（下部、フロー内） */
         #player-hand {
-            position: absolute;
-            bottom: 0;
             width: 100%;
-            height: var(--hand-height);
+            height: 100%;
             display: flex;
             align-items: flex-end;
             justify-content: center;
             pointer-events: auto;
             transform: translateZ(150px); /* 3D空間でボードより手前に配置 */
-            transform-style: preserve-3d;
-            z-index: var(--z-hand); /* !important を削除 */
+            transform-style: var(--preserve-3d);
+            z-index: var(--z-500); /* プレイヤー手札レイヤー */
         }
 
-        /* 手札カード */
+        /* 手札カード - クリック確実性保証とアクティブ化 */
         #player-hand .hand-slot {
-            pointer-events: auto;
-            z-index: var(--z-hand); /* !important を削除 */
+            pointer-events: auto; /* 確実にクリック可能 */
+            cursor: pointer; /* 視覚的フィードバック */
             /* 手札カードを確実に3D前面へ（ボード面より手前） */
             transform: translateZ(150px);
-            transform-style: preserve-3d;
+            transform-style: var(--preserve-3d);
             backface-visibility: hidden;
+            will-change: var(--will-change-transform); /* GPU加速 */
             /* 動的サイズ調整 */
             width: var(--hand-card-width);
             height: var(--hand-card-height);
             margin: 0 var(--hand-gap);
+            transition: all 0.2s ease; /* アクティブ化アニメーション */
         }
         
-        /* CPU手札エリア（上部） */
-        #cpu-hand {
-            width: 100%;
-            height: 100%;
+        /* 手札カードアクティブ状態 */
+        #player-hand .hand-slot.active {
+            transform: translateZ(150px) translateY(-15px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+            border: 2px solid #ffd700;
+            z-index: calc(var(--z-500) + 10); /* アクティブカードを前面に */
+        }
+        
+        /* CPU手札 - 一旦シンプルな配置で可視性確保 */
+        #cpu-hand.cpu-hand-scaling {
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: calc(4px * var(--cpu-hand-scale, 1));
             pointer-events: none;
-            transform: rotateX(10deg) scale(0.98);
-            transform-origin: center bottom;
+            transform: scale(var(--cpu-hand-scale, 1)); /* 回転を除去、スケールのみ */
+            transform-origin: center;
+            z-index: var(--z-board);
+            width: 100%;
+            height: 100%;
+            overflow: visible !important;
         }
         
+        /* CPU手札のhand-slotクラス - プレイマットサイズに統一 */
         #cpu-hand .hand-slot {
-            width: calc(var(--hand-card-width) * 0.8);
-            height: calc(var(--hand-card-height) * 0.8);
-            transform: translateZ(100px);
-            margin: 0 calc(var(--hand-gap) * 0.7);
+            width: 55px !important; /* プレイマットプレースホルダーサイズに統一 */
+            height: 65px !important;
+            border-radius: 6px;
+            background-color: rgba(100, 150, 255, 0.7) !important; /* CPU用青色 */
+            border: 2px solid #6699ff !important;
+            z-index: var(--z-board);
+            pointer-events: none;
+            position: relative;
+            flex-shrink: 0;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            transform: rotateX(-10deg) !important; /* プレイヤー側に軽く傾ける */
+            transform-origin: bottom center;
         }
 
         /* 画面サイズに応じた手札の自動調整 */
@@ -382,8 +473,8 @@
 
         /* アニメーション準備中のカードを初期状態で非表示にする */
         .is-preparing-animation .relative {
-            opacity: 0 !important;
-            transition: none !important; /* 意図しないトランジションを防止 */
+            opacity: 0;
+            transition: none; /* 意図しないトランジションを防止 */
         }
 
 
@@ -475,26 +566,53 @@
             transition: transform 0.2s ease-out, opacity 0.3s ease;
         }
 
-        /* プレイヤーカードの向き（通常時） */
+        /* data-orientation属性による統一向き制御 */
+        [data-orientation="flipped"] .card-image,
+        [data-orientation="flipped"] {
+            transform: rotateX(180deg) translateZ(0) !important;
+            transform-style: var(--preserve-3d);
+        }
+
+        [data-orientation="upright"] .card-image,
+        [data-orientation="upright"] {
+            transform: translateZ(0) !important;
+            transform-style: var(--preserve-3d);
+        }
+
+        /* 旧クラス制御（互換性維持） */
         .player-card .card-image,
         .cpu-card-no-rotate .card-image {
             transform: translateZ(0);
         }
 
-        /* CPUカードの向き（回転・通常時） */
         .cpu-card .card-image {
             transform: rotateX(180deg) translateZ(0);
-            transform-style: preserve-3d;
+            transform-style: var(--preserve-3d);
         }
 
-        /* ホバー時のエフェクト */
+        /* data-orientation対応ホバー効果 */
+        .card-slot:hover [data-orientation="upright"] .card-image,
+        .card-slot:hover [data-orientation="upright"] {
+            transform: var(--gpu-layer) translateZ(20px) !important;
+            will-change: var(--performance-will-change);
+        }
+
+        .card-slot:hover [data-orientation="flipped"] .card-image,
+        .card-slot:hover [data-orientation="flipped"] {
+            transform: var(--gpu-layer) rotateX(180deg) translateZ(20px) !important;
+            will-change: var(--performance-will-change);
+        }
+
+        /* 旧クラス対応ホバー効果（互換性維持） */
         .card-slot:hover .player-card .card-image,
         .card-slot:hover .cpu-card-no-rotate .card-image {
-            transform: translateZ(20px);
+            transform: var(--gpu-layer) translateZ(20px);
+            will-change: var(--performance-will-change);
         }
 
         .card-slot:hover .cpu-card .card-image {
-            transform: rotateX(180deg) translateZ(20px);
+            transform: var(--gpu-layer) rotateX(180deg) translateZ(20px);
+            will-change: var(--performance-will-change);
         }
 
         /* サイドカード専用ホバー効果は廃止。共通の .card-slot:hover を適用 */
@@ -502,8 +620,9 @@
         
 
         .deck-container:hover {
-            transform: translateY(-6px) scale(1.05);
-            z-index: var(--z-deck-hover);
+            transform: var(--gpu-layer) translateY(-6px) scale(1.05);
+            z-index: var(--z-31);
+            will-change: var(--performance-will-change);
         }
 
         .deck-container:hover .deck-stack::before {
@@ -780,8 +899,9 @@
         .card-selected {
             box-shadow: 0 0 20px #4dd0fd80;
             border: 2px solid #4dd0fd;
-            transform: translateY(-5px) scale(1.05);
-            z-index: var(--z-selected);
+            transform: var(--gpu-layer) translateY(-5px) scale(1.05);
+            z-index: var(--z-32);
+            will-change: var(--performance-will-change);
         }
 
 
@@ -796,14 +916,14 @@
         .energy-target-highlight {
             box-shadow: 0 0 15px #f59e0b80;
             border: 2px dashed #f59e0b;
-            background-color: rgba(245, 158, 11, 0.1) !important;
+            background-color: rgba(245, 158, 11, 0.1);
             z-index: var(--z-highlight);
         }
 
         .error-message {
             animation: damageShake 0.6s ease-out;
-            color: #ef4444 !important;
-            background-color: rgba(239, 68, 68, 0.1) !important;
+            color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.1);
         }
         
         .card-slot::before {
@@ -821,7 +941,7 @@
             z-index: var(--z-board-bg);
         }
         
-        /* 重複削除済み - 統合された.card-imageルールを使用 */
+        /* ユーティリティクラス */
         .is-hidden { opacity: 0; pointer-events: none; }
         .hidden { display: none !important; }
 
@@ -875,10 +995,14 @@
             padding: clamp(0.5rem, 2vw, 1rem);
             font-size: clamp(0.8rem, 1.5vw, 1rem);
             width: clamp(280px, 30vw, 360px);
+            min-height: 280px; /* 最小高さ保証 */
+            max-height: 80vh; /* 画面高さの80%まで */
+            height: auto; /* 内容に応じて動的に伸びる */
             position: fixed;
-            top: var(--viewport-padding);
-            right: var(--viewport-padding);
-            z-index: var(--z-panels);
+            top: 20px; /* 右上に配置 */
+            right: 20px; /* 右上に配置 */
+            z-index: var(--z-1000); /* 他UIと同じ最前面レベル */
+            overflow-y: auto; /* スクロール可能 */
         }
 
         .status-panel-content {
@@ -995,12 +1119,19 @@
             contain: layout paint;
             overflow: visible;
             pointer-events: auto;
-            z-index: var(--z-hand);
+            z-index: var(--z-500);
             transform: none;
             will-change: auto;
+            /* ウィンドウ下部に柔軟配置 */
+            position: fixed;
+            bottom: clamp(20px, 3vh, 50px);
+            left: 50%;
+            transform: translateX(-50%);
+            /* 150%拡大対応の高さ設定 */
+            max-height: 250px !important;
+            height: clamp(180px, 25vh, 250px) !important;
+            min-height: 180px !important;
         }
-        
-        /* プレイヤー手札のシンプルなスタイル (競合のため削除) */
         
         /* 手札スロット基本スタイル */
         .hand-slot {
@@ -1051,11 +1182,9 @@
         
         #action-modal { z-index: var(--z-modals); }
         
-        /* Pokemon-style Floating Action HUD */
+        /* Pokemon-style Floating Action HUD - 統合済み */
         .pokemon-action-hud {
-            transform-origin: center bottom;
-            animation: fadeInScale 0.4s ease-out;
-            z-index: var(--z-floating-hud);
+            /* #floating-action-hudで統合管理済み */
         }
         
         @keyframes fadeInScale {
@@ -1155,12 +1284,15 @@
             }
         }
         
+        /* GPU加速手札インタラクション最適化 */
         #player-hand.hand-dock .hand-slot.hand-card img {
-            pointer-events: auto;
+            pointer-events: var(--interaction-events);
+            cursor: var(--interaction-cursor);
+            will-change: var(--performance-will-change);
         }
-        /* default: slightly larger than CPU hand for better visibility */
         #player-hand.hand-dock .hand-slot.hand-card {
-            transform: translateY(0) scale(1.1);
+            transform: var(--gpu-layer) translateY(-5px) scale(0.95);
+            will-change: var(--performance-will-change);
         }
         
         /* Battle Modal Styles */
@@ -1312,7 +1444,7 @@
         /* 3Dシーン（ボード・手札を同一パース空間に） */
         .game-stage {
             perspective: var(--scene-perspective);
-            transform-style: preserve-3d;
+            transform-style: var(--preserve-3d);
             position: relative;
         }
 
@@ -1440,7 +1572,7 @@
 
         /* 通知トースト - 右上自動消失 */
         .toast-container {
-            z-index: var(--z-toast);
+            z-index: var(--z-1000);
             pointer-events: none;
             position: fixed;
             bottom: 180px;
@@ -1533,6 +1665,7 @@
             justify-content: center;
             max-width: calc(100vw - 2rem); /* 画面幅を考慮 */
             min-width: 0; /* flexによる縮小を許可 */
+            z-index: var(--z-1000); /* 最前面に設定 */
         }
 
         .opponent-card-display {
@@ -2267,12 +2400,6 @@
     </div>
 
     <div class="game-wrapper">
-        <!-- CPU Hand Container -->
-        <div id="cpu-hand-container">
-            <div id="cpu-hand">
-                <!-- CPUの手札はここに動的に追加されます -->
-            </div>
-        </div>
 
     <div id="game-stage" class="game-stage w-full flex flex-col items-center" style="gap: calc(var(--vertical-gap)/2);">
         <div id="game-board">
@@ -2311,6 +2438,13 @@
                 <div class="deck-stack"></div>
             </div>
             <div class="card-slot top-left-trash" data-zone="Trash"></div>
+        </div>
+        
+        <!-- CPU Hand Area (on playmat) - JavaScriptで動的生成 -->
+        <div id="cpu-hand-area" class="cpu-hand-playmat">
+            <div id="cpu-hand" class="cpu-hand-scaling">
+                <!-- CPUの手札カードは動的に生成されます -->
+            </div>
         </div>
 
         <!-- Stadium Zone (Shared) -->
@@ -2457,7 +2591,7 @@
     </div>
 
 <!-- Card Info Panel -->
-<div id="card-info-panel" class="hidden fixed" style="z-index: var(--z-panels);"></div>
+<div id="card-info-panel" class="hidden fixed"></div>
 
 
 
@@ -2473,6 +2607,37 @@
             window.noop = () => {};
         }
         document.addEventListener('DOMContentLoaded', async () => {
+            // カード向き制御システムをインポート
+            const { CardOrientationManager } = await import('./js/card-orientation.js');
+            
+            // 手札カードのクリック処理とアクティブ化
+            function setupHandCardInteraction() {
+                const handContainer = document.getElementById('player-hand-container');
+                const handSlots = document.querySelectorAll('#player-hand .hand-slot');
+                
+                // 手札カードクリック処理
+                handSlots.forEach(slot => {
+                    slot.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // 既存のアクティブを解除
+                        handSlots.forEach(s => s.classList.remove('active'));
+                        // クリックしたカードをアクティブに
+                        slot.classList.add('active');
+                    });
+                });
+                
+                // コンテナ空白部分のクリック透過処理
+                handContainer.addEventListener('click', (e) => {
+                    // 空白部分のクリックは下の要素に透過
+                    if (e.target === handContainer || e.target.id === 'player-hand') {
+                        const elementBelow = document.elementFromPoint(e.clientX, e.clientY - 1);
+                        if (elementBelow && elementBelow !== handContainer) {
+                            elementBelow.click();
+                        }
+                    }
+                });
+            }
+            
             const gameBoard = document.getElementById('game-board');
             const bgImage = document.querySelector('.board-bg');
             const playerBoards = {
@@ -2563,21 +2728,25 @@
                         console.warn(`⚠️ Suspiciously small size for ${key}: ${coords.width.toFixed(1)}x${coords.height.toFixed(1)}`);
                     }
                     transformedCoords.push({key, leftPct, topPct, widthPct, heightPct});
-                    css += `${scopeSelector} .${key}{position:absolute!important;left:${leftPct}%;top:${topPct}%;width:${widthPct}%;height:${heightPct}%;display:block!important;opacity:1!important;}
+                    // Determine z-index based on scope
+                    const zIndex = scopeSelector.includes('player-self') ? 'var(--z-player-board)' : 
+                                  scopeSelector.includes('opponent-board') ? 'var(--z-opponent-board)' : 
+                                  'var(--z-placeholder)';
+                    css += `${scopeSelector} .${key}{position:absolute!important;left:${leftPct}%;top:${topPct}%;width:${widthPct}%;height:${heightPct}%;display:block!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important;z-index:${zIndex}!important;}
 `;
                     if (key.startsWith('side-left-') || key.startsWith('side-right-')) {
                         const dxPx = key.startsWith('side-left-') ? -4 : 4;
                         const dyPx = 3;
                         const dxPct = (dxPx / PLAYMAT_WIDTH) * 100;
                         const dyPct = (dyPx / PLAYMAT_HEIGHT) * 100;
-                        css += `${scopeSelector} .${key}-back{position:absolute!important;left:${leftPct + dxPct}%;top:${topPct + dyPct}%;width:${widthPct}%;height:${heightPct}%;display:block!important;opacity:1!important;}
+                        css += `${scopeSelector} .${key}-back{position:absolute!important;left:${leftPct + dxPct}%;top:${topPct + dyPct}%;width:${widthPct}%;height:${heightPct}%;display:block!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important;z-index:${zIndex}!important;}
 `;
                     }
                     if (DEBUG_MODE && (key.includes('bottom-bench') || key.includes('active-bottom'))) {
-                        noop(`📍 ${key}: %(${leftPct.toFixed(2)}%,${topPct.toFixed(2)}%, ${widthPct.toFixed(2)}%x${heightPct.toFixed(2)}%) [比例マッピング/CSS]`);
+                        // 座標情報はデバッグシステムで出力
                     }
                 }
-                noop(`📊 変換完了(CSS): ${transformedCoords.length}個のスロット for ${scopeSelector}`);
+                // 変換情報はデバッグシステムで出力
                 return css;
             }
 
@@ -2613,23 +2782,44 @@
                 }
                 styleTag.textContent = css;
                 
-                // Update deck heights (placeholder - will be updated when integrated with game state)
+                // プレースホルダーのカード向きを適用
+                const playerSlots = document.querySelectorAll('#game-board .player-board.player-self .card-slot');
+                const opponentSlots = document.querySelectorAll('#game-board .player-board.opponent-board .card-slot');
+                
+                // プレイヤー側プレースホルダー（正位置）
+                playerSlots.forEach(slot => {
+                    const zone = slot.dataset.zone || slot.className.match(/\b(\w+)-\w+/)?.[1] || 'field';
+                    CardOrientationManager.applyCardOrientation(slot, 'player', zone);
+                });
+                
+                // CPU側プレースホルダー（hand以外は180度回転）
+                opponentSlots.forEach(slot => {
+                    const zone = slot.dataset.zone || slot.className.match(/\b(\w+)-\w+/)?.[1] || 'field';
+                    CardOrientationManager.applyCardOrientation(slot, 'cpu', zone);
+                });
+                
+                // 手札インタラクション設定
+                setupHandCardInteraction();
+                
+                // デッキ高さ更新処理（ゲーム状態連携時に実装）
                 const playerDeck = playerBoards.self?.querySelector('.deck-container');
                 const opponentDeck = playerBoards.opponent?.querySelector('.deck-container');
-                updateDeckHeight(playerDeck, 40); // Example count
-                updateDeckHeight(opponentDeck, 35); // Example count
+                if (typeof updateDeckHeight === 'function') {
+                    updateDeckHeight(playerDeck, 40);
+                    updateDeckHeight(opponentDeck, 35);
+                }
 
                 // Debug instrumentation removed
             }
 
             // 初期化処理：背景画像とDOMの準備完了を待つ
             function initializeLayout() {
-                noop('🚀 Initializing playmat layout...');
+                // プレイマット初期化
                 
                 // RequestAnimationFrameで次の描画フレームを待つ（ベストプラクティス）
                 requestAnimationFrame(() => {
                     updateLayout();
-                    noop('✅ Playmat layout initialization completed');
+                    // プレイマットレイアウト初期化完了
                 });
             }
 
@@ -2637,7 +2827,7 @@
             if (bgImage) {
                 if (bgImage.complete && bgImage.naturalHeight > 0) {
                     // 画像が既に読み込み済み
-                    noop('📸 Playmat image already loaded');
+                    // プレイマット画像読み込み済み
                     initializeLayout();
                 } else {
                     // 画像の読み込み完了を待つ
@@ -2687,9 +2877,12 @@
                 zSlider.max = SLIDER_MAX;
 
                 // Set initial value display
-                const initialZ = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tz-game-board')) || zSlider.value;
+                const initialZ = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tz-game-board')) || 200;
                 zSlider.value = initialZ;
                 zSliderValueDisplay.textContent = `${initialZ}px`;
+                
+                // 初期3D設定を強制適用
+                document.documentElement.style.setProperty('--tz-game-board', `${initialZ}px`);
 
                 // Update slider value and game board transform on input
                 zSlider.addEventListener('input', () => {
@@ -2737,11 +2930,11 @@
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
                     modalManager.init();
-                    noop('🎭 Modal Manager initialized on DOMContentLoaded');
+                    // モーダルマネージャー初期化
                 });
             } else {
                 modalManager.init();
-                noop('🎭 Modal Manager initialized immediately');
+                // モーダルマネージャー初期化
             }
         } catch (e) {
             console.warn('⚠️ Modal Manager module not available:', e.message);
@@ -2749,11 +2942,11 @@
     </script>
     <script type="module">
         // ゲーム初期化のメイン処理
-        console.log('🔥 HTML: Starting main.js import...');
+        // main.jsインポート開始
         
         try {
             const module = await import('./js/main.js');
-            console.log('✅ HTML: main.js imported successfully', module);
+            // main.jsインポート成功
             
             // 初期化完了を待機
             if (!window.game) {

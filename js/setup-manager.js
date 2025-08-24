@@ -18,6 +18,7 @@ const noop = () => {};
 export class SetupManager {
   constructor() {
     this.mulliganCount = 0;
+    this.debugEnabled = false; // デバッグログ制御フラグ
     this.maxMulligans = 3; // 最大マリガン回数
     
     // セットアップ段階の統一管理
@@ -169,7 +170,7 @@ export class SetupManager {
     });
     
     // 手札配布完了後、Promise-based非同期実行でCPUの初期ポケモン配置
-    console.log('🤖 drawInitialHands: Starting CPU initial setup scheduling...');
+    if (this.debugEnabled) console.log('🤖 drawInitialHands: Starting CPU initial setup scheduling...');
     this._scheduleCPUInitialSetup().catch(error => {
       console.error('❌ Error in CPU initial setup:', error);
     });
@@ -478,21 +479,21 @@ export class SetupManager {
    * 統一CPU ポケモン配置関数（初期・ゲーム中両対応）
    */
   async unifiedCpuPokemonSetup(state, isInitialSetup = false) {
-    console.log(`🤖 unifiedCpuPokemonSetup: Starting (isInitialSetup: ${isInitialSetup})`);
+    if (this.debugEnabled) console.log(`🤖 unifiedCpuPokemonSetup: Starting (isInitialSetup: ${isInitialSetup})`);
     try {
       let newState = cloneGameState(state);
       const cpuState = newState.players.cpu;
       
-      console.log(`🤖 CPU hand size: ${cpuState.hand.length}`);
+      if (this.debugEnabled) console.log(`🤖 CPU hand size: ${cpuState.hand.length}`);
       
       // 基本ポケモンをフィルタリング
       const basicPokemon = cpuState.hand.filter(card => 
         card.card_type === 'Pokémon' && card.stage === 'BASIC'
       );
       
-      console.log(`🤖 CPU basic Pokemon found: ${basicPokemon.length}`);
+      if (this.debugEnabled) console.log(`🤖 CPU basic Pokemon found: ${basicPokemon.length}`);
       basicPokemon.forEach(pokemon => {
-        console.log(`🤖 - ${pokemon.name_ja} (${pokemon.id})`);
+        if (this.debugEnabled) console.log(`🤖 - ${pokemon.name_ja} (${pokemon.id})`);
       });
       
       if (basicPokemon.length === 0) {
@@ -985,9 +986,9 @@ export class SetupManager {
       const cpuReady = s?.cpuSetupReady === true;
       const playerConfirmed = s?.setupSelection?.confirmed === true;
 
-      console.log(`🔍 _checkBothPlayersReady: bothHaveActive=${bothHaveActive}, cpuReady=${cpuReady}, playerConfirmed=${playerConfirmed}`);
-      console.log('🔍 Player active:', s?.players?.player?.active?.name_ja || 'none');
-      console.log('🔍 CPU active:', s?.players?.cpu?.active?.name_ja || 'none');
+      if (this.debugEnabled) console.log(`🔍 _checkBothPlayersReady: bothHaveActive=${bothHaveActive}, cpuReady=${cpuReady}, playerConfirmed=${playerConfirmed}`);
+      if (this.debugEnabled) console.log('🔍 Player active:', s?.players?.player?.active?.name_ja || 'none');
+      if (this.debugEnabled) console.log('🔍 CPU active:', s?.players?.cpu?.active?.name_ja || 'none');
 
       // プレイヤーがまだポケモンを配置していない場合は、game.jsの処理に委譲しない
       if (!bothHaveActive && cpuReady && !playerConfirmed) {

@@ -1,49 +1,24 @@
 :root {
-    /* === レイヤー1: プレイマット系 (0-95) === */
-    --z-board-bg: 0;        /* 背景画像 */
-    --z-board: 10;          /* ゲームボード基底 */
-    --z-placeholder: 20;    /* プレースホルダー（空スロット） */
-    --z-placeholder-hover: 30; /* プレースホルダーホバー */
-    --z-slots: 40;          /* スロット枠線 */
-    --z-hand-area: 50;      /* 手札エリア */
-
-    /* === サイドカードスタック (60-80) === */
-    --z-side-stack-1: 60;   /* サイドカード 1層目 */
-    --z-side-stack-2: 70;   /* サイドカード 2層目 */
-    --z-side-stack-3: 80;   /* サイドカード 3層目 */
-
-    /* === レイヤー2: 3Dカード系 (90-140) === */
-    --z-deck-effects: 90;   /* 山札・サイド影エフェクト（カード背面） */
-    --z-deck-hover: 95;     /* 山札ホバー（レイヤー内浮上） */
-    --z-card: 100;          /* 1枚カード通常 */
-    --z-highlight: 110;     /* ハイライト効果（カード背面） */
-    --z-card-hover: 120;    /* 1枚カードホバー */
-    --z-card-effects: 130;  /* カード付与効果（ダメージ等） */
-
-    /* === レイヤー3: 手札特別系 (250-300) === */
-    --z-hand: 250;          /* プレイヤー手札通常 (引き上げ) */
-    --z-hand-hover: 300;    /* プレイヤー手札ホバー (さらに引き上げ) */
-
-    /* === レイヤー4: アニメーション系 (310-320) === */
-    --z-animations: 310;    /* 移動アニメーション */
-    --z-selected: 320;      /* 選択状態 */
-
-    /* === レイヤー5: UI・HUD系 (400-600) === */
-    --z-hud-base: 400;      /* HUD基本 */
-    --z-panels: 410;        /* パネル */
-    --z-floating-hud: 410;  /* フローティングHUD */
-    --z-toast: 430;         /* トースト通知 */
-    --z-modals: 500;        /* 中央モーダル */
-    --z-critical: 600;      /* 致命的エラー */
-
-    /* === 3D Transform Z-Depth (translateZ) === */
-    --tz-card-slot: 1px;        /* カードスロットのZ位置 */
-    --tz-damage-counter: 1px;   /* ダメージカウンターのZ位置 */
-    --tz-card-image-base: 0px;  /* カード画像の基本Z位置 */
-    --tz-game-board: 0px;       /* ゲームボードのZ位置 */
-
-    /* === レスポンシブレイアウト変数 === */
-    --viewport-padding: clamp(8px, 1vw, 16px);
-    --hand-height: clamp(100px, 18vh, 160px);
-    --card-size-ratio: clamp(0.6, 1.2vw, 1.0);
+    /* 統一Z-Index階層システム */
+    --z-background: -10;
+    --z-board: 10;
+    --z-15: 15;  /* デッキ/トラッシュ */
+    --z-20: 20;  /* プレースホルダー */
+    --z-25: 25;  /* アクティブエリア */
+    --z-30: 30;  /* カード */
+    --z-31: 31;  /* ホバー */
+    --z-32: 32;  /* 選択 */
+    --z-100: 100; /* オーバーレイ */
+    --z-150: 150; /* 旧手札 */
+    --z-500: 500; /* 手札 */
+    --z-200: 200; /* フローティング */
+    --z-1000: 1000; /* モーダル */
+    
+    /* GPU加速3D設定 */
+    --scene-perspective: 1800px;
+    --gpu-layer: translateZ(0);
+    --interaction-cursor: pointer;
+    --interaction-events: auto;
+    --performance-will-change: transform;
+    --transform-preserve-3d: preserve-3d;
 }

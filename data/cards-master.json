@@ -141,8 +141,8 @@
     "id": "004",
     "name_en": "Glasswing Butterfly Larva 2",
     "name_ja": "イシガケチョウ 幼虫 2",
-    "card_type": "Pokémon",
-    "stage": "STAGE1",
+    "card_type": "Pokemon",
+    "stage": "Stage1",
     "hp": 50,
     "types": [
       "Grass"
@@ -160,20 +160,20 @@
     "retreat_cost": 1,
     "attacks": [
       {
-        "name_ja": "葉を食べる",
         "name_en": "Leaf Munch",
+        "name_ja": "葉を食べる",
         "cost": [
           "Grass",
           "Fire",
           "Water"
         ],
         "damage": 40,
-        "text_ja": "このワザを使ったなら、＋50ダメージ。",
-        "text_en": "If used, this attack does 50 more damage."
+        "text_en": "If used, this attack does 50 more damage.",
+        "text_ja": "このワザを使ったなら、＋50ダメージ。"
       },
       {
-        "name_ja": "突撃",
         "name_en": "Charge",
+        "name_ja": "突撃",
         "cost": [
           "Lightning",
           "Lightning"
@@ -233,8 +233,8 @@
     "id": "006",
     "name_en": "Kobane Inago",
     "name_ja": "コバネイナゴ",
-    "card_type": "Pokemon",
-    "stage": "Basic",
+    "card_type": "Pokémon",
+    "stage": "BASIC",
     "hp": 50,
     "types": [
       "Grass"
@@ -250,23 +250,24 @@
       "value": "-20"
     },
     "retreat_cost": 1,
+    "ability": {
+      "name_en": "隠れる",
+      "name_ja": "隠れる",
+      "text_en": "Negate the next 5 attacks from the opponent.",
+      "text_ja": "相手の次の5回の攻撃を無効化する。"
+    },
     "attacks": [
       {
-        "name_en": "Charge",
         "name_ja": "突撃",
+        "name_en": "Charge",
         "cost": [
           "Fire"
         ],
         "damage": 60
       }
     ],
-    "ability": {
-      "name_en": "Hide",
-      "name_ja": "隠れる",
-      "text_en": "Negate the next 5 attacks from the opponent.",
-      "text_ja": "相手の次の5回の攻撃を無効化する。"
-    },
-    "image_file": "006_pokemon_kobane_inago.webp"
+    "image_file": "006_pokemon_kobane_inago.webp",
+    "image_url": "/assets/cards/pokemon/006_pokemon_kobane_inago.webp"
   },
   {
     "id": "007",

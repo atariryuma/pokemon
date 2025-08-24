@@ -394,21 +394,24 @@
 
           <div id="energyFields" class="section">
             <h3>エネルギー</h3>
-            <div class="grid-2">
-              <div class="field"><label for="energy_type">エネルギータイプ</label>
-                <select id="energy_type" title="エネルギーの種類">
-                  <option value="">-</option>
-                  <option>Grass</option><option>Fire</option><option>Water</option>
-                  <option>Lightning</option><option>Psychic</option><option>Fighting</option>
-                  <option>Darkness</option><option>Metal</option><option>Fairy</option>
-                  <option>Dragon</option><option>Colorless</option>
-                </select>
-              </div>
-              <div class="field"><label for="is_basic">基本エネ?</label>
-                <select id="is_basic" title="基本エネルギーかどうか"><option value="true">true</option><option value="false">false</option></select>
-              </div>
+            <div class="field">
+              <label for="energy_type">エネルギータイプ</label>
+              <select id="energy_type" title="エネルギーの種類">
+                <option value="">-</option>
+                <option>Grass</option><option>Fire</option><option>Water</option>
+                <option>Lightning</option><option>Psychic</option><option>Fighting</option>
+                <option>Darkness</option><option>Metal</option><option>Fairy</option>
+                <option>Dragon</option><option>Colorless</option>
+              </select>
             </div>
-            <div class="field"><label>テキスト (text_ja / text_en)</label><textarea id="energy_text" placeholder="日本語 / English"></textarea></div>
+            <div class="field">
+              <label>エフェクト (effect_ja / effect_en)</label>
+              <textarea id="energy_effect" placeholder="日本語エフェクト / English effect"></textarea>
+            </div>
+            <div class="field">
+              <label>ルール (rules_ja / rules_en)</label>
+              <textarea id="energy_rules" placeholder="日本語ルール / English rules"></textarea>
+            </div>
           </div>
 
           <div id="trainerFields" class="section">
@@ -439,7 +442,6 @@
             <div class="flex-row" style="align-items:center; gap:8px; margin-top:12px; flex-wrap: wrap;">
               <button type="button" class="btn primary" id="btn-pick-image">🖼️ 画像を選択</button>
               <button type="button" class="btn" id="btn-gallery">📁 既存画像</button>
-              <button type="button" class="btn" id="btn-guess-image">🔍 名前から推測</button>
             </div>
             
             <!-- 画像が設定されている場合のみ表示される操作ボタン -->
@@ -458,7 +460,6 @@
       </div>
       <div class="footer">
         <div class="toolbar">
-          <button type="button" class="btn primary" id="btn-save">このカードを保存</button>
           <button type="button" class="btn" id="btn-duplicate">複製</button>
           <button type="button" class="btn danger" id="btn-delete">削除</button>
         </div>
@@ -594,14 +595,17 @@
           attacks: readAttacksFromForm(),
         };
       } else if (card_type === 'Energy') {
-        const txt = byId('energy_text').value.trim();
-        const [ja, en] = txt.split('/').map(s => (s||'').trim());
+        const effectTxt = byId('energy_effect').value.trim();
+        const [effectJa, effectEn] = effectTxt.split('/').map(s => (s||'').trim());
+        const rulesTxt = byId('energy_rules').value.trim();
+        const [rulesJa, rulesEn] = rulesTxt.split('/').map(s => (s||'').trim());
         obj = {
           ...base,
           energy_type: byId('energy_type').value || undefined,
-          is_basic: byId('is_basic').value === 'true',
-          text_en: en || undefined,
-          text_ja: ja || undefined,
+          effect_en: effectEn || undefined,
+          effect_ja: effectJa || undefined,
+          rules_en: rulesEn || undefined,
+          rules_ja: rulesJa || undefined,
         };
       } else if (card_type === 'Trainer') {
         const txt = byId('trainer_text').value.trim();
@@ -722,7 +726,7 @@
 
     function summary(c){
       if (c.card_type === 'Pokemon') return [c.stage, c.hp?`HP${c.hp}`:'', (c.types||[]).join('/')].filter(Boolean).join(' · ');
-      if (c.card_type === 'Energy') return [c.energy_type, c.is_basic? 'Basic':'' ].filter(Boolean).join(' · ');
+      if (c.card_type === 'Energy') return c.energy_type || 'Energy';
       if (c.card_type === 'Trainer') return c.trainer_type || '';
       return '';
     }
@@ -761,8 +765,8 @@
 
       // Energy
       byId('energy_type').value = c.energy_type || '';
-      byId('is_basic').value = String(!!c.is_basic);
-      byId('energy_text').value = [c.text_ja||'', c.text_en||''].filter((x,i)=>x&&(i<2)).join(' / ');
+      byId('energy_effect').value = [c.effect_ja||'', c.effect_en||''].filter((x,i)=>x&&(i<2)).join(' / ');
+      byId('energy_rules').value = [c.rules_ja||'', c.rules_en||''].filter((x,i)=>x&&(i<2)).join(' / ');
 
       // Trainer
       byId('trainer_type').value = c.trainer_type || '';
@@ -797,7 +801,7 @@
       renderList();
       updatePreview();
       markUnsaved(true);
-      setStatus(`新しいカード (ID: ${c.id}) を作成しました。情報を入力して「このカードを保存」→「master保存」してください。`);
+      setStatus(`新しいカード (ID: ${c.id}) を作成しました。情報を入力して「master保存」で保存してください。`);
       // 新規作成時は名前入力フィールドにフォーカス
       setTimeout(() => {
         const nameInput = byId('name_en');
@@ -879,13 +883,6 @@
       // === カードタイプ正規化 ===
       if (normalized.card_type === 'Pokemon') {
         normalized.card_type = 'Pokémon';
-      } else if (normalized.card_type === 'Energy') {
-        // is_basic プロパティで基本/特殊エネルギーを判定
-        if (normalized.is_basic === false) {
-          normalized.card_type = 'Special Energy';
-        } else {
-          normalized.card_type = 'Basic Energy';
-        }
       }
       
       // === 画像フィールド統一 ===
@@ -951,9 +948,6 @@
         // エネルギーカードの必須チェック
         if (!data.energy_type) {
           errors.push('• エネルギーカード: エネルギータイプが未設定');
-        }
-        if (data.is_basic === undefined) {
-          errors.push('• エネルギーカード: 基本エネルギーかどうかが未設定');
         }
       } else if (data.card_type === 'Trainer') {
         // トレーナーカードの必須チェック
@@ -1129,8 +1123,220 @@
       }
     }
 
+    function findDuplicateIds() {
+      const idCounts = {};
+      const duplicates = [];
+      
+      cards.forEach(card => {
+        if (card.id) {
+          idCounts[card.id] = (idCounts[card.id] || 0) + 1;
+        }
+      });
+      
+      for (const [id, count] of Object.entries(idCounts)) {
+        if (count > 1) {
+          duplicates.push(`ID "${id}" が ${count} 回使用されています`);
+        }
+      }
+      
+      return duplicates;
+    }
+
+    async function processAndSaveImages() {
+      // Current card's image processing
+      const fileInput = byId('image_upload');
+      if (fileInput.files && fileInput.files.length > 0) {
+        setStatus('画像を.webpに変換中...');
+        try {
+          await saveImageAsWebP(fileInput.files[0]);
+          // Clear the file input after successful save
+          fileInput.value = '';
+          const statusDiv = byId('image-upload-status');
+          statusDiv.textContent = '✅ 画像が.webpに変換され保存されました';
+          statusDiv.style.color = 'var(--ok)';
+        } catch (error) {
+          console.error('Image save failed:', error);
+          // エラーが「置き換えキャンセル」の場合はスキップ
+          if (error.message === '画像の置き換えがキャンセルされました') {
+            console.log('画像の置き換えがキャンセルされました');
+            return; // エラーを投げずにスキップ
+          }
+          throw new Error(`画像の保存に失敗しました: ${error.message}`);
+        }
+      }
+    }
+
+    async function saveImageAsWebP(file) {
+      const cardType = (byId('card_type').value || 'Pokemon').toLowerCase();
+      const cardId = byId('id').value.trim();
+      const nameEn = byId('name_en').value.trim();
+      
+      // アップロードされたファイルの種類をチェック
+      const isAlreadyWebP = file.type === 'image/webp' || file.name.toLowerCase().endsWith('.webp');
+      
+      // 既存の画像ファイルがある場合は削除確認
+      const currentCard = cards[activeIndex];
+      const oldFileName = currentCard?.image_file;
+      let shouldDeleteOld = false;
+      
+      if (oldFileName) {
+        // 自動で生成される新しいファイル名を先に計算
+        let newFileName;
+        if (cardType === 'energy') {
+          const energyType = byId('energy_type').value.trim();
+          newFileName = energyType ? `${cardId}_Energy_${energyType}.webp` : `${cardId}.webp`;
+        } else {
+          const safeName = nameEn ? nameEn.replace(/[^A-Za-z0-9\-]+/g, '_') : 'Card';
+          newFileName = `${cardId}_${cardType}_${safeName}.webp`;
+        }
+        
+        // 古いファイル名と新しいファイル名が同じ場合は処理をスキップ
+        if (oldFileName === newFileName && isAlreadyWebP) {
+          console.log(`既存のWebPファイルと同名のため処理をスキップ: ${oldFileName}`);
+          return { filename: oldFileName, path: `assets/cards/${cardType}/${oldFileName}` };
+        }
+        
+        // ファイル名が異なるか、WebP以外からの変換の場合は削除確認
+        shouldDeleteOld = confirm(
+          `既存の画像ファイル「${oldFileName}」を削除して新しい画像に置き換えますか？\n\n` +
+          `新しいファイル名: ${newFileName}\n\n` +
+          '「はい」: 古い画像を削除して新しい画像を保存\n' +
+          '「いいえ」: キャンセル'
+        );
+        if (!shouldDeleteOld) {
+          throw new Error('画像の置き換えがキャンセルされました');
+        }
+      }
+      
+      // ファイル名を再計算（上で計算済みの場合はそれを使用）
+      let fileName;
+      if (cardType === 'energy') {
+        const energyType = byId('energy_type').value.trim();
+        fileName = energyType ? `${cardId}_Energy_${energyType}.webp` : `${cardId}.webp`;
+      } else {
+        // IDとプレフィックスを使用して標準的な命名
+        const safeName = nameEn ? nameEn.replace(/[^A-Za-z0-9\-]+/g, '_') : 'Card';
+        fileName = `${cardId}_${cardType}_${safeName}.webp`;
+      }
+      
+      // UIに新しいファイル名を設定
+      byId('image_file').value = fileName;
+      
+      // 既にWebPの場合は直接保存、そうでなければCanvas変換
+      return new Promise((resolve, reject) => {
+        const processAndSave = async (blob) => {
+          try {
+            // Try CardAPI first
+            if (window.CardAPI && window.CardAPI.uploadImage) {
+              // 古いファイルを先に削除
+              if (shouldDeleteOld && oldFileName && oldFileName !== fileName) {
+                try {
+                  if (window.CardAPI.deleteImage) {
+                    await window.CardAPI.deleteImage(oldFileName);
+                    console.log(`削除された古い画像ファイル (API): ${oldFileName}`);
+                  }
+                } catch (deleteError) {
+                  console.warn(`古いファイルの削除に失敗 (API): ${oldFileName}`, deleteError);
+                }
+              }
+              
+              const result = await window.CardAPI.uploadImage(blob, {
+                filename: fileName,
+                cardType: cardType,
+                cardId: cardId
+              });
+              
+              if (result && result.path) {
+                const currentCard = cards[activeIndex];
+                if (currentCard) {
+                  currentCard.image_file = result.filename || fileName;
+                  currentCard.image_url = result.path;
+                }
+                updatePreview();
+                resolve(result);
+                return;
+              }
+            }
+            
+            // Fallback to file system API
+            if ('showDirectoryPicker' in window) {
+              const dirHandle = await window.showDirectoryPicker();
+              const assetsHandle = await dirHandle.getDirectoryHandle('assets', { create: true });
+              const cardsHandle = await assetsHandle.getDirectoryHandle('cards', { create: true });
+              const typeHandle = await cardsHandle.getDirectoryHandle(cardType, { create: true });
+              
+              // 古いファイルを削除
+              if (shouldDeleteOld && oldFileName && oldFileName !== fileName) {
+                try {
+                  await typeHandle.removeEntry(oldFileName);
+                  console.log(`削除された古い画像ファイル: ${oldFileName}`);
+                } catch (deleteError) {
+                  console.warn(`古いファイルの削除に失敗: ${oldFileName}`, deleteError);
+                  // 削除に失敗しても処理を続行
+                }
+              }
+              
+              const fileHandle = await typeHandle.getFileHandle(fileName, { create: true });
+              const writable = await fileHandle.createWritable();
+              await writable.write(blob);
+              await writable.close();
+              
+              const currentCard = cards[activeIndex];
+              if (currentCard) {
+                currentCard.image_file = fileName;
+              }
+              updatePreview();
+              resolve({ filename: fileName, path: `assets/cards/${cardType}/${fileName}` });
+            } else {
+              reject(new Error('File system API not supported'));
+            }
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        // 既にWebPファイルの場合は直接保存
+        if (isAlreadyWebP) {
+          console.log('既にWebPファイルのため直接保存します');
+          processAndSave(file);
+        } else {
+          // WebP以外の場合はCanvas変換
+          console.log('WebPに変換中...');
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          
+          img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            canvas.toBlob(processAndSave, 'image/webp', 0.9);
+          };
+          
+          img.onerror = () => reject(new Error('Image load failed'));
+          img.src = URL.createObjectURL(file);
+        }
+      });
+    }
+
     async function saveMaster(){
       if (!saveCurrentIntoList()) return;
+      
+      // Process any pending image uploads with WebP conversion
+      await processAndSaveImages();
+      
+      // Check for ID-based duplicates before saving
+      const duplicateIds = findDuplicateIds();
+      if (duplicateIds.length > 0) {
+        const proceed = confirm(
+          '⚠️ 重複IDが見つかりました:\n\n' + 
+          duplicateIds.join('\n') + 
+          '\n\nそのまま保存しますか？'
+        );
+        if (!proceed) return;
+      }
+      
       const json = JSON.stringify(cards, null, 2);
       try {
         const res = await fetch('data/cards-master.json', {
@@ -1148,153 +1354,6 @@
     }
 
 
-    async function saveImageIfSelected(){
-      const fileInput = byId('image_upload');
-      if (!fileInput.files || fileInput.files.length === 0) return;
-      
-      const file = fileInput.files[0];
-      const cardType = (byId('card_type').value || 'Pokemon').toLowerCase();
-      const cardId = byId('id').value.trim();
-      const nameEn = byId('name_en').value.trim();
-      
-      // ファイル名を自動生成（既に設定されている場合はそれを使用）
-      let fileName = byId('image_file').value.trim();
-      let ext = '.webp';
-      if (fileName) {
-        const extMatch = fileName.match(/\.[^.]+$/);
-        ext = extMatch ? extMatch[0] : '.webp';
-      }
-      if (!fileName) {
-        // IDベースでファイル名を生成（確実にユニーク）
-        if (cardType === 'energy') {
-          const energyType = byId('energy_type').value.trim();
-          fileName = energyType ? `${cardId}_Energy_${energyType}${ext}` : `${cardId}${ext}`;
-        } else {
-          // IDをプレフィックスとして使用
-          const safeName = nameEn ? nameEn.replace(/[^A-Za-z0-9]+/g, '_') : 'Card';
-          fileName = `${cardId}_${safeName}${ext}`;
-        }
-        byId('image_file').value = fileName; // UI に反映
-      }
-      
-      try {
-        // 優先1: CardAPI経由でサーバーに保存（推奨）
-        if (window.CardAPI && window.CardAPI.uploadImage) {
-          const uploadOptions = {
-            filename: fileName,
-            cardType: cardType,
-            cardId: cardId
-          };
-          const result = await window.CardAPI.uploadImage(file, uploadOptions);
-          if (result && result.path) {
-            setStatus(`✅ サーバーに画像を保存しました: ${result.path}`);
-            
-            // 実際にサーバーが返したファイル名を使用（衝突回避のため変更される可能性がある）
-            const actualFileName = result.filename || fileName;
-            byId('image_file').value = actualFileName;
-            
-            const currentCard = cards[activeIndex];
-            if (currentCard) {
-              currentCard.image_file = actualFileName;
-              // 画像パスはサーバーが返した正確なパスを使用
-              currentCard.image_url = result.path;
-            }
-            
-            // UIを更新
-            updatePreview();
-            markUnsaved(true);
-            
-            console.log(`Image uploaded successfully:`, {
-              originalName: fileName,
-              actualName: actualFileName,
-              path: result.path,
-              cardType: result.cardType,
-              size: result.size
-            });
-            
-            return true;
-          }
-        }
-      } catch (error) {
-        console.warn('サーバー経由の保存に失敗:', error);
-      }
-      
-      try {
-        // 優先2: File System Access APIで直接プロジェクト構造に保存
-        if ('showDirectoryPicker' in window) {
-          // プロジェクトのルートディレクトリを選択させる
-          const rootHandle = await window.showDirectoryPicker({
-            id: 'pokemon-project-root',
-            mode: 'readwrite'
-          });
-          
-          // assets/cards ディレクトリを確認・作成
-          let assetsHandle;
-          try {
-            assetsHandle = await rootHandle.getDirectoryHandle('assets');
-          } catch {
-            assetsHandle = await rootHandle.getDirectoryHandle('assets', { create: true });
-          }
-          
-          let cardsHandle;
-          try {
-            cardsHandle = await assetsHandle.getDirectoryHandle('cards');
-          } catch {
-            cardsHandle = await assetsHandle.getDirectoryHandle('cards', { create: true });
-          }
-          
-          // カードタイプ別フォルダを作成
-          let typeHandle;
-          try {
-            typeHandle = await cardsHandle.getDirectoryHandle(cardType);
-          } catch {
-            typeHandle = await cardsHandle.getDirectoryHandle(cardType, { create: true });
-          }
-          
-          // ファイルを保存
-          const fileHandle = await typeHandle.getFileHandle(fileName, { create: true });
-          const writable = await fileHandle.createWritable();
-          await writable.write(file);
-          await writable.close();
-          
-          setStatus(`✅ 画像を保存しました: assets/cards/${cardType}/${fileName}`);
-          
-          // 画像パスを更新
-          const currentCard = cards[activeIndex];
-          if (currentCard) {
-            currentCard.image_file = fileName;
-          }
-          updatePreview();
-          return true;
-        }
-      } catch (error) {
-        console.warn('File System Access API での保存に失敗:', error);
-        if (error.name === 'AbortError') {
-          setStatus('💡 フォルダ選択がキャンセルされました');
-          return false;
-        }
-      }
-      
-      // フォールバック: 従来のダウンロード形式で保存
-      try {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        setStatus(`💾 画像をダウンロードフォルダに保存しました: ${fileName}\n手動で assets/cards/${cardType}/ フォルダに移動してください`);
-        return true;
-      } catch (error) {
-        console.error('画像保存に失敗:', error);
-        setStatus(`❌ 画像の保存に失敗しました: ${error.message}`);
-        return false;
-      }
-    }
 
     // --------- 初期化
     function bind(){
@@ -1304,7 +1363,6 @@
       byId('btn-new-card').addEventListener('click', newCard);
       byId('btn-duplicate').addEventListener('click', duplicateCard);
       byId('btn-delete').addEventListener('click', deleteCard);
-      byId('btn-save').addEventListener('click', async () => { if (saveCurrentIntoList()){ await saveImageIfSelected(); markUnsaved(false); }});
       byId('btn-save-master').addEventListener('click', saveMaster);
       byId('btn-open-master').addEventListener('click', openMaster);
       byId('btn-fix-extensions').addEventListener('click', fixAllExtensions);
@@ -1325,8 +1383,8 @@
       // Preview controls
       byId('btn-prev').addEventListener('click', goPrev);
       byId('btn-next').addEventListener('click', goNext);
-      byId('image_upload').addEventListener('change', async () => { 
-        // 画像アップロード時に自動でファイル名を推測
+      byId('image_upload').addEventListener('change', () => { 
+        // 画像選択時に一時的にプレビュー表示（保存は行わない）
         const input = byId('image_upload');
         if (input.files && input.files[0]) {
           const currentFileName = byId('image_file').value.trim();
@@ -1337,32 +1395,18 @@
             }
           }
           
-          // 自動でサーバーに保存
+          // 一時的なプレビュー表示の状態を示す
           const statusDiv = byId('image-upload-status');
-          statusDiv.textContent = '画像をアップロード中...';
+          statusDiv.textContent = '📷 一時プレビュー - カードを保存で.webpに変換されます';
           statusDiv.style.display = 'block';
-          statusDiv.style.color = 'var(--primary)';
-          
-          try {
-            await saveImageIfSelected();
-            statusDiv.textContent = '✅ 画像のアップロードが完了しました';
-            statusDiv.style.color = '#4ade80';
-            updateImageActions();
-            setTimeout(() => {
-              statusDiv.style.display = 'none';
-            }, 3000);
-          } catch (error) {
-            statusDiv.textContent = '❌ 画像のアップロードに失敗しました';
-            statusDiv.style.color = '#ef4444';
-            console.error('Image upload failed:', error);
-          }
+          statusDiv.style.color = 'var(--warn)';
+          updateImageActions();
         }
         updatePreview(); 
         markUnsaved(true); 
       });
       byId('btn-pick-image').addEventListener('click', openImagePicker);
       byId('btn-gallery').addEventListener('click', openImageGallery);
-      byId('btn-guess-image').addEventListener('click', () => { const guess = guessImageFile(); if (guess){ byId('image_file').value = guess; updateImageActions(); updatePreview(); markUnsaved(true);} });
       byId('btn-optimize-image').addEventListener('click', optimizeCurrentImage);
       byId('btn-delete-image').addEventListener('click', deleteCurrentImage);
       byId('zoom').addEventListener('input', (e) => { zoomLevel = Number(e.target.value); applyTransform(); });
@@ -1513,7 +1557,23 @@
       return pathWithoutExt + '.webp';
     }
 
+    // 404エラーをキャッシュして同じエラーを繰り返さない
+    const failedUrls = new Set();
+    
     function tryExtensionFallback(imgElement, originalUrl, onAllFailed) {
+      // 既にフォールバック処理中の場合は重複実行を防ぐ
+      if (imgElement.dataset.fallbackInProgress === 'true') {
+        return;
+      }
+      
+      // 既に失敗したURLの場合は即座に失敗として処理
+      if (failedUrls.has(originalUrl)) {
+        onAllFailed();
+        return;
+      }
+      
+      imgElement.dataset.fallbackInProgress = 'true';
+      
       const extensions = ['.webp', '.jpg', '.jpeg', '.png'];
       const pathWithoutExt = originalUrl.replace(/\.[^.]+$/, '');
       const currentExt = originalUrl.match(/\.[^.]+$/)?.[0] || '';
@@ -1525,6 +1585,9 @@
       
       function tryNextExtension() {
         if (attemptIndex >= fallbackExtensions.length) {
+          // 全ての拡張子で失敗した場合
+          imgElement.dataset.fallbackInProgress = 'false';
+          failedUrls.add(originalUrl); // 失敗したURLをキャッシュ
           onAllFailed();
           return;
         }
@@ -1532,23 +1595,40 @@
         const nextUrl = pathWithoutExt + fallbackExtensions[attemptIndex];
         attemptIndex++;
         
-        imgElement.onerror = () => {
+        // 既に失敗したURLはスキップ
+        if (failedUrls.has(nextUrl)) {
           tryNextExtension();
-        };
+          return;
+        }
         
-        imgElement.onload = () => {
-          // 成功した場合、対応する拡張子でファイル名を更新
+        // 新しい画像要素を作成してテスト
+        const testImg = new Image();
+        
+        testImg.onload = () => {
+          // 成功した場合、メインの画像要素を更新
+          imgElement.src = nextUrl;
+          imgElement.dataset.fallbackInProgress = 'false';
+          
+          // 対応する拡張子でファイル名を更新
           const newExtension = fallbackExtensions[attemptIndex - 1];
           const currentFileName = byId('image_file').value.trim();
-          if (currentFileName) {
+          if (currentFileName && currentFileName.includes('.')) {
             const newFileName = currentFileName.replace(/\.[^.]+$/, '') + newExtension;
-            byId('image_file').value = newFileName;
-            markUnsaved(true);
-            console.log(`画像拡張子を自動修正: ${currentFileName} → ${newFileName}`);
+            if (newFileName !== currentFileName) {
+              byId('image_file').value = newFileName;
+              markUnsaved(true);
+              console.log(`画像拡張子を自動修正: ${currentFileName} → ${newFileName}`);
+            }
           }
         };
         
-        imgElement.src = nextUrl;
+        testImg.onerror = () => {
+          // この拡張子で失敗した場合、失敗URLをキャッシュして次を試行
+          failedUrls.add(nextUrl);
+          tryNextExtension();
+        };
+        
+        testImg.src = nextUrl;
       }
       
       // フォールバック開始
@@ -1569,18 +1649,26 @@
       
       img.src = url;
       img.onerror = () => {
+        // 既にエラー処理中の場合は重複実行を防ぐ
+        if (img.dataset.errorHandled === 'true') return;
+        img.dataset.errorHandled = 'true';
+        
         // 拡張子フォールバック試行
         tryExtensionFallback(img, url, () => {
+          // 全てのフォールバックが失敗した場合
           img.onerror = null;
           img.src = 'assets/ui/card_back.webp';
           empty.textContent = '画像が見つかりません。画像ファイル名またはエネルギータイプを設定してください。';
           empty.style.display = 'block';
           deleteBtn.style.display = 'none';
+          console.warn(`Image not found for all extensions: ${url}`);
         });
       };
       img.onload = () => { 
         empty.style.display = 'none'; 
         updateImageActions();
+        // エラーハンドリングフラグをクリア
+        img.dataset.errorHandled = 'false';
       };
       applyTransform();
       // Reflect current filename into the input (if using assets path)
@@ -2023,24 +2111,84 @@
         return;
       }
       
-      if (!confirm(`画像「${filename}」をWebP形式に最適化しますか？元のファイルは保持されます。`)) return;
+      if (!confirm(`画像「${filename}」をWebP形式に最適化しますか？`)) return;
       
       try {
-        const result = await CardAPI.optimizeImage(filename, {
-          maxWidth: 800,
-          maxHeight: 1200,
-          quality: 85
-        });
+        const cardType = (byId('card_type').value || 'Pokemon').toLowerCase();
+        const currentUrl = currentPreviewUrl();
         
-        if (result.optimizedPath) {
-          // 最適化されたファイル名を設定
-          const optimizedFilename = result.optimizedPath.split('/').pop();
-          byId('image_file').value = optimizedFilename;
+        if (!currentUrl || currentUrl.startsWith('blob:')) {
+          alert('最適化可能な画像が見つかりません');
+          return;
+        }
+        
+        // 現在表示中の画像を取得
+        const img = byId('preview-img');
+        if (!img.src || !img.complete) {
+          alert('画像の読み込みが完了していません');
+          return;
+        }
+        
+        // Canvas で WebP に変換
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 最大サイズ制限
+        const maxWidth = 800;
+        const maxHeight = 1200;
+        let { width, height } = img;
+        
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // WebP として書き出し
+        const webpDataUrl = canvas.toDataURL('image/webp', 0.85);
+        const blob = await (await fetch(webpDataUrl)).blob();
+        
+        // 新しいファイル名を生成
+        const webpFilename = filename.replace(/\.[^.]+$/, '.webp');
+        
+        // File System API で保存を試行
+        if ('showDirectoryPicker' in window) {
+          const dirHandle = await window.showDirectoryPicker();
+          const assetsHandle = await dirHandle.getDirectoryHandle('assets', { create: true });
+          const cardsHandle = await assetsHandle.getDirectoryHandle('cards', { create: true });
+          const typeHandle = await cardsHandle.getDirectoryHandle(cardType, { create: true });
+          
+          const fileHandle = await typeHandle.getFileHandle(webpFilename, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          
+          // ファイル名を更新
+          byId('image_file').value = webpFilename;
           updateImageActions();
           updatePreview();
           markUnsaved(true);
-          alert(`画像を最適化しました: ${filename} → ${optimizedFilename}\nサイズ: ${(result.originalSize/1024).toFixed(1)}KB → ${(result.optimizedSize/1024).toFixed(1)}KB`);
+          
+          alert(`画像をWebPに最適化しました: ${filename} → ${webpFilename}\nサイズ: ${(blob.size/1024).toFixed(1)}KB`);
+        } else {
+          // フォールバック: ダウンロードリンクを作成
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = webpFilename;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          alert(`WebP形式でダウンロードしました: ${webpFilename}\n手動でassetsフォルダに移動してください`);
         }
+        
       } catch (error) {
         console.error('Failed to optimize image:', error);
         alert('画像の最適化に失敗しました: ' + error.message);

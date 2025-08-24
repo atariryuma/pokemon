@@ -41,6 +41,12 @@ export class View {
         this.playerHand = document.getElementById('player-hand');
         this.cpuHand = document.getElementById('cpu-hand');
         
+        // CPU手札を更新（プレイマット統合済み）
+        this.cpuHand = document.getElementById('cpu-hand');
+        if (this.cpuHand) {
+            this.cpuHand.classList.add('cpu-hand-scaling');
+        }
+        
         // 手札エリア全体のクリック保護
         if (this.playerHand) {
             this.playerHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
@@ -502,7 +508,6 @@ export class View {
             this._makeSlotClickable(benchSlot, playerType, 'bench', i);
         }
 
-        // Discard - HTMLのクラス名に合わせて修正
         const discardSelector = playerType === 'player' ? '.bottom-right-trash' : '.top-left-trash';
         const discardSlot = boardElement.querySelector(discardSelector);
         if (discardSlot) {
@@ -516,7 +521,6 @@ export class View {
             this._renderPrizeArea(boardElement, prize, playerType);
         }
 
-        // Deck - HTMLのクラス名に合わせて修正
         const deckSelector = playerType === 'player' ? '.bottom-right-deck' : '.top-left-deck';
         const deckSlot = boardElement.querySelector(deckSelector);
         noop(`🃏 Rendering deck for ${playerType}: selector=${deckSelector}, slot found=${!!deckSlot}`);
@@ -847,29 +851,10 @@ export class View {
         const gameBoard = document.getElementById('game-board');
         const handCards = playerHand ? playerHand.querySelectorAll('.hand-slot') : [];
         
-        console.group('🔍 Hand Z-Index Quick Check');
-        
-        // 重要な要素のz-indexのみ表示
-        const handZIndex = playerHand ? window.getComputedStyle(playerHand).zIndex : 'N/A';
-        const boardZIndex = gameBoard ? window.getComputedStyle(gameBoard).zIndex : 'N/A';
-        const cardZIndex = handCards.length > 0 ? window.getComputedStyle(handCards[0]).zIndex : 'N/A';
-        
-        // console.log(`Hand Container: ${handZIndex}, Board: ${boardZIndex}, Card: ${cardZIndex}`);  // Debug only
-        
-        // 問題検出
-        if (handZIndex === 'auto' || parseInt(handZIndex) <= parseInt(boardZIndex)) {
-            console.error('❌ PROBLEM: Hand z-index is too low!');
-        } else {
-            // console.log('✅ Hand z-index appears correct');  // Debug only
+        // CPU手札とプレイマット測定
+        if (window.debugSystem) {
+            setTimeout(() => window.debugSystem.measureAll(), 500);
         }
-        
-        // CSS変数確認
-        const root = document.documentElement;
-        const handVar = root.style.getPropertyValue('--z-hand') || 
-                       window.getComputedStyle(root).getPropertyValue('--z-hand');
-        // console.log(`CSS Variable --z-hand: ${handVar}`);  // Debug only
-        
-        console.groupEnd();
     }
     
     /**
@@ -919,7 +904,6 @@ export class View {
     }
 
     _renderPrizeArea(boardElement, prize, playerType) {
-        // HTMLの実際の構造に合わせて修正
         const prizeContainerSelector = playerType === 'player' ? '.side-left' : '.side-right';
         const prizeContainer = boardElement.querySelector(prizeContainerSelector);
         

@@ -23,6 +23,7 @@ export class Game {
         this.state = null;
         this.view = null;
         this.playmatSlotsData = playmatSlotsData;
+        this.debugEnabled = false; // デバッグログ制御フラグ
         
         // Game managers
         this.phaseManager = phaseManager;
@@ -849,11 +850,11 @@ export class Game {
      * アクションボタンのイベントハンドラーを設定
      */
     async _setupActionButtonHandlers() {
-        console.log('🔧 Setting up action button handlers');
+        if (this.debugEnabled) console.log('🔧 Setting up action button handlers');
         
         try {
             // ActionHUDManagerの状態を確認
-            console.log('🔍 ActionHUDManager initialized:', this.actionHUDManager.isInitialized);
+            if (this.debugEnabled) console.log('🔍 ActionHUDManager initialized:', this.actionHUDManager.isInitialized);
             
             // 初期フェーズのボタンを表示
             this.actionHUDManager.showPhaseButtons('initial', {
@@ -862,18 +863,18 @@ export class Game {
             });
             
             // ボタンの表示状態をデバッグ
-            console.log('🔍 Start game button visible:', this.actionHUDManager.isButtonVisible('start-game-button-float'));
-            console.log('🔍 Card editor button visible:', this.actionHUDManager.isButtonVisible('card-editor-button-float'));
+            if (this.debugEnabled) console.log('🔍 Start game button visible:', this.actionHUDManager.isButtonVisible('start-game-button-float'));
+            if (this.debugEnabled) console.log('🔍 Card editor button visible:', this.actionHUDManager.isButtonVisible('card-editor-button-float'));
             
             // DOM要素の確認
             const startButton = document.getElementById('start-game-button-float');
             const editorButton = document.getElementById('card-editor-button-float');
-            console.log('🔍 Start button DOM element:', startButton);
-            console.log('🔍 Start button classes:', startButton?.className);
-            console.log('🔍 Editor button DOM element:', editorButton);
-            console.log('🔍 Editor button classes:', editorButton?.className);
+            if (this.debugEnabled) console.log('🔍 Start button DOM element:', startButton);
+            if (this.debugEnabled) console.log('🔍 Start button classes:', startButton?.className);
+            if (this.debugEnabled) console.log('🔍 Editor button DOM element:', editorButton);
+            if (this.debugEnabled) console.log('🔍 Editor button classes:', editorButton?.className);
             
-            console.log('✅ Action button handlers configured');
+            if (this.debugEnabled) console.log('✅ Action button handlers configured');
         } catch (error) {
             console.error('❌ Failed to setup action button handlers:', error);
         }
