@@ -2334,13 +2334,6 @@
     </style>
 </head>
 <body class="min-h-screen text-white">
-    <!-- Z-Position Slider (グリッド外の固定位置) -->
-    <div id="z-slider-container" style="position: fixed; left: 10px; top: 50%; transform: translateY(-50%); z-index: var(--z-critical); background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
-        <label for="z-slider" style="color: white; font-size: 12px;">Playmat Z</label>
-        <input type="range" id="z-slider" min="-2000" max="2000" value="0" step="10" style="width: 100px; transform: rotate(270deg); transform-origin: center; margin: 50px 0;">
-        <span id="z-slider-value" style="color: white; font-size: 12px;">0px</span>
-    </div>
-
     <div class="game-wrapper">
 
     <div id="game-stage" class="game-stage w-full flex flex-col items-center" style="gap: calc(var(--vertical-gap)/2);">
@@ -2807,33 +2800,10 @@
                 });
             }
 
-            // Z-Position Slider Control
-            const zSlider = document.getElementById('z-slider');
-            const zSliderValueDisplay = document.getElementById('z-slider-value');
-
-            if (zSlider && zSliderValueDisplay && gameBoard) {
-                const SLIDER_MIN = -2000;
-                const SLIDER_MAX = 2000;
-
-                zSlider.min = SLIDER_MIN;
-                zSlider.max = SLIDER_MAX;
-
-                // Set initial value display
-                const initialZ = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tz-game-board')) || 200;
-                zSlider.value = initialZ;
-                zSliderValueDisplay.textContent = `${initialZ}px`;
-                
-                // 初期3D設定を強制適用
+            // 固定Z位置の適用（スライダー削除に伴い定数化）
+            if (gameBoard) {
+                const initialZ = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tz-game-board')) || -380;
                 document.documentElement.style.setProperty('--tz-game-board', `${initialZ}px`);
-
-                // Update slider value and game board transform on input
-                zSlider.addEventListener('input', () => {
-                    const sliderValue = zSlider.value;
-                    zSliderValueDisplay.textContent = `${sliderValue}px`;
-                    document.documentElement.style.setProperty('--tz-game-board', `${sliderValue}px`);
-                });
-            } else {
-                console.warn('⚠️ Z-Position slider elements not found.');
             }
         });
 
