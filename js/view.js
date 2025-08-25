@@ -704,10 +704,10 @@ export class View {
         
         // 基本カードサイズ (w-24 h-32 = 96px x 128px)
         const baseCardHeight = 128;
-        // Mac Dock効果の最大スケール（拡大率を上げる）
-        const maxScale = 1.5;
-        // 最大リフト量
-        const maxLift = 40;
+        // Mac Dock効果の最大スケール（適度な拡大 = 1.4倍）
+        const maxScale = 1.4;
+        // 最大リフト量（1.4倍拡大に合わせて調整）
+        const maxLift = 20;
         
         // 拡大時の最大必要高さを計算
         const maxCardHeight = baseCardHeight * maxScale;
@@ -734,7 +734,7 @@ export class View {
         const screenWidth = window.innerWidth || 800;
         const RADIUS = Math.min(220, screenWidth * 0.25);        // 画面幅の25%、最大220px（拡張）
         const BASE_SCALE = 1.0;    // より大きなベースサイズ
-        const MAX_SCALE = screenWidth < 768 ? 1.5 : 1.8;        // より大きな拡大効果
+        const MAX_SCALE = 1.4;                                  // 適度な拡大に統一
         const MAX_LIFT = Math.min(80, screenWidth * 0.08);      // 画面幅の8%、最大80px（より高い浮上）
         const BASE_GAP = 2;        // px default spacing per side
         const MAX_GAP = Math.min(8, screenWidth * 0.01);       // 画面幅の1%、最大8px（より大きなギャップ）

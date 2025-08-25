@@ -1,56 +1,46 @@
 :root {
-    /* === レイヤー1: ゲーム背景 (0-9) === */
-    --z-board-bg: 0;        /* 背景画像・テクスチャ */
+    /* === Z-Index レイヤー管理 === */
+    --z-board-bg: 0;
+    --z-board: 10;
+    --z-placeholder: 15;
+    --z-slots: 20;
+    --z-deck-effects: 50;
+    --z-side-stack-1: 55;
+    --z-side-stack-2: 60;
+    --z-side-stack-3: 65;
+    --z-deck-hover: 70;
+    --z-card: 90;
+    --z-card-hover: 100;
+    --z-card-effects: 110;
+    --z-highlight: 120;
+    --z-cpu-hand-base: 150;
+    --z-cpu-hand-fan: 160;
+    --z-hand-area: 200;
+    --z-hand: 210;
+    --z-hand-hover: 230;
+    --z-animations: 300;
+    --z-selected: 320;
+    --z-placeholder-hover: 330;
+    --z-hud-base: 400;
+    --z-floating-hud: 420;
+    --z-panels: 450;
+    --z-toast: 480;
+    --z-modals: 600;
+    --z-critical: 700;
 
-    /* === レイヤー2: ゲームボード基盤 (10-49) === */
-    --z-board: 10;          /* ゲームボード基底 */
-    --z-placeholder: 15;    /* プレースホルダー（空スロット） */
-    --z-slots: 20;          /* スロット枠線 */
+    /* === 3D Transform Z-Depth === */
+    --tz-card-slot: 1px;
+    --tz-damage-counter: 2px;
+    --tz-card-image-base: 0px;
+    --tz-game-board: -200px;     /* プレイマット下地をさらに奥に */
+    
+    /* === フィールド3D配置 === */
+    --tz-player-field: 5px;        /* プレイヤーフィールド - 最前面 */
+    --tz-player-slots: 6px;        /* プレイヤースロット - フィールドより前 */
+    --tz-opponent-field: 1px;      /* 相手フィールド - 奥に配置 */
+    --tz-opponent-slots: 2px;      /* 相手スロット - フィールドより前だが手前ではない */
 
-    /* === レイヤー3: カードデッキ・サイド系 (50-89) === */
-    --z-deck-effects: 50;   /* 山札・サイド影エフェクト */
-    --z-side-stack-1: 55;   /* サイドカード 1層目 */
-    --z-side-stack-2: 60;   /* サイドカード 2層目 */
-    --z-side-stack-3: 65;   /* サイドカード 3層目 */
-    --z-deck-hover: 70;     /* 山札ホバー */
-
-    /* === レイヤー4: 通常カード (90-149) === */
-    --z-card: 90;           /* ボード上カード通常 */
-    --z-card-hover: 100;    /* ボード上カードホバー */
-    --z-card-effects: 110;  /* カード付与効果（ダメージ等） */
-    --z-highlight: 120;     /* ハイライト効果 */
-
-    /* === レイヤー5: CPU手札 (150-199) === */
-    --z-cpu-hand-base: 150; /* CPU手札基本レイヤー */
-    --z-cpu-hand-fan: 160;  /* CPU手札扇形配置 */
-
-    /* === レイヤー6: プレイヤー手札 (200-299) === */
-    --z-hand-area: 200;     /* プレイヤー手札エリア */
-    --z-hand: 210;          /* プレイヤー手札通常 */
-    --z-hand-hover: 230;    /* プレイヤー手札ホバー */
-
-    /* === レイヤー7: アニメーション・選択 (300-399) === */
-    --z-animations: 300;    /* 移動アニメーション */
-    --z-selected: 320;      /* 選択状態 */
-    --z-placeholder-hover: 330; /* プレースホルダーホバー */
-
-    /* === レイヤー8: UI・HUD (400-599) === */
-    --z-hud-base: 400;      /* HUD基本 */
-    --z-floating-hud: 420;  /* フローティングHUD */
-    --z-panels: 450;        /* パネル */
-    --z-toast: 480;         /* トースト通知 */
-
-    /* === レイヤー9: モーダル・重要UI (600+) === */
-    --z-modals: 600;        /* 中央モーダル */
-    --z-critical: 700;      /* 致命的エラー */
-
-    /* === 3D Transform Z-Depth (translateZ) === */
-    --tz-card-slot: 1px;        /* カードスロットのZ位置 */
-    --tz-damage-counter: 1px;   /* ダメージカウンターのZ位置 */
-    --tz-card-image-base: 0px;  /* カード画像の基本Z位置 */
-    --tz-game-board: 0px;       /* ゲームボードのZ位置 */
-
-    /* === レスポンシブレイアウト変数 === */
+    /* === レスポンシブレイアウト === */
     --viewport-padding: clamp(8px, 1vw, 16px);
     --hand-height: clamp(100px, 18vh, 160px);
     --card-size-ratio: clamp(0.6, 1.2vw, 1.0);

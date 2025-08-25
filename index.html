@@ -125,16 +125,15 @@
 
         #player-hand-container {
             grid-area: player-hand;
-            height: clamp(180px, 25vh, 250px); /* 150%拡大対応の高さに増加 */
-            max-height: 250px; /* 最大高さ制限拡大 */
+            height: clamp(180px, 30vh, 250px); /* Mac Dock 1.6x拡大 + 浮上対応 */
+            max-height: 250px; /* 60%拡大に合わせた高さ */
             display: flex;
             justify-content: center;
             align-items: flex-start;
             position: relative;
             z-index: var(--z-hand-area);
-            margin-bottom: 15px; /* プレースホルダーアクセス用余白調整 */
+            margin-bottom: 15px;
             overflow: visible; /* カードが容器外に出ることを許可 */
-            /* プレイヤー手札エリア全体のクリック判定を有効化 */
             pointer-events: auto;
         }
         
@@ -187,7 +186,7 @@
               
               /* プレイマット設定 - 大きく、立体的に */
               --playmat-size: min(80vh, 80vw);
-              --board-rotation-x: 35deg;
+              --board-rotation-x: 42deg;     /* 適度な3D傾斜効果 */
               /* 3D設定 - より立体感を強調、少し上に移動 */
               --tz-game-board: -160px;
               
@@ -291,7 +290,7 @@
             width: var(--playmat-size);
             height: var(--playmat-size);
             aspect-ratio: 1;
-            margin: 100px auto 0 auto; /* 上マージンを追加してCPU手札のスペースを確保 */
+            margin: -10px auto 0 auto; /* プレイマットを最大限上に移動（40px → -10px = 50px上昇） */
             overflow: visible;
             /* 基本的な最適化のみ */
             transform-origin: center;
@@ -338,30 +337,34 @@
             pointer-events: auto; /* プレースホルダーのクリックを確実に有効化 */
         }
         
-        /* プレイヤーフィールド（下部） - 優先レイヤー */
+        /* プレイヤーフィールド（下部） - 最前面配置でクリック優先 */
         .player-board.player-self {
             pointer-events: auto !important;
             z-index: var(--z-board) !important;
+            /* 3D空間で最前面に配置（相手より手前） */
+            transform: translateZ(var(--tz-player-field)) !important;
         }
         
         .player-board.player-self .card-slot {
             pointer-events: auto !important;
             z-index: var(--z-board) !important;
+            /* プレイヤースロットを更に手前に */
+            transform: translateZ(var(--tz-player-slots)) !important;
         }
         
-        /* 相手フィールド（上部） - 3D depth透過でイベント伝達 */
+        /* 相手フィールド（上部） - プレイヤーより奥に配置 */
         .player-board.opponent-board {
             pointer-events: auto !important;
-            z-index: var(--z-board) !important; /* 元のz-indexに戻す */
-            /* 3D空間でより手前に配置してマウスイベントを確実に受信 */
-            transform: translateZ(2px) !important;
+            z-index: var(--z-board) !important;
+            /* 3D空間でプレイヤーより奥に配置 */
+            transform: translateZ(var(--tz-opponent-field)) !important;
         }
         
         .player-board.opponent-board .card-slot {
             pointer-events: auto !important;
-            z-index: var(--z-board) !important; /* 元のz-indexに戻す */
-            /* 個別スロットも3D空間で手前に */
-            transform: translateZ(3px) !important;
+            z-index: var(--z-board) !important;
+            /* 相手スロットもプレイヤーより奥 */
+            transform: translateZ(var(--tz-opponent-slots)) !important;
         }
         
         /* カードプレースホルダー - 常にクリック可能 */
@@ -423,8 +426,7 @@
         #player-hand .hand-slot {
             pointer-events: auto; /* 確実にクリック可能 */
             cursor: pointer; /* 視覚的フィードバック */
-            /* 手札カードを確実に3D前面へ（ボード面より手前） */
-            transform: none !important; /* 3D変換を完全無効化 */
+            /* Mac Dock効果のために基本transformは無効化しない */
             transform-style: flat !important; /* 平面表示を強制 */
             backface-visibility: visible;
             will-change: auto; /* GPU加速を無効化 */
@@ -655,25 +657,18 @@
         }
 
         /* プレイヤー手札でも正位置強制 - CPU手札と同じ処理 */
+        /* 手札内の画像のみ正位置固定（Mac Dock効果は維持） */
         #player-hand .hand-slot .card-image,
-        #player-hand .hand-slot [data-orientation="flipped"] .card-image,
-        #player-hand .hand-slot [data-orientation="flipped"],
         #player-hand .hand-slot img {
-            transform: none !important; /* プレイヤー手札も正位置固定 */
+            /* 画像のみ固定、スロット自体のtransformは維持 */
             transform-style: flat !important;
         }
 
-        /* プレイヤー手札内のカードコンテナも正位置に固定 */
-        #player-hand .hand-slot [data-orientation="flipped"],
-        #player-hand .hand-slot > * {
+        /* flipped状態の無効化（画像とコンテナのみ） */
+        #player-hand .hand-slot [data-orientation="flipped"] .card-image,
+        #player-hand .hand-slot [data-orientation="flipped"] img {
             transform: none !important;
             transform-style: flat !important;
-        }
-
-        /* data-orientation属性による回転をプレイヤー手札でも無効化 */
-        #player-hand .hand-slot[data-orientation="flipped"],
-        #player-hand .hand-slot [data-orientation="flipped"] {
-            transform: none !important;
         }
 
         [data-orientation="upright"] .card-image,
@@ -1225,10 +1220,10 @@
             bottom: clamp(20px, 3vh, 50px);
             left: 50%;
             transform: translateX(-50%);
-            /* 150%拡大対応の高さ設定 */
+            /* Mac Dock 1.6x拡大 + 浮上対応の高さ設定 */
             max-height: 250px !important;
-            height: clamp(180px, 25vh, 250px) !important;
-            min-height: 180px !important;
+            height: clamp(180px, 30vh, 250px) !important;
+            min-height: 220px !important;
         }
         
         /* 手札スロット基本スタイル */
@@ -1250,9 +1245,9 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
         #player-hand.hand-dock .hand-slot.hand-card {
-            transition: transform 140ms ease, filter 140ms ease, z-index 140ms ease;
-            will-change: transform;
-            transform-origin: bottom center;
+            transition: transform 140ms ease, filter 140ms ease, z-index 140ms ease !important;
+            will-change: transform !important;
+            transform-origin: bottom center !important;
             filter: drop-shadow(0 8px 15px rgba(0,0,0,0.4));
             position: relative;
             z-index: var(--z-highlight);
@@ -2159,7 +2154,7 @@
 
             .opponent-card-display {
                 width: min(250px, 85vw);
-                height: min(350px, 55vh);
+                height: min(250px, 45vh);
             }
 
             .battle-modal-container {
@@ -2810,9 +2805,17 @@
 
             function updateLayout(){
                 // CSS文字列を生成してスタイルタグに適用（完全CSS管理）
-                // 既存のインラインstyleを除去して上書き影響を排除
+                // インラインstyleのtransform系のみ除去（pointer-eventsは維持）
                 const allSlots = document.querySelectorAll('#game-board .card-slot');
-                allSlots.forEach(el => el.removeAttribute('style'));
+                allSlots.forEach(el => {
+                    // transformのみリセット、他のstyle属性は保持
+                    el.style.transform = '';
+                    el.style.left = '';
+                    el.style.top = '';
+                    el.style.width = '';
+                    el.style.height = '';
+                    // pointer-events, z-index等は保持してクリック機能を維持
+                });
 
                 let css = '';
                 css += buildCoordsCSS(coordsSelf, '#game-board .player-board.player-self') || '';

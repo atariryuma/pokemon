@@ -113,15 +113,6 @@ export class ZIndexManager {
             const fallbackValue = Z_INDEX[level];
             if (fallbackValue) {
                 element.style.zIndex = fallbackValue.toString();
-                // console.log(`🔧 CSS variable fallback applied: ${level} → ${fallbackValue}`);  // Debug only
-            }
-        }
-        
-        // 手札関連で問題がある場合のみログ出力
-        if (level.includes('HAND') || element.closest('#player-hand')) {
-            const computedZIndex = window.getComputedStyle(element).zIndex;
-            if (!computedZIndex || computedZIndex === 'auto' || parseInt(computedZIndex) < 200) {
-                // console.warn(`⚠️ Hand z-index PROBLEM: ${level} → ${computedZIndex} (${element.tagName}${element.id ? '#' + element.id : ''})`);  // Debug only
             }
         }
     }
@@ -215,8 +206,6 @@ export class ZIndexManager {
 
         const cssVar = Z_CSS_VARS[level];
         element.style.transform = `translateZ(${cssVar})${additionalTransform ? ' ' + additionalTransform : ''}`;
-
-        // フォールバックは不要（CSS変数が解決されない場合はtransform全体が無効になるため）
     }
 }
 
