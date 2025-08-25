@@ -43,6 +43,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/z-index-vars.css">
+    <script>
+        /**
+         * Detect iPhone devices and apply a class for layout tweaks
+         * 真上からのプレイマット表示や右パネル非表示を有効化
+         */
+        if (/iPhone/i.test(navigator.userAgent)) {
+            document.documentElement.classList.add('iphone');
+        }
+    </script>
     <style>
         /* カスタムスタイル */
         body {
@@ -170,6 +179,28 @@
               --gpu-acceleration: translateZ(0);
               --will-change: transform, opacity;
           }
+
+        /* iPhone layout adjustments: top-down square board & hide side panels */
+        html.iphone {
+            --scene-perspective: none;
+            --board-rotation-x: 0deg;
+            --tz-game-board: 0px;
+            --playmat-3d-compensation: 1;
+        }
+
+        html.iphone #game-stage {
+            align-items: center;
+            padding-top: 0;
+        }
+
+        html.iphone #game-board {
+            margin: 0 auto;
+        }
+
+        html.iphone #game-status-panel,
+        html.iphone .battle-right-panel {
+            display: none;
+        }
 
         /* 🎬 ゲームフローアニメーション */
         .game-start-flash {
