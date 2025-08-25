@@ -186,17 +186,45 @@
             --board-rotation-x: 0deg;
             --tz-game-board: 0px;
             --playmat-3d-compensation: 1;
+            --playmat-base-size: 100vmin;
+            --viewport-padding: 0px;
         }
 
         html.iphone #game-stage {
-            align-items: center;
+            align-items: flex-start;
             padding-top: 0;
+        }
+
+        html.iphone .game-wrapper {
+            padding: 0;
+            gap: 0;
         }
 
         html.iphone #game-board {
             margin: 0 auto;
         }
 
+        html.iphone .board-bg {
+            /* 画像が正方形ボード全体を覆うように */
+            object-fit: cover;
+        }
+
+        html.iphone #floating-action-hud {
+            /* アクションHUDを手札上に横並び配置 */
+            position: static !important;
+            width: 100% !important;
+            max-width: none;
+            flex-direction: row !important;
+            justify-content: center !important;
+            align-items: center !important;
+        }
+
+        html.iphone .game-footer {
+            height: auto;
+            padding: 8px 0;
+        }
+
+        html.iphone #cpu-hand-area,
         html.iphone #game-status-panel,
         html.iphone .battle-right-panel {
             display: none;
