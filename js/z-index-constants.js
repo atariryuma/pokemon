@@ -16,21 +16,21 @@ export const Z_INDEX = {
     PLACEHOLDER_HOVER: 30, // --z-placeholder-hover
     SLOTS: 40,             // --z-slots (スロット枠線)
     HAND_AREA: 50,         // --z-hand-area (手札エリア)
-    SIDE_STACK_1: 60,      // --z-side-stack-1
-    SIDE_STACK_2: 70,      // --z-side-stack-2
-    SIDE_STACK_3: 80,      // --z-side-stack-3
+    SIDE_STACK_1: 70,      // --z-side-stack-1
+    SIDE_STACK_2: 80,      // --z-side-stack-2
+    SIDE_STACK_3: 90,      // --z-side-stack-3
 
     // === レイヤー2: 3Dカード系 (90-140) ===
-    DECK_EFFECTS: 90,      // --z-deck-effects (山札・サイド影)
+    DECK_EFFECTS: 92,      // --z-deck-effects (山札・サイド影)
     DECK_HOVER: 95,        // --z-deck-hover
     CARD: 100,             // --z-card (1枚カード通常)
     HIGHLIGHT: 110,        // --z-highlight (ハイライト効果)
     CARD_HOVER: 120,       // --z-card-hover
     CARD_EFFECTS: 130,     // --z-card-effects (ダメージ等)
 
-    // === レイヤー3: 手札特別系 (250-300) ===
-    HAND: 250,             // --z-hand (プレイヤー手札通常)
-    HAND_HOVER: 300,       // --z-hand-hover
+    // === レイヤー3: 手札特別系 (55-65) ===
+    HAND: 55,             // --z-hand (プレイヤー手札通常)
+    HAND_HOVER: 65,       // --z-hand-hover
     
     // === レイヤー4: アニメーション系 (310-320) ===
     ANIMATIONS: 310,       // --z-animations (移動アニメーション)

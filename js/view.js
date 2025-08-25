@@ -6,6 +6,7 @@ import { BUTTON_IDS, CONTAINER_IDS, CSS_CLASSES } from './ui-constants.js';
 import { errorHandler } from './error-handler.js';
 import { modalManager } from './modal-manager.js';
 import { ToastMessenger } from './toast-messages.js';
+import { gameLogger } from './game-logger.js';
 
 // Z-index定数 (CSS変数と連携) - 最小限に削減
 import { LEGACY_Z_INDEX as Z_INDEX, ZIndexManager } from './z-index-constants.js';
@@ -50,11 +51,55 @@ export class View {
         // 手札エリア全体のクリック保護
         if (this.playerHand) {
             this.playerHand.addEventListener('click', this._handleHandClickDelegation.bind(this));
-            console.log('🔗 Player hand click handler bound to element:', this.playerHand);
+            this.playerHand.addEventListener('mouseenter', (e) => gameLogger.logHoverEvent(e.target, true));
+            this.playerHand.addEventListener('mouseleave', (e) => gameLogger.logHoverEvent(e.target, false));
+            gameLogger.logGameEvent('INFO', 'プレイヤー手札クリック・ホバー判定を有効化');
         } else {
-            console.error('❌ Player hand element not found during initialization');
+            gameLogger.logGameEvent('ERROR', 'プレイヤー手札要素が見つかりません');
         }
-        // CPU手札はクリック無効（プレイヤー操作対象外）
+        
+        // プレイマットのクリック・ホバー判定
+        const gameBoard = document.getElementById('game-board');
+        if (gameBoard) {
+            gameBoard.addEventListener('click', (e) => gameLogger.logClickEvent(e.target));
+            gameBoard.addEventListener('mouseenter', (e) => gameLogger.logHoverEvent(e.target, true));
+            gameBoard.addEventListener('mouseleave', (e) => gameLogger.logHoverEvent(e.target, false));
+        }
+        
+        // 相手フィールドの個別イベントリスナー追加
+        const opponentBoard = document.querySelector('.opponent-board');
+        const cpuBoard = document.getElementById('cpu-board');
+        
+        if (opponentBoard) {
+            opponentBoard.addEventListener('click', (e) => {
+                e.stopPropagation();
+                gameLogger.logClickEvent(e.target, '相手フィールドクリック');
+            });
+            opponentBoard.addEventListener('mouseenter', (e) => {
+                gameLogger.logHoverEvent(e.target, true);
+            });
+            opponentBoard.addEventListener('mouseleave', (e) => {
+                gameLogger.logHoverEvent(e.target, false);
+            });
+            gameLogger.logGameEvent('INFO', '相手フィールドのクリック・ホバー判定を有効化');
+        }
+        
+        if (cpuBoard && cpuBoard !== opponentBoard) {
+            cpuBoard.addEventListener('click', (e) => {
+                e.stopPropagation();
+                gameLogger.logClickEvent(e.target, 'CPUボードクリック');
+            });
+            cpuBoard.addEventListener('mouseenter', (e) => {
+                gameLogger.logHoverEvent(e.target, true);
+            });
+            cpuBoard.addEventListener('mouseleave', (e) => {
+                gameLogger.logHoverEvent(e.target, false);
+            });
+            gameLogger.logGameEvent('INFO', 'CPUボードのクリック・ホバー判定を有効化');
+        }
+
+        // レイヤー競合の解決: CPU手札と相手フィールドのz-index関係を検証
+        this.validateLayerHierarchy();
 
         // Modal elements
         // Modal elements removed - showInteractiveMessageシステムに統一済み
@@ -688,9 +733,9 @@ export class View {
         // 画面サイズに応じて動的に調整（より大きく、ダイナミックに）
         const screenWidth = window.innerWidth || 800;
         const RADIUS = Math.min(220, screenWidth * 0.25);        // 画面幅の25%、最大220px（拡張）
-        const BASE_SCALE = 1.1;    // より大きなベースサイズ
-        const MAX_SCALE = screenWidth < 768 ? 1.2 : 1.4;        // より大きな拡大効果
-        const MAX_LIFT = Math.min(50, screenWidth * 0.06);      // 画面幅の6%、最大50px（より高い浮上）
+        const BASE_SCALE = 1.0;    // より大きなベースサイズ
+        const MAX_SCALE = screenWidth < 768 ? 1.5 : 1.8;        // より大きな拡大効果
+        const MAX_LIFT = Math.min(80, screenWidth * 0.08);      // 画面幅の8%、最大80px（より高い浮上）
         const BASE_GAP = 2;        // px default spacing per side
         const MAX_GAP = Math.min(8, screenWidth * 0.01);       // 画面幅の1%、最大8px（より大きなギャップ）
 
@@ -702,7 +747,7 @@ export class View {
             const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active), .hand-slot .card-placeholder');
             cards.forEach((el, index) => {
                 // リセット時は最小限の変形のみ適用
-                el.style.transform = `translateY(0) scale(${BASE_SCALE})`;
+                el.style.transform = `translateY(0) scale(1.0)`;
                 el.style.marginLeft = `${BASE_GAP}px`;
                 el.style.marginRight = `${BASE_GAP}px`;
                 ZIndexManager.setHandNormal(el);
@@ -1685,5 +1730,32 @@ export class View {
      */
     showCustomToast(message, type = 'warning', options = {}) {
         this.toastMessenger.showCustom(message, type, options);
+    }
+
+    /**
+     * レイヤー階層の検証: CPU手札と相手フィールドのz-index関係をチェック
+     */
+    validateLayerHierarchy() {
+        const cpuHandArea = document.getElementById('cpu-hand-area');
+        const opponentBoard = document.querySelector('.opponent-board');
+        
+        if (cpuHandArea && opponentBoard) {
+            const cpuHandStyle = window.getComputedStyle(cpuHandArea);
+            const opponentBoardStyle = window.getComputedStyle(opponentBoard);
+            
+            const cpuHandZIndex = parseInt(cpuHandStyle.zIndex) || 0;
+            const opponentBoardZIndex = parseInt(opponentBoardStyle.zIndex) || 0;
+            
+            gameLogger.logGameEvent('LAYOUT', 'レイヤー階層検証', {
+                'CPU手札': `z-index: ${cpuHandZIndex}, position: ${cpuHandStyle.position}`,
+                '相手フィールド': `z-index: ${opponentBoardZIndex}, position: ${opponentBoardStyle.position}`,
+                '階層関係': cpuHandZIndex > opponentBoardZIndex ? '✅ CPU手札が上位' : '⚠️ 階層要確認'
+            });
+            
+            // レイヤー競合の警告
+            if (cpuHandZIndex <= opponentBoardZIndex) {
+                gameLogger.logGameEvent('ERROR', 'レイヤー競合検出: CPU手札のz-indexが相手フィールド以下');
+            }
+        }
     }
 }
