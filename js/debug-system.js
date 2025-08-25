@@ -30,12 +30,31 @@ export class DebugSystem {
     }
 
     /**
-     * ログ出力
+     * ログ出力 - シンプル化
      */
     log(level, message, data = null) {
         if (!this.isEnabled) return;
         
-        const timestamp = new Date().toISOString().substr(11, 8);
+        // 基本的なゲーム状態のみログ出力
+        const allowedMessages = [
+            'ゲーム開始',
+            'ターン開始', 
+            'ターン終了',
+            'カード移動',
+            'アニメーション開始',
+            'アニメーション終了'
+        ];
+        
+        // 測定系やスペック系のメッセージはスキップ
+        if (message.includes('測定') || message.includes('スペック') || message.includes('詳細') || message.includes('分析')) {
+            return;
+        }
+        
+        // 許可されたメッセージのみ出力
+        const shouldLog = allowedMessages.some(allowed => message.includes(allowed));
+        if (!shouldLog) return;
+        
+        const timestamp = new Date().toISOString().slice(11, 19);
         const prefix = `[${timestamp}] ${level}`;
         
         if (data) {

@@ -25,7 +25,7 @@
     html, body { height: 100%; }
     body {
       margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", Meiryo, "Noto Sans JP", sans-serif;
+      font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", Meiryo, "Noto Sans JP", sans-serif;
       color: var(--text);
       background: radial-gradient(1200px 600px at 10% -10%, #2945b5 0%, transparent 60%),
                   radial-gradient(1200px 600px at 110% 10%, #4026a7 0%, transparent 60%),
@@ -40,7 +40,6 @@
       position: sticky; top: 0; z-index: 10;
       background: linear-gradient(180deg, rgba(15,18,38,.95) 0%, rgba(15,18,38,.75) 100%);
       backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
       border-bottom: 1px solid var(--border);
       padding: 10px 15px;
       display: flex;
@@ -165,7 +164,7 @@
     /* Preview styles */
     #preview-wrap { display:flex; flex-direction: column; min-height: 0; }
     #preview-stage { position: relative; flex: 1; min-height: 260px; background: repeating-conic-gradient(#1a1f4a 0 25%, #10143a 0 50%) 50% / 18px 18px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display:flex; align-items:center; justify-content:center; }
-    #preview-img { max-width: 100%; max-height: 100%; transform-origin: center center; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; image-rendering: auto; }
+    #preview-img { max-width: 100%; max-height: 100%; transform-origin: center center; user-select: none; image-rendering: auto; }
     #preview-empty { position: absolute; color: var(--muted); font-size: 15px; }
 
     /* Drawer */

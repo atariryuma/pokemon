@@ -546,6 +546,8 @@ export class Game {
         // フェーズ遷移アニメーション（必要な場合のみ）
         if (oldPhase !== validation.fixedState.phase) {
             await this.animate.changePhase(oldPhase, validation.fixedState.phase);
+            // フェーズ変更時のActionHUD制御
+            this._handlePhaseTransition(oldPhase, validation.fixedState.phase);
         }
         
         // Handle CPU prize selection
@@ -561,11 +563,38 @@ export class Game {
         // バッチレンダリングをスケジュール（即座に実行せず、まとめて処理）
         this._scheduleRender();
         
+        // スマートActionHUDシステム: プレイヤーのターンでボタンを更新
+        if (validation.fixedState.phase === GAME_PHASES.PLAYER_MAIN && 
+            validation.fixedState.turnPlayer === 'player') {
+            // レンダリング後に非同期でボタンを更新
+            requestAnimationFrame(() => {
+                this._updateSmartActionButtons();
+            });
+        }
+        
         // デバッグログ（重要な状態変更のみ）
         if (validation.warnings.length > 0 || previousPhase !== validation.fixedState.phase) {
             noop(`🔄 State updated in ${context}: ${previousPhase} → ${validation.fixedState.phase}`);
         }
     } // End of _updateState
+    
+    /**
+     * フェーズ遷移時のActionHUD制御 - シンプル版
+     */
+    _handlePhaseTransition(oldPhase, newPhase) {
+        noop(`🎯 Phase transition: ${oldPhase} → ${newPhase}`);
+        
+        // 戦闘ボタンは自動表示しない（手動制御）
+        switch (newPhase) {
+            case GAME_PHASES.PLAYER_DRAW:
+            case GAME_PHASES.CPU_TURN:
+            case GAME_PHASES.CPU_MAIN:
+            case GAME_PHASES.CPU_ATTACK:
+                // ドローフェーズ・CPUターン: すべて非表示
+                this.actionHUDManager.hideAllButtons();
+                break;
+        }
+    }
     
     /**
      * 統一されたアニメーション実行システム
@@ -919,12 +948,8 @@ export class Game {
             this.view.showGameMessage('セットアップが完了しました！ゲームを開始します。');
             // await this.completeSetup(); // 実装されていない場合はコメントアウト
             
-            // ActionHUDManagerでメインゲームフェーズのボタンに切り替え
-            this.actionHUDManager.showPhaseButtons('playerMain', {
-                retreat: () => this._handleRetreat(),
-                attack: () => this._handleAttack(),
-                endTurn: () => this._handleEndTurn()
-            });
+            // セットアップ完了後は一時的にボタンを非表示（ゲーム開始準備中）
+            this.actionHUDManager.hideAllButtons();
         } catch (error) {
             console.error('❌ Failed to confirm setup:', error);
         }
@@ -1275,7 +1300,7 @@ export class Game {
         
         // ドロー後にメインフェーズに移行
         this.state.phase = GAME_PHASES.PLAYER_MAIN;
-        this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
+        this.state.prompt.message = 'カードを1枚ドローしました。少しお待ちください...';
 
         this._updateState(this.state);
 
@@ -1283,6 +1308,13 @@ export class Game {
         if (playerDeckElement) {
             playerDeckElement.classList.remove('is-drawing');
         }
+        
+        // ドロー完了後、メッセージのみ更新（ボタンは手動で表示）
+        setTimeout(() => {
+            this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
+            this.view.render(this.state);
+            // ボタンは手動制御のみ - 自動表示は削除
+        }, 1500);
     }
 
     /**
@@ -1301,6 +1333,10 @@ export class Game {
         } else if (zone === 'active' || zone === 'bench') {
             await this._handleBoardPokemonClick(cardId, zone, parseInt(index, 10));
         }
+        
+        // プレイヤーがクリックしたことで能動的にプレイしていることを示すため、
+        // クリック後にスマートボタンシステムでボタンを評価・表示
+        this._updateSmartActionButtons();
     }
 
     /**
@@ -1558,8 +1594,7 @@ export class Game {
 
             case GAME_PHASES.PLAYER_MAIN:
                 this.view.showGameMessage(this.state.prompt.message);
-                // プレイヤーメインフェーズでのアクションHUD表示
-                this._showPlayerMainActionsHUD();
+                // プレイヤーメインフェーズのボタンは手動制御のみ（自動表示は削除）
                 break;
 
             case GAME_PHASES.PLAYER_ATTACK:
@@ -1646,6 +1681,7 @@ export class Game {
                 this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
                 this._clearAllHighlights(); // すべてのハイライトをクリア
                 this._updateState(this.state);
+                this._updateSmartActionButtons();
                 return;
             }
 
@@ -1757,6 +1793,7 @@ export class Game {
         if (this.state !== initialState) {
             this.state.pendingAction = null;
             this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
+            this._updateSmartActionButtons();
         }
         
         this._clearAllHighlights();
@@ -2603,6 +2640,122 @@ export class Game {
     }
 
     /**
+     * 進化ボタンのハンドラー
+     */
+    async _handleEvolution() {
+        noop('🔄 Evolution button clicked');
+        
+        if (this.state.turnPlayer !== 'player') return;
+        
+        const playerState = this.state.players.player;
+        const hand = playerState.hand || [];
+        const currentTurn = this.state.turn;
+        
+        // 進化可能な組み合わせを探す
+        const evolutionOptions = [];
+        const boardPokemon = [playerState.active, ...playerState.bench].filter(Boolean);
+        
+        hand.forEach(card => {
+            if (card.card_type === 'Pokémon' && card.evolves_from && card.stage !== 'BASIC') {
+                boardPokemon.forEach((pokemon, index) => {
+                    if (pokemon.name_en === card.evolves_from && pokemon.turnPlayed !== currentTurn) {
+                        evolutionOptions.push({
+                            evolutionCard: card,
+                            targetPokemon: pokemon,
+                            targetLocation: index === 0 ? 'active' : 'bench',
+                            targetIndex: index === 0 ? -1 : index - 1 // ベンチのインデックス調整
+                        });
+                    }
+                });
+            }
+        });
+        
+        if (evolutionOptions.length === 0) {
+            this.view.showErrorMessage('進化できるポケモンがいません。', 'warning');
+            return;
+        }
+        
+        // 進化選択UIを表示
+        this._showEvolutionSelectionModal(evolutionOptions);
+    }
+
+    /**
+     * 進化選択モーダルを表示
+     */
+    _showEvolutionSelectionModal(options) {
+        const optionsHtml = options.map((option, index) => {
+            const locationText = option.targetLocation === 'active' ? 'バトル場' : 'ベンチ';
+            return `
+                <div class="evolution-option" data-option-index="${index}">
+                    <div class="evolution-info">
+                        <strong>${option.targetPokemon.name_ja}</strong> (${locationText})
+                        → <strong>${option.evolutionCard.name_ja}</strong>
+                    </div>
+                    <button class="evolution-select-btn" data-option-index="${index}">この進化を実行</button>
+                </div>
+            `;
+        }).join('');
+        
+        const modalContent = `
+            <div class="evolution-modal">
+                <h3>進化するポケモンを選択してください</h3>
+                <div class="evolution-options">
+                    ${optionsHtml}
+                </div>
+            </div>
+        `;
+        
+        this.view.showInteractiveMessage(
+            modalContent,
+            options.map((option, index) => ({
+                text: `${option.targetPokemon.name_ja} → ${option.evolutionCard.name_ja}`,
+                callback: () => this._executeEvolution(option)
+            })).concat([
+                { text: 'キャンセル', callback: () => {} }
+            ]),
+            'central',
+            true
+        );
+    }
+
+    /**
+     * 進化を実行
+     */
+    async _executeEvolution(option) {
+        const { evolutionCard, targetPokemon, targetLocation, targetIndex } = option;
+        
+        try {
+            // Logic.jsの進化機能を使用
+            const newState = Logic.evolvePokemon(
+                this.state,
+                'player',
+                evolutionCard.runtimeId || evolutionCard.id,
+                targetLocation,
+                targetIndex
+            );
+            
+            if (newState !== this.state) {
+                this.state = addLogEntry(newState, { 
+                    message: `${targetPokemon.name_ja}が${evolutionCard.name_ja}に進化しました！` 
+                });
+                this._updateState(this.state);
+                
+                // 進化後にボタンを再評価
+                setTimeout(() => {
+                    this._updateSmartActionButtons();
+                }, 500);
+                
+                noop('🔄 Evolution completed successfully');
+            } else {
+                this.view.showErrorMessage('進化に失敗しました。', 'error');
+            }
+        } catch (error) {
+            console.error('Evolution error:', error);
+            this.view.showErrorMessage('進化処理中にエラーが発生しました。', 'error');
+        }
+    }
+
+    /**
      * エネルギーが足りるかチェック（フォールバック用）
      */
     _hasEnoughEnergy(pokemon, attack) {
@@ -2624,62 +2777,144 @@ export class Game {
         return cost.length === 0 || (cost.every(c => c === 'Colorless') && attached.length >= cost.length);
     }
 
+
     /**
-     * プレイヤーメインフェーズのアクションHUD表示
+     * スマートなボタン表示システム - 条件に基づいてボタンを表示
      */
-    _showPlayerMainActionsHUD() {
-        if (this.state.phase !== GAME_PHASES.PLAYER_MAIN) return;
-        
-        const actions = [];
-        
-        // にげるアクション
-        const activePokemon = this.state.players.player.active;
-        if (activePokemon && this.state.canRetreat) {
-            const retreatCost = activePokemon.retreat_cost || 0;
-            const attachedEnergyCount = activePokemon.attached_energy ? activePokemon.attached_energy.length : 0;
-            
-            if (attachedEnergyCount >= retreatCost) {
-                actions.push({
-                    text: `🏃 にげる (${retreatCost})`,
-                    callback: () => this._handleRetreat(),
-                    className: 'px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded text-sm'
-                });
-            }
+    _updateSmartActionButtons() {
+        if (this.state.phase !== GAME_PHASES.PLAYER_MAIN || 
+            this.state.turnPlayer !== 'player' || 
+            this.state.pendingAction) {
+            this.actionHUDManager.hideAllButtons();
+            return;
         }
-        
-        // 攻撃アクション
-        if (activePokemon && activePokemon.attacks) {
-            const hasEnoughEnergyFn = Logic.hasEnoughEnergy || this._hasEnoughEnergy;
-            const usableAttacks = activePokemon.attacks.filter(attack => 
-                hasEnoughEnergyFn.call(this, activePokemon, attack)
-            );
-            
-            if (usableAttacks.length > 0) {
-                actions.push({
-                    text: `⚔️ 攻撃`,
-                    callback: () => this._handleAttack(),
-                    className: 'px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-sm'
-                });
-            }
-        }
-        
-        // ターン終了
-        actions.push({
-            text: `✅ ターン終了`,
-            callback: () => this._handleEndTurn(),
-            className: 'px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-sm'
-        });
-        
-        // プレイヤーメインフェーズのボタンを表示
-        if (actions.length > 0) {
-            this.actionHUDManager.showPhaseButtons('playerMain', {
-                retreat: () => this._handleRetreat(),
-                attack: () => this._handleAttack(),
-                endTurn: () => this._handleEndTurn()
+
+        const availableActions = this._getAvailableActions();
+        const buttonConfigs = [];
+
+        // ターン終了は常に可能
+        if (availableActions.canEndTurn) {
+            buttonConfigs.push({
+                id: BUTTON_IDS.END_TURN,
+                callback: () => this._handleEndTurn(),
+                options: { text: 'ターン終了', icon: '✅' }
             });
-            
-            noop('🎯 Player main actions displayed in floating HUD');
         }
+
+        // にげる - 条件を満たす場合のみ
+        if (availableActions.canRetreat) {
+            buttonConfigs.push({
+                id: BUTTON_IDS.RETREAT,
+                callback: () => this._handleRetreat(),
+                options: { text: 'にげる', icon: '🏃' }
+            });
+        }
+
+        // 攻撃 - エネルギーが足りる場合のみ
+        if (availableActions.canAttack) {
+            buttonConfigs.push({
+                id: BUTTON_IDS.ATTACK,
+                callback: () => this._handleAttack(),
+                options: { text: '攻撃', icon: '⚔️' }
+            });
+        }
+
+        // 進化 - 条件を満たす場合のみ
+        if (availableActions.canEvolve) {
+            buttonConfigs.push({
+                id: BUTTON_IDS.EVOLVE,
+                callback: () => this._handleEvolution(),
+                options: { text: '進化', icon: '🔄' }
+            });
+        }
+
+        this.actionHUDManager.showButtons(buttonConfigs);
+        noop('🎯 Smart action buttons updated:', availableActions);
+    }
+
+    /**
+     * 現在の状況で可能なアクションを判定
+     */
+    _getAvailableActions() {
+        const playerState = this.state.players.player;
+        const active = playerState.active;
+        
+        return {
+            canEndTurn: true, // ターン終了は常に可能
+            canRetreat: this._canPlayerRetreat(),
+            canAttack: this._canPlayerAttack(),
+            canEvolve: this._canPlayerEvolve()
+        };
+    }
+
+    /**
+     * プレイヤーがにげることができるかチェック
+     */
+    _canPlayerRetreat() {
+        const playerState = this.state.players.player;
+        const active = playerState.active;
+        
+        if (!active || playerState.bench.length === 0) return false;
+        if (this.state.hasRetreatedThisTurn || this.state.canRetreat === false) return false;
+        
+        const retreatCost = active.retreat_cost || 0;
+        const attachedEnergy = active.attached_energy || [];
+        
+        return attachedEnergy.length >= retreatCost;
+    }
+
+    /**
+     * プレイヤーが攻撃できるかチェック
+     */
+    _canPlayerAttack() {
+        const playerState = this.state.players.player;
+        const active = playerState.active;
+        
+        if (!active || !active.attacks || active.attacks.length === 0) return false;
+        
+        // 少なくとも一つの攻撃が使用可能かチェック
+        return active.attacks.some(attack => {
+            return this._hasEnoughEnergy(active, attack);
+        });
+    }
+
+    /**
+     * プレイヤーが進化できるかチェック
+     */
+    _canPlayerEvolve() {
+        const playerState = this.state.players.player;
+        const hand = playerState.hand || [];
+        const currentTurn = this.state.turn;
+        
+        // 手札に進化カードがあるかチェック
+        const evolutionCards = hand.filter(card => 
+            card.card_type === 'Pokémon' && 
+            card.evolves_from && 
+            card.stage !== 'BASIC'
+        );
+        
+        if (evolutionCards.length === 0) return false;
+        
+        // 場に進化元のポケモンがいるかチェック
+        const boardPokemon = [playerState.active, ...playerState.bench].filter(Boolean);
+        
+        for (const evolutionCard of evolutionCards) {
+            for (const pokemon of boardPokemon) {
+                if (pokemon.name_en === evolutionCard.evolves_from &&
+                    pokemon.turnPlayed !== currentTurn) { // このターンに出していない
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * プレイヤーメインフェーズのボタンを表示（旧システム互換）
+     */
+    _showPlayerMainButtonsAfterAction() {
+        this._updateSmartActionButtons();
     }
 
     /**

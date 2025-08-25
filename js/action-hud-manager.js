@@ -58,6 +58,7 @@ export class ActionHUDManager {
             'confirm-setup-button-float',
             BUTTON_IDS.RETREAT,
             BUTTON_IDS.ATTACK,
+            BUTTON_IDS.EVOLVE,
             BUTTON_IDS.END_TURN
         ];
 

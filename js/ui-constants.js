@@ -8,6 +8,7 @@ export const BUTTON_IDS = {
     // アクションボタン（フローティング版）
     RETREAT: 'retreat-button-float',
     ATTACK: 'attack-button-float',
+    EVOLVE: 'evolve-button-float',
     END_TURN: 'end-turn-button-float',
     
     // セットアップフェーズボタン (フローティング版)

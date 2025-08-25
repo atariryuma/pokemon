@@ -9,6 +9,7 @@ import { animateFlow } from './animations/flow.js';
 import { GAME_PHASES } from './phase-manager.js';
 import { cloneGameState, addLogEntry } from './state.js';
 import * as Logic from './logic.js';
+import { gameLogger } from './game-logger.js';
 
 const noop = () => {};
 
@@ -79,7 +80,7 @@ export class SetupManager {
     newState.phase = GAME_PHASES.INITIAL_POKEMON_SELECTION;
     newState.prompt.message = 'まず手札のたねポケモンをクリックして選択し、次にバトル場またはベンチをクリックして配置してください。';
     
-    console.log('🎯 Setting phase to INITIAL_POKEMON_SELECTION:', GAME_PHASES.INITIAL_POKEMON_SELECTION);
+    gameLogger.logPhaseChange('setup', 'initial_pokemon_selection', 'ゲーム');
     
     newState = addLogEntry(newState, {
       type: 'setup_complete', 
@@ -462,11 +463,11 @@ export class SetupManager {
     
     // プレイヤーがアクティブポケモンを配置した場合、CPUが準備完了していれば再チェック
     if (targetZone === 'active' && canPlace) {
-      console.log('🔄 Player placed active Pokemon, checking if CPU is ready');
+      // console.log('🔄 Player placed active Pokemon, checking if CPU is ready');
       // 少し遅延してから状態チェック（状態更新が反映されるのを待つ）
       setTimeout(() => {
         if (window.gameInstance && window.gameInstance.state.cpuSetupReady) {
-          console.log('🔄 CPU is ready, triggering both players ready check');
+          // console.log('🔄 CPU is ready, triggering both players ready check');
           this._checkBothPlayersReady();
         }
       }, 100);
@@ -739,10 +740,10 @@ export class SetupManager {
       newState.players.player.prize.length : 0;
     
     if (playerPrizeCount !== 6) {
-      console.log('🎯 Dealing player prize cards');
+      // console.log('🎯 Dealing player prize cards');
       newState = await this.dealPrizeCards(newState);
     } else {
-      console.log('🎯 Player prizes already dealt, skipping');
+      // console.log('🎯 Player prizes already dealt, skipping');
     }
 
     // 両者準備が完了している場合のみゲーム開始準備フェーズに移行
@@ -852,11 +853,11 @@ export class SetupManager {
    * 手札配布開始の処理
    */
   async handleStartDealCards() {
-    console.log('🃏 handleStartDealCards called');
+    // console.log('🃏 handleStartDealCards called');
     // No need to update modal content here, as it's handled by the new message system
     // Just trigger the initial setup
     if (window.gameInstance) {
-      console.log('✅ Calling triggerInitialSetup on gameInstance');
+      // console.log('✅ Calling triggerInitialSetup on gameInstance');
       await window.gameInstance.triggerInitialSetup();
     } else {
       console.error('❌ window.gameInstance not found');
@@ -876,18 +877,18 @@ export class SetupManager {
    * @returns {Promise} セットアップ完了Promise
    */
   async _scheduleCPUInitialSetup() {
-    console.log('🤖 _scheduleCPUInitialSetup: Starting CPU initial setup scheduling');
+    // console.log('🤖 _scheduleCPUInitialSetup: Starting CPU initial setup scheduling');
     // 1.5秒待機してからCPU設定実行（UX改善のため）
-    console.log('🤖 _scheduleCPUInitialSetup: Waiting 1.5 seconds before CPU setup...');
+    // console.log('🤖 _scheduleCPUInitialSetup: Waiting 1.5 seconds before CPU setup...');
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     if (window.gameInstance) {
-      console.log('🤖 _scheduleCPUInitialSetup: Executing CPU initial setup via Promise chain');
+      // console.log('🤖 _scheduleCPUInitialSetup: Executing CPU initial setup via Promise chain');
       await this.startNonBlockingCpuSetup();
-      console.log('✅ _scheduleCPUInitialSetup: CPU initial setup completed successfully');
+      // console.log('✅ _scheduleCPUInitialSetup: CPU initial setup completed successfully');
       
       // CPU セットアップ完了後、自動でフルセットアップを実行
-      console.log('🤖 _scheduleCPUInitialSetup: Starting CPU full auto setup...');
+      // console.log('🤖 _scheduleCPUInitialSetup: Starting CPU full auto setup...');
       await this._scheduleCPUFullAutoSetup();
     } else {
       console.error('❌ _scheduleCPUInitialSetup: gameInstance not available for CPU initial setup');
@@ -901,7 +902,7 @@ export class SetupManager {
    */
   async _scheduleCPUFullAutoSetup() {
     try {
-      console.log('🤖 _scheduleCPUFullAutoSetup: Starting CPU full auto setup');
+      // console.log('🤖 _scheduleCPUFullAutoSetup: Starting CPU full auto setup');
       
       // 少し間を空けてから実行（UX改善）
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -912,10 +913,10 @@ export class SetupManager {
 
       // CPU の状態を確認してポケモンが配置されていない場合は配置
       let currentState = window.gameInstance.state;
-      console.log('🤖 _scheduleCPUFullAutoSetup: Current CPU active:', currentState.players?.cpu?.active?.name_ja || 'none');
+      // console.log('🤖 _scheduleCPUFullAutoSetup: Current CPU active:', currentState.players?.cpu?.active?.name_ja || 'none');
       
       if (!currentState.players.cpu.active) {
-        console.log('🤖 _scheduleCPUFullAutoSetup: CPU needs Pokemon setup');
+        // console.log('🤖 _scheduleCPUFullAutoSetup: CPU needs Pokemon setup');
         const cpuOnlyState = await this.unifiedCpuPokemonSetup(currentState, true);
 
         // 👇 プレイヤーが同時に操作しても配置が消えないよう、直前の状態とマージする
@@ -926,27 +927,27 @@ export class SetupManager {
 
         window.gameInstance._updateState(currentState);
       } else {
-        console.log('🤖 _scheduleCPUFullAutoSetup: CPU already has active Pokemon, skipping placement');
+        // console.log('🤖 _scheduleCPUFullAutoSetup: CPU already has active Pokemon, skipping placement');
       }
 
       // CPUのサイドカード配布を実行
-      console.log('🤖 _scheduleCPUFullAutoSetup: Starting CPU prize card setup');
+      // console.log('🤖 _scheduleCPUFullAutoSetup: Starting CPU prize card setup');
       await this._scheduleCPUPrizeAnimation();
       
       // CPUの準備完了フラグのみ設定し、フェーズは変更しない
-      console.log('🤖 _scheduleCPUFullAutoSetup: Setting CPU ready flag');
+      // console.log('🤖 _scheduleCPUFullAutoSetup: Setting CPU ready flag');
       currentState = window.gameInstance.state;
       
       // サイドカード配布処理（もしまだ配布されていない場合）
       const cpuPrizeCount = Array.isArray(currentState.players?.cpu?.prize) ? 
         currentState.players.cpu.prize.length : 0;
-      console.log('🤖 _scheduleCPUFullAutoSetup: CPU prize count:', cpuPrizeCount);
+      // console.log('🤖 _scheduleCPUFullAutoSetup: CPU prize count:', cpuPrizeCount);
       
       if (cpuPrizeCount !== 6) {
-        console.log('🤖 _scheduleCPUFullAutoSetup: Dealing CPU prize cards');
+        // console.log('🤖 _scheduleCPUFullAutoSetup: Dealing CPU prize cards');
         currentState = await this.dealPrizeCards(currentState);
       } else {
-        console.log('🤖 _scheduleCPUFullAutoSetup: CPU prizes already dealt');
+        // console.log('🤖 _scheduleCPUFullAutoSetup: CPU prizes already dealt');
       }
       
       // CPU準備完了フラグを設定（フェーズは変更しない）
@@ -956,10 +957,10 @@ export class SetupManager {
         message: 'CPUの準備が完了しました。プレイヤーの確定を待っています。'
       });
       
-      console.log('🤖 CPU setup ready, keeping phase as:', currentState.phase);
+      // console.log('🤖 CPU setup ready, keeping phase as:', currentState.phase);
       
       window.gameInstance._updateState(currentState);
-      console.log('✅ _scheduleCPUFullAutoSetup: CPU full auto setup completed');
+      // console.log('✅ _scheduleCPUFullAutoSetup: CPU full auto setup completed');
       
       // 両者準備完了かチェック
       this._checkBothPlayersReady();
@@ -977,7 +978,7 @@ export class SetupManager {
   _checkBothPlayersReady() {
     try {
       if (!window.gameInstance) {
-        console.log('⚠️ _checkBothPlayersReady: gameInstance not available');
+        // console.log('⚠️ _checkBothPlayersReady: gameInstance not available');
         return;
       }
 
@@ -992,7 +993,7 @@ export class SetupManager {
 
       // プレイヤーがまだポケモンを配置していない場合は、game.jsの処理に委譲しない
       if (!bothHaveActive && cpuReady && !playerConfirmed) {
-        console.log('⏳ CPU ready but player has no active Pokemon yet, showing setup message');
+        // console.log('⏳ CPU ready but player has no active Pokemon yet, showing setup message');
         let updatedState = window.gameInstance.state;
         // フェーズをINITIAL_POKEMON_SELECTIONに戻す
         updatedState.phase = GAME_PHASES.INITIAL_POKEMON_SELECTION;
@@ -1003,14 +1004,14 @@ export class SetupManager {
 
       // ゲーム側に用意された「サイド配布アニメーション完了」チェック機能を利用
       if (typeof window.gameInstance._checkBothPrizeAnimationsComplete === 'function') {
-        console.log('🔍 Using gameInstance._checkBothPrizeAnimationsComplete');
+        // console.log('🔍 Using gameInstance._checkBothPrizeAnimationsComplete');
         window.gameInstance._checkBothPrizeAnimationsComplete();
         return;
       }
 
       // 両者準備完了（CPU自動完了 + プレイヤー確定済み）の場合
       if (bothHaveActive && cpuReady && playerConfirmed) {
-        console.log('🎉 Both players ready for game start');
+        // console.log('🎉 Both players ready for game start');
         
         // ゲーム開始準備完了状態に設定
         let updatedState = window.gameInstance.state;
@@ -1030,19 +1031,19 @@ export class SetupManager {
         });
       } else if (cpuReady && !playerConfirmed && !bothHaveActive) {
         // CPUのみ準備完了で、プレイヤーがまだポケモン未配置の場合
-        console.log('⏳ CPU ready, player needs to place Pokemon');
+        // console.log('⏳ CPU ready, player needs to place Pokemon');
         let updatedState = window.gameInstance.state;
         // フェーズはINITIAL_POKEMON_SELECTIONのままにする
         updatedState.prompt.message = 'CPUの準備完了。あなたもバトル場にたねポケモンを配置してください。';
         window.gameInstance._updateState(updatedState);
       } else if (cpuReady && !playerConfirmed && bothHaveActive) {
         // 両者ポケモン配置済みだがプレイヤーが確定していない場合
-        console.log('⏳ Both have Pokemon, waiting for player confirmation');
+        // console.log('⏳ Both have Pokemon, waiting for player confirmation');
         let updatedState = window.gameInstance.state;
         updatedState.prompt.message = 'CPUの準備完了。あなたのポケモン配置確定を押してください。';
         window.gameInstance._updateState(updatedState);
       } else {
-        console.log('⏳ Still waiting for setup completion');
+        // console.log('⏳ Still waiting for setup completion');
       }
     } catch (e) {
       console.error('⚠️ _checkBothPlayersReady failed:', e);
