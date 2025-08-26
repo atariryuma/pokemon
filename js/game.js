@@ -1309,11 +1309,12 @@ export class Game {
             playerDeckElement.classList.remove('is-drawing');
         }
         
-        // ドロー完了後、メッセージのみ更新（ボタンは手動で表示）
+        // ドロー完了後、メッセージ更新とメインフェーズボタン表示
         setTimeout(() => {
             this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
             this.view.render(this.state);
-            // ボタンは手動制御のみ - 自動表示は削除
+            // メインフェーズのインテリジェントなボタン表示
+            this._showMainPhaseButtons();
         }, 1500);
     }
 
@@ -1335,8 +1336,8 @@ export class Game {
         }
         
         // プレイヤーがクリックしたことで能動的にプレイしていることを示すため、
-        // クリック後にスマートボタンシステムでボタンを評価・表示
-        this._updateSmartActionButtons();
+        // クリック後にメインフェーズボタンを表示
+        this._showMainPhaseButtons();
     }
 
     /**
@@ -1681,7 +1682,7 @@ export class Game {
                 this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
                 this._clearAllHighlights(); // すべてのハイライトをクリア
                 this._updateState(this.state);
-                this._updateSmartActionButtons();
+                this._showMainPhaseButtons();
                 return;
             }
 
@@ -1793,7 +1794,8 @@ export class Game {
         if (this.state !== initialState) {
             this.state.pendingAction = null;
             this.state.prompt.message = 'あなたのターンです。アクションを選択してください。';
-            this._updateSmartActionButtons();
+            // エネルギー付与後は従来のメインフェーズボタンシステムを使用
+            this._showMainPhaseButtons();
         }
         
         this._clearAllHighlights();
@@ -1828,6 +1830,11 @@ export class Game {
 
         this._clearAllHighlights();
         this._updateState(newState);
+        
+        // にげる完了後、Action HUDを復帰
+        if (newState !== this.state) {
+            this._showPostRetreatButtons();
+        }
     }
 
     /**
@@ -1993,8 +2000,8 @@ export class Game {
 
             if (error.message === 'このターンは既に攻撃しました') {
                 this.view.showCustomToast('このターンは既に攻撃しました。ターンを終了してください。', 'warning');
-                this.actionHUDManager.hideAllButtons();
-                this.actionHUDManager.showButton('end-turn-button-float', () => this._handleEndTurn());
+                // 攻撃済みの場合はターン終了のみ有効化
+                this._showPostAttackButtons();
             } else {
                 // 攻撃処理中にエラーが発生した場合はエラートーストを表示
                 this.view.showCustomToast('攻撃実行中にエラーが発生しました。ゲームを続行します。', 'error');
@@ -2044,6 +2051,78 @@ export class Game {
         // シンプルなCPUターン処理
         const newState = await this.turnManager.takeCpuTurn(this.state);
         this._updateState(newState); // CPUターン完了後に一度だけ状態を更新
+    }
+
+    /**
+     * メインフェーズでのインテリジェントなボタン表示
+     * 現在のゲーム状態に基づいて適切なアクションボタンを表示
+     */
+    _showMainPhaseButtons() {
+        if (this.state.phase !== GAME_PHASES.PLAYER_MAIN) return;
+
+        const callbacks = {
+            retreat: () => this._handleRetreat(),
+            attack: () => this._handleAttack(),
+            endTurn: () => this._handleEndTurn()
+        };
+
+        // 基本的にすべてのメインフェーズボタンを表示
+        this.actionHUDManager.showPhaseButtons('playerMain', callbacks);
+
+        // 状況に応じてボタンの可用性を調整
+        this._updateButtonAvailability();
+    }
+
+    /**
+     * 現在の状況に基づいてボタンの可用性を更新
+     */
+    _updateButtonAvailability() {
+        const playerData = this.state.players.player;
+        
+        // にげるボタンの可用性チェック
+        const canRetreat = playerData.active && 
+                          playerData.bench.some(card => card !== null) &&
+                          !this.state.playerHasRetreated;
+        
+        if (!canRetreat) {
+            this.actionHUDManager.disableButton(BUTTON_IDS.RETREAT);
+        }
+
+        // 攻撃ボタンの可用性チェック
+        const canAttack = playerData.active && 
+                         playerData.active.attacks && 
+                         playerData.active.attacks.length > 0 &&
+                         !this.state.playerHasAttacked;
+        
+        if (!canAttack) {
+            this.actionHUDManager.disableButton(BUTTON_IDS.ATTACK);
+        }
+
+        // ターン終了ボタンは常に有効
+        this.actionHUDManager.enableButton(BUTTON_IDS.END_TURN);
+    }
+
+    /**
+     * 攻撃後のボタン状態を設定（攻撃済みの場合）
+     */
+    _showPostAttackButtons() {
+        // 攻撃後はターン終了のみ表示
+        this.actionHUDManager.hideAllButtons();
+        this.actionHUDManager.showButton(BUTTON_IDS.END_TURN, () => this._handleEndTurn());
+        
+        // または、全ボタンを表示してターン終了以外を無効化
+        // this._showMainPhaseButtons();
+        // this.actionHUDManager.disableButton(BUTTON_IDS.ATTACK);
+        // this.actionHUDManager.disableButton(BUTTON_IDS.RETREAT);
+    }
+
+    /**
+     * にげる後のボタン状態を設定
+     */
+    _showPostRetreatButtons() {
+        // にげる後はターン終了のみ表示
+        this.actionHUDManager.hideAllButtons();
+        this.actionHUDManager.showButton(BUTTON_IDS.END_TURN, () => this._handleEndTurn());
     }
 
     /**
@@ -2742,7 +2821,7 @@ export class Game {
                 
                 // 進化後にボタンを再評価
                 setTimeout(() => {
-                    this._updateSmartActionButtons();
+                    this._showMainPhaseButtons();
                 }, 500);
                 
                 noop('🔄 Evolution completed successfully');
@@ -2914,7 +2993,7 @@ export class Game {
      * プレイヤーメインフェーズのボタンを表示（旧システム互換）
      */
     _showPlayerMainButtonsAfterAction() {
-        this._updateSmartActionButtons();
+        this._showMainPhaseButtons();
     }
 
     /**

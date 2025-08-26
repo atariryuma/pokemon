@@ -139,6 +139,7 @@ export class View {
         // HoverManagerと統合してz-index管理を最適化
         setTimeout(() => {
             this._initHandDock();
+            this._initCpuHandDock(); // CPU手札にもMac Dock効果を適用
             // デバッグ関数を自動実行（問題調査用）
             setTimeout(() => this.debugHandZIndexIssue(), 1000);
             // グローバルデバッグ関数として公開
@@ -1757,5 +1758,129 @@ export class View {
                 gameLogger.logGameEvent('ERROR', 'レイヤー競合検出: CPU手札のz-indexが相手フィールド以下');
             }
         }
+    }
+
+    /**
+     * Initialize Mac Dock–style proximity magnification for CPU's hand.
+     * CPUが「見ている」カードを中心に拡大表示するプログラム制御版
+     */
+    _initCpuHandDock() {
+        const container = document.getElementById('cpu-hand');
+        if (!container) return;
+        
+        // CPU手札にもMac Dockクラスを追加
+        container.classList.add('hand-dock');
+        
+        // プレイヤーより少し控えめな設定値でCPU専用に最適化
+        const screenWidth = window.innerWidth || 800;
+        const RADIUS = Math.min(180, screenWidth * 0.22);  // 少し狭い範囲
+        const BASE_SCALE = 1.0;
+        const MAX_SCALE = 1.6;  // CPUの注目カードは少し大きめ
+        const MAX_LIFT = Math.min(60, screenWidth * 0.06);
+        const BASE_GAP = 2;
+        const MAX_GAP = Math.min(8, screenWidth * 0.01);
+        
+        // CPU手札専用：現在のCPU思考状態を追跡
+        this._cpuFocusIndex = 0; // CPUが注目しているカードのインデックス
+        this._cpuFocusTimer = null;
+
+        let rafId = null;
+        let pendingX = null;
+
+        const resetAll = () => {
+            const cards = container.querySelectorAll('.hand-slot.hand-card:not(.active), .hand-slot .card-placeholder');
+            cards.forEach((el, index) => {
+                el.style.transform = `translateY(0) scale(1.0)`;
+                el.style.marginLeft = `${BASE_GAP}px`;
+                el.style.marginRight = `${BASE_GAP}px`;
+                ZIndexManager.setHandNormal(el);
+            });
+            
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+        };
+
+        // CPU専用：プログラム制御でのカード拡大表示
+        const applyCpuFocus = (focusIndex = -1) => {
+            const cards = container.querySelectorAll('.hand-slot.hand-card, .hand-slot .card-placeholder');
+            cards.forEach((el, index) => {
+                // CPUが注目しているカードかどうかを判定
+                const isFocused = (focusIndex >= 0 && index === focusIndex);
+                const isNearFocus = Math.abs(index - focusIndex) === 1; // 隣接カード
+                
+                let scale, lift, gap;
+                if (isFocused) {
+                    // 注目カードは最大拡大
+                    scale = MAX_SCALE;
+                    lift = MAX_LIFT;
+                    gap = MAX_GAP;
+                    ZIndexManager.setHandHover(el);
+                } else if (isNearFocus && focusIndex >= 0) {
+                    // 隣接カードは中間拡大
+                    scale = BASE_SCALE + (MAX_SCALE - BASE_SCALE) * 0.4;
+                    lift = MAX_LIFT * 0.4;
+                    gap = BASE_GAP + (MAX_GAP - BASE_GAP) * 0.4;
+                    ZIndexManager.setHandNormal(el);
+                } else {
+                    // その他は通常サイズ
+                    scale = BASE_SCALE;
+                    lift = 0;
+                    gap = BASE_GAP;
+                    ZIndexManager.setHandNormal(el);
+                }
+
+                el.style.transform = `translateY(-${lift}px) scale(${scale})`;
+                el.style.marginLeft = `${gap}px`;
+                el.style.marginRight = `${gap}px`;
+            });
+        };
+
+        // CPU専用：自動思考ループでカードを順番に注目
+        const startCpuThinking = () => {
+            const cards = container.querySelectorAll('.hand-slot.hand-card, .hand-slot .card-placeholder');
+            if (cards.length === 0) return;
+            
+            // CPUが思考中であることを示すアニメーション
+            this._cpuFocusTimer = setInterval(() => {
+                this._cpuFocusIndex = (this._cpuFocusIndex + 1) % Math.max(cards.length, 1);
+                applyCpuFocus(this._cpuFocusIndex);
+            }, 2000); // 2秒ごとに別のカードに注目
+            
+            // 初回実行
+            applyCpuFocus(this._cpuFocusIndex);
+        };
+
+        const stopCpuThinking = () => {
+            if (this._cpuFocusTimer) {
+                clearInterval(this._cpuFocusTimer);
+                this._cpuFocusTimer = null;
+            }
+            applyCpuFocus(-1); // 全カードを通常サイズに
+        };
+
+        // CPUターン開始時にCPU思考を開始
+        const handleCpuTurnStart = () => {
+            startCpuThinking();
+        };
+
+        // CPUターン終了時にCPU思考を停止
+        const handleCpuTurnEnd = () => {
+            stopCpuThinking();
+        };
+
+        // グローバルイベントでCPU思考状態を制御
+        document.addEventListener('cpu-turn-start', handleCpuTurnStart);
+        document.addEventListener('cpu-turn-end', handleCpuTurnEnd);
+        document.addEventListener('player-turn-start', handleCpuTurnEnd);
+        
+        // 手動制御用の公開関数
+        container._cpuFocus = applyCpuFocus;
+        container._startCpuThinking = startCpuThinking;
+        container._stopCpuThinking = stopCpuThinking;
+        
+        // 初期状態で軽い思考アニメーション開始
+        setTimeout(() => startCpuThinking(), 1000);
     }
 }

@@ -18,7 +18,7 @@ import { ZIndexManager } from './z-index-constants.js';
  */
 export class CardOrientationManager {
   /**
-   * カードの向き判定（CPU側のhand以外は反転）
+   * カードの向き判定（CPU側のhand以外は反転、但し山札・ダメージバッジは除外）
    * @param {string} playerId - プレイヤーID ('player' | 'cpu')
    * @param {string} zone - ゾーン情報
    * @param {Element} element - カード要素（プレースホルダー含む）
@@ -29,8 +29,19 @@ export class CardOrientationManager {
     const isCpu = (playerId === 'cpu') || (!!element?.closest?.('.opponent-board'));
     const normalizedZone = zone || element?.dataset?.zone || '';
 
-    // CPU は hand と modal 以外を回転（プレースホルダー含む）
-    return isCpu && normalizedZone !== 'hand' && normalizedZone !== 'modal';
+    // 反転対象から除外するゾーン
+    const nonFlipZones = [
+      'hand',        // CPU手札は反転しない
+      'modal',       // モーダル内は反転しない
+      'deck',        // 山札は反転しない
+      'discard',     // 山札エリア（捨て札）は反転しない
+      'damage',      // ダメージバッジは反転しない
+      'prize',       // サイドカード（小文字）は反転しない
+      'Prize'        // サイドカード（大文字）は反転しない
+    ];
+
+    // CPU は 除外ゾーン以外を回転（プレースホルダー含む）
+    return isCpu && !nonFlipZones.includes(normalizedZone);
   }
 
   /**

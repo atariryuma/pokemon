@@ -75,7 +75,7 @@
             position: fixed !important;
             top: 20px !important;
             left: 50% !important;
-            transform: translateX(-50%) rotateZ(-2deg) !important;
+            transform: translateX(-50%) !important;
             
             /* サイズと基本設定 */
             width: 500px !important;
@@ -85,7 +85,7 @@
             /* 完全分離設定 */
             pointer-events: auto !important;
             overflow: visible !important;
-            background: rgba(0, 0, 0, 0.1) !important; /* デバッグ用背景 */
+            background: transparent !important;
             border-radius: 8px !important;
             
             /* 3D設定を無効化 */
@@ -100,7 +100,7 @@
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
-            gap: -10px !important; /* 重なり効果 */
+            gap: 4px !important; /* Mac Dock風の適度な間隔 */
             padding: 0 20px !important;
             box-sizing: border-box !important;
         }
@@ -462,7 +462,7 @@
             perspective: none !important; /* perspectiveの継承を阻止 */
             padding: 0 20px; /* 端にゆとりを作る */
             /* 手札全体の雰囲気向上 */
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)); /* 全体の影 */
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15)); /* 控えめな影 */
         }
         
         /* CPU手札のhand-slotクラス - 扇形配置で自然な手札表示 */
@@ -479,48 +479,42 @@
             display: flex !important;
             visibility: visible !important;
             opacity: 1 !important;
-            transform-origin: center bottom; /* 扇の中心を下に */
+            transform-origin: bottom center; /* Mac Dock風の拡大基点 */
             transform-style: flat !important;
             /* 個々のカードの視覚的改善 */
             transition: transform 0.2s ease-out; /* ホバー時のアニメーション用 */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 個別カードの影 */
+            box-shadow: none; /* 影を削除 */
             /* 個々のカードに扇形の回転を適用（nth-childで調整） */
         }
 
-        /* CPU手札の扇形配置：各カードに異なる回転角度を適用 */
-        #cpu-hand .hand-slot:nth-child(1) { transform: rotateZ(-20deg) translateY(-10px) !important; z-index: calc(var(--z-cpu-hand-fan) + 1); }
-        #cpu-hand .hand-slot:nth-child(2) { transform: rotateZ(-12deg) translateY(-6px) !important; z-index: calc(var(--z-cpu-hand-fan) + 2); }
-        #cpu-hand .hand-slot:nth-child(3) { transform: rotateZ(-6deg) translateY(-3px) !important; z-index: calc(var(--z-cpu-hand-fan) + 3); }
-        #cpu-hand .hand-slot:nth-child(4) { transform: rotateZ(0deg) translateY(0px) !important; z-index: calc(var(--z-cpu-hand-fan) + 4); }
-        #cpu-hand .hand-slot:nth-child(5) { transform: rotateZ(6deg) translateY(-3px) !important; z-index: calc(var(--z-cpu-hand-fan) + 5); }
-        #cpu-hand .hand-slot:nth-child(6) { transform: rotateZ(12deg) translateY(-6px) !important; z-index: calc(var(--z-cpu-hand-fan) + 6); }
-        #cpu-hand .hand-slot:nth-child(7) { transform: rotateZ(20deg) translateY(-10px) !important; z-index: calc(var(--z-cpu-hand-fan) + 7); }
-
-        /* CPU手札のカード画像を強制的に正位置（upright）に固定 */
-        #cpu-hand .hand-slot .card-image,
-        #cpu-hand .hand-slot [data-orientation="flipped"] .card-image,
-        #cpu-hand .hand-slot [data-orientation="flipped"],
-        #cpu-hand .hand-slot .cpu-card .card-image,
-        #cpu-hand .hand-slot img {
-            transform: none !important; /* あらゆる回転・変換を無効化 */
-            transform-style: flat !important;
+        /* CPU手札をプレイヤーと同様のMac Dock効果に統一 */
+        #cpu-hand.hand-dock .hand-slot.hand-card {
+            transition: transform 140ms ease, filter 140ms ease, z-index 140ms ease !important;
+            will-change: transform !important;
+            transform-origin: bottom center !important;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)); /* 軽めの影 */
+            position: relative;
+            z-index: var(--z-highlight);
+        }
+        
+        /* CPU手札のホバー・アクティブ効果 */
+        #cpu-hand .hand-slot {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+            border-radius: 8px;
+        }
+        
+        #cpu-hand .hand-slot.active {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+            border: 2px solid #ffd700;
+        }
+        
+        #cpu-hand .hand-slot:hover:not(.active) {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
-        /* CPU手札内のカードコンテナも強制的に正位置に固定 */
-        #cpu-hand .hand-slot [data-orientation="flipped"],
-        #cpu-hand .hand-slot .cpu-card,
-        #cpu-hand .hand-slot > * {
-            /* data-orientation="flipped"の影響を完全無効化 */
-            transform: none !important;
-            transform-style: flat !important;
-            /* CSSセレクタの優先度を最大化してflipped状態を上書き */
-        }
-
-        /* data-orientation属性によるCSS変換を CPU手札内では完全無効化 */
-        #cpu-hand .hand-slot[data-orientation="flipped"],
-        #cpu-hand .hand-slot [data-orientation="flipped"] {
-            transform: none !important;
-        }
+        /* CPU手札の向き制御（統一システムで既に処理済み - 上記参照） */
 
         /* 画面サイズに応じた手札の自動調整 */
         @media (max-width: 768px) {
@@ -649,32 +643,30 @@
             transition: transform 0.2s ease-out, opacity 0.3s ease;
         }
 
-        /* data-orientation属性による統一向き制御 - 手札では無効化 */
-        [data-orientation="flipped"] .card-image,
-        [data-orientation="flipped"] {
-            transform: rotateX(180deg) translateZ(0) !important;
-            transform-style: preserve-3d;
+        /* === シンプル化：統一カード向き制御システム === */
+        
+        /* CPUフィールドカードの反転（手札以外） */
+        .opponent-board [data-orientation="flipped"] .card-image {
+            transform: rotate(180deg) !important;
         }
-
-        /* プレイヤー手札でも正位置強制 - CPU手札と同じ処理 */
-        /* 手札内の画像のみ正位置固定（Mac Dock効果は維持） */
-        #player-hand .hand-slot .card-image,
-        #player-hand .hand-slot img {
-            /* 画像のみ固定、スロット自体のtransformは維持 */
-            transform-style: flat !important;
-        }
-
-        /* flipped状態の無効化（画像とコンテナのみ） */
-        #player-hand .hand-slot [data-orientation="flipped"] .card-image,
-        #player-hand .hand-slot [data-orientation="flipped"] img {
+        
+        /* プレイヤー側とCPU手札は常に正位置 */
+        .player-self [data-orientation="flipped"] .card-image,
+        #player-hand [data-orientation="flipped"] .card-image,
+        #cpu-hand [data-orientation="flipped"] .card-image {
             transform: none !important;
-            transform-style: flat !important;
         }
 
-        [data-orientation="upright"] .card-image,
-        [data-orientation="upright"] {
-            transform: translateZ(0);
-            transform-style: preserve-3d;
+        /* サイドカード（Prize）は常に正位置（CPU含む） */
+        [data-zone="Prize"] [data-orientation="flipped"] .card-image,
+        .side-right [data-orientation="flipped"] .card-image,
+        .side-left [data-orientation="flipped"] .card-image {
+            transform: none !important;
+        }
+        
+        /* 全ての正位置カードは変換なし */
+        [data-orientation="upright"] .card-image {
+            transform: none;
         }
 
         /* 旧クラス制御（互換性維持） */

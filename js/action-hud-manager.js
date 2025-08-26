@@ -223,6 +223,22 @@ export class ActionHUDManager {
     }
 
     /**
+     * ボタンを有効化（便利メソッド）
+     * @param {string} buttonId - ボタンID
+     */
+    enableButton(buttonId) {
+        this.setButtonEnabled(buttonId, true);
+    }
+
+    /**
+     * ボタンを無効化（便利メソッド）
+     * @param {string} buttonId - ボタンID
+     */
+    disableButton(buttonId) {
+        this.setButtonEnabled(buttonId, false);
+    }
+
+    /**
      * ボタンのテキストを更新
      * @param {string} buttonId - ボタンID
      * @param {string} text - 新しいテキスト
