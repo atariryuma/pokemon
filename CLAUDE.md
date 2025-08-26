@@ -111,13 +111,19 @@ pokemon/
 │   │   ├── combat.js            # 戦闘アニメーション
 │   │   ├── core.js              # アニメーションコア機能
 │   │   ├── effects.js           # エフェクトアニメーション
+│   │   ├── flow.js              # アニメーションフロー制御
 │   │   └── ui.js                # UIアニメーション
 │   ├── action-hud-manager.js    # アクションHUD管理
 │   ├── animation-manager.js     # アニメーション統合管理
+│   ├── card-api.js              # カードAPI統合
 │   ├── card-orientation.js      # カード向き管理
+│   ├── card-viewer-integration.js # カードエディタ統合
 │   ├── data-manager.js          # データ管理
+│   ├── debug-system.js          # デバッグシステム
+│   ├── dom-utils.js             # DOM操作ユーティリティ
 │   ├── error-handler.js         # エラーハンドリング
 │   ├── game.js                  # メインゲームクラス
+│   ├── game-logger.js           # ゲームログシステム
 │   ├── logic.js                 # ゲームルール・純粋関数
 │   ├── main.js                  # エントリーポイント
 │   ├── memory-manager.js        # メモリ管理
@@ -125,27 +131,35 @@ pokemon/
 │   ├── phase-manager.js         # フェーズ管理
 │   ├── setup-manager.js         # セットアップ管理
 │   ├── state.js                 # 状態管理
+│   ├── toast-messages.js        # トースト通知システム
 │   ├── turn-manager.js          # ターン管理
 │   ├── ui-constants.js          # UI定数
 │   ├── view.js                  # 描画ロジック
 │   └── z-index-constants.js     # z-index定数
 ├── data/                        # データファイル
-│   ├── cards-master.json        # カードマスターデータ
-│   └── schema.json              # データスキーマ
+│   └── cards-master.json        # カードマスターデータ
 ├── assets/                      # 画像・UI素材
 │   ├── cards/                   # カード画像
 │   │   ├── energy/              # エネルギーカード画像
 │   │   └── pokemon/             # ポケモンカード画像
 │   ├── playmat/                 # プレイマット関連
-│   └── ui/                      # UI素材
+│   │   ├── playmat_card_slots.json     # スロット定義
+│   │   └── playmat_slots_named.json    # 名前付きスロット
+│   ├── ui/                      # UI素材
+│   └── z-index-vars.css         # z-index CSS変数
 ├── scripts/                     # ユーティリティスクリプト
+│   ├── dev-server.js            # 開発サーバー（新）
 │   ├── rename_energy_images.py  # エネルギー画像リネーム
 │   └── rename_pokemon_images.py # ポケモン画像リネーム
+├── node_modules/                # NPMパッケージ
+├── test_*.html                  # テストファイル群
 ├── index.html                   # メインHTMLファイル
-├── card_viewer.html             # カードビューアー
-├── server.js                    # 開発サーバー
+├── card_viewer.html             # カードビューアー・エディタ
+├── server.js                    # 開発サーバー（メイン）
 ├── package.json                 # 依存関係管理
-└── CLAUDE.md                    # 開発ガイドライン
+├── package-lock.json            # 依存関係ロック
+├── README.md                    # プロジェクト概要（ユーザー向け）
+└── CLAUDE.md                    # 開発ガイドライン（開発者向け）
 ```
 
 #### モジュール責任分離
@@ -170,9 +184,18 @@ pokemon/
 - **setup-manager.js**: ゲームセットアップの制御
 - **turn-manager.js**: ターン制御・プレイヤー切り替え
 
+**統合・API モジュール:**
+
+- **card-api.js**: カードAPI統合・データ同期
+- **card-viewer-integration.js**: カードエディタとの連携制御
+- **toast-messages.js**: トースト通知システム
+- **game-logger.js**: ゲームログ・デバッグ情報管理
+- **debug-system.js**: 開発・デバッグ支援システム
+
 **ユーティリティモジュール:**
 
 - **card-orientation.js**: カードの向き・配置管理
+- **dom-utils.js**: DOM操作・ユーティリティ関数
 - **ui-constants.js**: UI関連の定数定義
 - **z-index-constants.js**: レイヤー管理用定数
 
@@ -292,6 +315,35 @@ function logStateChange(action, oldState, newState) {
 4. **テスト**: ユニット・統合テストで検証
 5. **コードレビュー**: アーキテクチャ原則への準拠確認
 
+### Claude Code 連携ワークフロー
+
+#### 開発サーバーの起動
+```bash
+# 開発サーバー起動（複数の選択肢）
+node server.js          # メインサーバー (推奨)
+node scripts/dev-server.js  # 代替サーバー
+npm start               # package.jsonスクリプト
+```
+
+#### カードエディタ統合開発
+```bash
+# カードエディタでの作業
+# 1. index.html でゲーム実行
+# 2. カードエディタボタン → card_viewer.html を開く
+# 3. カード編集・作成後、自動でゲームに反映
+```
+
+#### デバッグ・ログ戦略
+```javascript
+// デバッグシステムの活用
+import { debugSystem } from './debug-system.js';
+debugSystem.enable(); // 詳細ログを有効化
+
+// ゲームログの使用
+import { gameLogger } from './game-logger.js';
+gameLogger.logStateChange('ACTION', oldState, newState);
+```
+
 ### 2. コミット規則
 
 ```text
@@ -309,6 +361,43 @@ style: フォーマット変更（機能に影響なし）
 - `develop`: 開発統合ブランチ
 - `feature/*`: 機能開発ブランチ
 - `fix/*`: バグ修正ブランチ
+
+## 🛠️ Claude Code 固有のベストプラクティス
+
+### CLAUDE.md の活用
+
+このファイル自体が Claude Code のプロジェクトメモリとして機能します：
+
+- **Tech Stack**: Vanilla JavaScript (ES6+), HTML5, CSS3, Node.js
+- **Project Structure**: 上記ディレクトリ構造に準拠
+- **Commands**: 
+  - `node server.js` - 開発サーバー起動
+  - `npm install` - 依存関係インストール
+  - `npm start` - サーバー起動（package.json経由）
+
+### 開発者向け指針
+
+1. **モジュール最初**：新機能は必ず独立したモジュールとして実装
+2. **テスト駆動**：`test_*.html` でテスト検証後に本体統合
+3. **ログ活用**：`debug-system.js` と `game-logger.js` でデバッグ
+4. **統合設計**：カードエディタとの連携を常に考慮
+
+### よく使用するコマンド・パターン
+
+```bash
+# 一般的な作業フロー
+node server.js                    # サーバー起動
+# ブラウザで http://localhost:3000 を開く
+# 開発・テスト・デバッグの反復
+```
+
+```javascript
+// よく使用するインポートパターン
+import { Game } from './game.js';
+import { errorHandler } from './error-handler.js';
+import { debugSystem } from './debug-system.js';
+import { gameLogger } from './game-logger.js';
+```
 
 ## 📚 参考資料・ベストプラクティス
 
@@ -330,7 +419,7 @@ style: フォーマット変更（機能に影響なし）
 - Rule engine design
 - Turn-based game architecture
 
-## 🛠️ 開発ツール
+## 🔧 開発ツール
 
 ### 推奨ツール
 
@@ -347,6 +436,11 @@ style: フォーマット変更（機能に影響なし）
 - State inspection tools
 - Performance profiling
 
+## 🎴 ポケモンカードゲーム固有のルール
+
+### ゲームフロー
+
+```
 関数 ポケカ_対戦():
   準備()
   先攻, 後攻 = じゃんけんで決定()
@@ -398,8 +492,7 @@ style: フォーマット変更（機能に影響なし）
   返す (相手がサイドをすべて取り終えた)
       または (自分の場にポケモンが1匹もいない)
       または (自分の番のはじめにドローできない)
-
-
+```
 
 ---
 

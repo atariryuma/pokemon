@@ -89,32 +89,40 @@ export class CombatAnimations extends AnimationCore {
         if (!targetElement) return;
 
         const effects = {
-            fire: { color: '#ff4444', effect: 'flame' },
-            water: { color: '#4488ff', effect: 'water' },
-            lightning: { color: '#ffff44', effect: 'electric' },
-            grass: { color: '#44ff44', effect: 'leaf' },
-            psychic: { color: '#ff44ff', effect: 'psychic' },
-            fighting: { color: '#ff8844', effect: 'fighting' },
-            darkness: { color: '#444444', effect: 'dark' },
-            metal: { color: '#888888', effect: 'metal' },
-            fairy: { color: '#ffaaff', effect: 'fairy' },
-            dragon: { color: '#4444ff', effect: 'dragon' },
-            colorless: { color: '#ffffff', effect: 'normal' }
+            fire: { color: '#ff4444', effect: 'flame', cssClass: 'anim-type-fire' },
+            water: { color: '#4488ff', effect: 'water', cssClass: 'anim-type-water' },
+            lightning: { color: '#ffff44', effect: 'electric', cssClass: 'anim-type-lightning' },
+            grass: { color: '#44ff44', effect: 'leaf', cssClass: 'anim-type-grass' },
+            psychic: { color: '#ff44ff', effect: 'psychic', cssClass: 'anim-type-psychic' },
+            fighting: { color: '#ff8844', effect: 'fighting', cssClass: 'anim-type-fighting' },
+            darkness: { color: '#444444', effect: 'dark', cssClass: 'anim-type-darkness' },
+            metal: { color: '#888888', effect: 'metal', cssClass: 'anim-type-metal' },
+            fairy: { color: '#ffaaff', effect: 'fairy', cssClass: 'anim-type-fairy' },
+            dragon: { color: '#4444ff', effect: 'dragon', cssClass: 'anim-type-dragon' },
+            colorless: { color: '#ffffff', effect: 'normal', cssClass: 'anim-type-colorless' }
         };
         
         const effect = effects[type.toLowerCase()] || effects.colorless;
         
-        // 攻撃者にタイプカラーのグロー効果
+        // ハイブリッド効果：攻撃者にCSSキーフレーム + グロー効果
         if (attackerElement) {
-            attackerElement.style.boxShadow = `0 0 20px ${effect.color}`;
+            // CSSアニメーションクラスを適用
+            attackerElement.classList.add(effect.cssClass);
+            
+            // 追加のグロー効果（CSS keyframesと組み合わせ）
             attackerElement.style.transition = 'box-shadow 0.3s ease';
             
             this.scheduleCleanup(() => {
+                attackerElement.classList.remove(effect.cssClass);
                 attackerElement.style.boxShadow = '';
-            }, 600);
+            }, 1200); // keyframeは1秒なので少し長めに
         }
         
-        // 守備側にタイプエフェクト
+        // ハイブリッド効果：守備側にCSSキーフレーム + グラデーションオーバーレイ
+        // 1. CSSアニメーションクラスを適用
+        targetElement.classList.add(effect.cssClass);
+        
+        // 2. グラデーションオーバーレイも追加（現在の実装を維持）
         const overlay = document.createElement('div');
         overlay.className = 'absolute inset-0 pointer-events-none';
         overlay.style.background = `radial-gradient(circle, ${effect.color}33 0%, transparent 70%)`;
@@ -124,8 +132,9 @@ export class CombatAnimations extends AnimationCore {
         targetElement.appendChild(overlay);
         
         this.scheduleCleanup(() => {
+            targetElement.classList.remove(effect.cssClass);
             overlay.remove();
-        }, 500);
+        }, 1200); // keyframeとオーバーレイ両方をクリーンアップ
         
         await this.delay(300);
     }
